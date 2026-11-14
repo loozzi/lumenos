@@ -1,3 +1,8 @@
+## LumenOS · Đang phát triển sau 1.5.0
+
+- Thêm kho App tích hợp và thanh dưới Trang chủ | App | Kệ sách | Tệp tin; giữ lối vào Cài đặt từ Home/App. Home kiểu bìa toàn màn hình có mục App trong menu bật lên.
+- Thêm Cờ caro ngoại tuyến cho hai người: bàn 15×15, thắng từ năm quân liên tiếp, đi lại từng nước và xác nhận ván mới; giữ ván trong RAM khi chuyển trang hoặc Light Sleep.
+
 ## LumenOS 1.5.0 / 1.5.0-love · Build cục bộ · 2026-11-14
 
 - Làm mới bốn trang chính theo mẫu thẻ xám phẳng: ngày trên Trang chủ, lối tắt riêng, danh sách tệp thoáng và nhóm Cài đặt bo góc; thanh điều hướng nền trắng chỉ tô mục đang chọn.

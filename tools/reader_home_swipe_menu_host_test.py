@@ -12,6 +12,7 @@ book=(root/'main/apps/app_book.c').read_text();a=book.index('    // A tap outsid
 unit=r'''
 #include <assert.h>
 #include <stdbool.h>
+#define UI_NAV_APPS 6
 #define UI_LOCK_WIDTH 684
 #define UI_LOCK_HEIGHT 1216
 typedef struct {int x,y,width,height;} EpdRect;
@@ -57,7 +58,7 @@ int main(void){
  }
  full_mode=false;ui_gesture_event_t e={UI_GESTURE_SWIPE_U,300,600,false};
  simple=true;s_view=HOME_ROOT;s_press_pending=true;assert(on_gesture(&c,&e)==APP_REDRAW_AREA&&s_view==HOME_POP_MENU&&!s_press_pending);
- for(int i=0;i<4;++i){s_view=HOME_POP_MENU;c.request_app=0;c.request_back_ripple=false;routes=0;EpdRect r=pop_menu_row(i);e=(ui_gesture_event_t){UI_GESTURE_TAP,r.x+1,r.y+1,false};assert(on_gesture(&c,&e)==APP_REDRAW_NONE);assert(i?routes==1&&last_action==(i==1?APP_HOME_UTIL_TRANSFER:i==2?APP_HOME_UTIL_OPDS:APP_HOME_UTIL_SETTINGS):c.request_app==5&&!routes);assert(c.request_back_ripple);}
+ for(int i=0;i<5;++i){s_view=HOME_POP_MENU;c.request_app=0;c.request_back_ripple=false;routes=0;EpdRect r=pop_menu_row(i);e=(ui_gesture_event_t){UI_GESTURE_TAP,r.x+1,r.y+1,false};assert(on_gesture(&c,&e)==APP_REDRAW_NONE);assert(i==4?c.request_app==UI_NAV_APPS&&!routes:i?routes==1&&last_action==(i==1?APP_HOME_UTIL_TRANSFER:i==2?APP_HOME_UTIL_OPDS:APP_HOME_UTIL_SETTINGS):c.request_app==5&&!routes);assert(c.request_back_ripple);}
  refresh_mode=APP_MAIN_REFRESH_NORMAL;
  c.request_back_ripple=false;
  assert(on_gesture(&c,&e)==APP_REDRAW_NONE&&!c.request_back_ripple);

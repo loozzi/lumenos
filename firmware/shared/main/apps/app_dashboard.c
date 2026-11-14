@@ -906,7 +906,7 @@ static app_redraw_t utility_run(app_ctx_t *ctx,unsigned action) {
             if(ok){ui_nav_request(ctx,1);return APP_REDRAW_NONE;}
         }
         snprintf(s_utility_notice,sizeof(s_utility_notice),"Chưa có sách để đọc tiếp hoặc đồng bộ");break;
-    case APP_HOME_UTIL_LIBRARY:ui_nav_request(ctx,DPREADER_LOVE_BOOK?2:1);return APP_REDRAW_NONE;
+    case APP_HOME_UTIL_LIBRARY:if(DPREADER_LOVE_BOOK)ctx->request_app=app_at(5);else ui_nav_request(ctx,1);return APP_REDRAW_NONE;
     case APP_HOME_UTIL_OPDS:app_book_request_opds();ui_nav_request(ctx,1);return APP_REDRAW_NONE;
     case APP_HOME_UTIL_SETTINGS:ui_nav_request(ctx,3);return APP_REDRAW_NONE;
     case APP_HOME_UTIL_OTA:app_device_settings_request_ota();ui_nav_request(ctx,3);return APP_REDRAW_NONE;

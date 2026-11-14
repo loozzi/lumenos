@@ -22,6 +22,21 @@ jobs:
       - run: python3 tools/ota_edition_choice_host_test.py
       - run: node tools/web_editions_host_test.mjs
 
+  apps-host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Materialize S31 app tests
+        run: python3 tools/board_source_view.py --board metalio47 --tests --output build/apps-host
+      - name: Catalogue, navigation and Caro rules
+        working-directory: build/apps-host
+        run: |
+          python3 tools/apps_host_test.py
+          python3 tools/reader_home_swipe_menu_host_test.py
+
   sleep-host-tests:
     runs-on: ubuntu-latest
     steps:

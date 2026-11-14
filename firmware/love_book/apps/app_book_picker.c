@@ -215,7 +215,7 @@ static void render(app_ctx_t *ctx,uint8_t *fb) {
     ui_text_box(fb,page_label(),23,page,EPD_DRAW_ALIGN_CENTER,false);
     if(s_page)ui_draw_button(fb,page_button(0),"‹ Trước",false);
     if(s_more)ui_draw_button(fb,page_button(1),"Tiếp ›",false);
-    ui_nav_draw(fb,-1);
+    ui_nav_draw(fb,UI_NAV_BOOKS);
 }
 static app_redraw_t back(app_ctx_t *ctx) {
     if(s_pending)return APP_REDRAW_NONE;

@@ -741,7 +741,7 @@ static void menu_feedback(app_ctx_t* ctx, const app_desc_t* current,
 // Leave the old page, enter the new one, then present a full page.
 static bool main_page_ready(app_ctx_t* ctx, const app_desc_t* app) {
     int index = app_index_of(app);
-    return index >= 0 && index < 4 &&
+    return ui_nav_slot(index) >= 0 &&
            app->main_page_visible && app->main_page_visible(ctx);
 }
 
@@ -772,8 +772,8 @@ static app_redraw_t main_key_action(app_ctx_t *ctx,const app_desc_t *current,int
     app_redraw_t redraw=APP_REDRAW_NONE;
     if(current->on_main_key && current->on_main_key(ctx,key,&redraw))return redraw;
     int tab=app_index_of(current);
-    if(tab>=0 && tab<4 && (key==UI_KEY_1||key==UI_KEY_3))
-        ui_nav_request(ctx,app_settings_simple_ui() ? (tab==0?3:0) : (tab+(key==UI_KEY_1?3:1))%4);
+    if(ui_nav_slot(tab)>=0 && (key==UI_KEY_1||key==UI_KEY_3))
+        ui_nav_request(ctx,ui_nav_next(tab,key==UI_KEY_1?-1:1));
     return APP_REDRAW_NONE;
 }
 
@@ -890,7 +890,6 @@ static app_redraw_t ai_short_action(app_ctx_t *ctx,const app_desc_t *current){
 static void switch_to(
     app_ctx_t* ctx, const app_desc_t** current, const app_desc_t* next
 ) {
-    if(next&&app_settings_simple_ui()&&next==app_at(2))next=app_at(5);
     if (!next || (next==*current && (!next->persistent_navigation || main_page_ready(ctx,next)))) return;
 #if defined(DPREADER_LOCAL_LATENCY) || DPREADER_BOARD_METALIO47
     const int64_t probe_start=esp_timer_get_time();

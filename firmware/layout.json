@@ -227,6 +227,10 @@
     "main/factory/vcom_setup.h": "firmware/shared/main/factory/vcom_setup.h",
     "main/factory/debug_panel.h": "firmware/shared/main/factory/debug_panel.h",
     "main/factory/pmu_selftest.c": "firmware/shared/main/factory/pmu_selftest.c",
-    "main/factory/debug_panel.c": "firmware/shared/main/factory/debug_panel.c"
+    "main/factory/debug_panel.c": "firmware/shared/main/factory/debug_panel.c",
+    "main/apps/app_apps.c": "firmware/shared/main/apps/app_apps.c",
+    "main/apps/app_caro.c": "firmware/shared/main/apps/app_caro.c",
+    "main/apps/caro.c": "firmware/shared/main/apps/caro.c",
+    "main/apps/caro.h": "firmware/shared/main/apps/caro.h"
   }
 }

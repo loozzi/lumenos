@@ -4,12 +4,15 @@
  *
  * 产品页清单。四个主页面对应底部导航；传输由文件首页的直达按钮进入，工厂页独立。
  *
- * Product page table. Four main pages match the tab bar; file-home buttons open transfer directly.
+ * Production routes keep stable IDs; ui_nav.c maps the visible tab order.
+ * Append new pages to preserve existing boot records and direct callers.
  */
 
 #include "app_registry.h"
 
 extern const app_desc_t app_book;
+extern const app_desc_t app_apps;
+extern const app_desc_t app_caro;
 extern const app_desc_t app_image;
 extern const app_desc_t app_dashboard;
 extern const app_desc_t app_files;
@@ -25,6 +28,8 @@ static const app_desc_t* const s_apps[] = {
     &app_device_settings,
     &app_image,
     &app_book_picker,
+    &app_apps,
+    &app_caro,
 };
 
 #define APP_COUNT ((int)(sizeof(s_apps) / sizeof(s_apps[0])))

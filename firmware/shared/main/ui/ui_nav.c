@@ -1,10 +1,10 @@
 /*
  * SPDX-FileCopyrightText: 2026 mindreset
- * User revision 2026-11-02: optional simple UI uses Home/Settings and a bounded book-file picker, bypassing the shelf and recent-cover work.
+ * User revision 2026-11-14: Home / App / Books / Files replaces Home/Settings in simple UI; Love Book still bypasses library scanning.
  * SPDX-License-Identifier: Apache-2.0
  *
  * 中文：绘制与命中四栏导航；细线图标分别表示首页、书架、文件和设置，图形来自 Lucide。
- * English: Draw and hit-test the four-tab navigation with thin-line home, books, files and settings icons from Lucide.
+ * English: Draw and hit-test Home, App, Books and Files with existing Lucide icons.
  * 用户增加点击反馈：共享返回键和底栏图标登记局部命中，主循环只在按下和复位推该控件。
  * User adds click feedback: register local hits for shared backs and navigation icons; the loop presents only that control on press and restoration.
  * 用户修订：所有模式把内容扫描截止到分隔线之间的8行固定为白色留白；滚动不能把列表画进这条扫描保护带。
@@ -167,7 +167,19 @@ static void fit_status_title(char *text, int width) {
     if (len && len + sizeof("…") <= 96) strcat(text, "…");
 }
 
-static const char *const labels[] = {"Trang chủ", "Kệ sách", "Tệp tin", "Cài đặt"};
+// User revision 2026-11-14: Home / App / Books / Files in both editions.
+// Settings remains available from Home and the App catalogue.
+static const int nav_routes[] = {UI_NAV_HOME, UI_NAV_APPS, UI_NAV_BOOKS, UI_NAV_FILES};
+static const char *const labels[] = {"Trang chủ", "App", "Kệ sách", "Tệp tin"};
+int ui_nav_slot(int route) {
+    for (int i=0; i<4; ++i) if (nav_routes[i]==route) return i;
+    return -1;
+}
+int ui_nav_next(int route, int direction) {
+    int slot=ui_nav_slot(route);
+    if (slot<0) return UI_NAV_HOME;
+    return nav_routes[(slot+(direction<0?3:1))%4];
+}
 static int s_power_signature=-1000;
 static int power_signature(void) {
     const pmu_snapshot_t *pmu=read_pico_pmu_get();
@@ -204,28 +216,28 @@ static void icon(uint8_t *fb, int tab, int cx, int y) {
     // 四个底栏图标固定用 Lucide 细线原图，线宽与状态栏一致；y 是图标盒顶边。
     // The four bar icons stay on upstream Lucide line art at the status-bar stroke weight; y is the box top.
     static const ui_icon_t tabs[4] = {
-        UI_ICON_HOUSE, UI_ICON_LIBRARY_BIG,
-        UI_ICON_FOLDER_OPEN, UI_ICON_SLIDERS_HORIZONTAL,
+        UI_ICON_HOUSE, UI_ICON_COPY, UI_ICON_LIBRARY_BIG, UI_ICON_FOLDER_OPEN,
     };
-    if (tab < 0 || tab >= 4) return;
-    ui_click_feedback_register(fb, (EpdRect){cx - 30, y - 12, 60, 60}, UI_CLICK_NAV, tabs[tab]);
-    ui_draw_icon(fb, cx, y + 18, UI_NAV_TAB_ICON_PX, tabs[tab], UI_GRAY_BLACK);
+    int slot=ui_nav_slot(tab);
+    if (slot<0) return;
+    ui_click_feedback_register(fb, (EpdRect){cx - 30, y - 12, 60, 60}, UI_CLICK_NAV, tabs[slot]);
+    ui_draw_icon(fb, cx, y + 18, UI_NAV_TAB_ICON_PX, tabs[slot], UI_GRAY_BLACK);
 }
 
 void ui_nav_draw(uint8_t *fb, int active) {
 #if DPREADER_BOARD_METALIO47
     // White backing and a single selected tile share the page card material.
     ui_fill_rect_fast((EpdRect){0,UI_NAV_REFRESH_END,UI_LOCK_WIDTH,UI_LOCK_HEIGHT-UI_NAV_REFRESH_END},UI_GRAY_WHITE,fb);
-    const int count=app_settings_simple_ui()?2:4;
+    const int count=4;
     for(int slot=0;slot<count;++slot) {
-        const int i=count==2?(slot?3:0):slot;
+        const int i=nav_routes[slot];
         const int center=(slot*2+1)*UI_LOCK_WIDTH/(count*2);
         if(i==active) {
             const EpdRect selected={center-70,UI_NAV_TOP+10,140,104};
             ui_draw_soft_card(fb,selected,20,true);
         }
         icon(fb,i,center,UI_NAV_TOP+27);
-        ui_text(fb,center,UI_NAV_TOP+74,17,app_settings_simple_ui()&&i==0?"Đọc tiếp":labels[i],EPD_DRAW_ALIGN_CENTER,false);
+        ui_text(fb,center,UI_NAV_TOP+74,17,labels[slot],EPD_DRAW_ALIGN_CENTER,false);
     }
 #else
     ui_fill_rect_fast((EpdRect){0, UI_NAV_TOP, UI_LOCK_WIDTH, UI_LOCK_HEIGHT - UI_NAV_TOP}, 0xe0, fb);
@@ -236,13 +248,13 @@ void ui_nav_draw(uint8_t *fb, int active) {
         // Reserve a blank fast-refresh boundary; short-update the marker on white while retaining icons and text.
         ui_fill_rect_fast((EpdRect){0, UI_NAV_MARKER_TOP, UI_LOCK_WIDTH, UI_NAV_MARKER_BOTTOM - UI_NAV_MARKER_TOP}, UI_GRAY_WHITE, fb);
     }
-    int count = app_settings_simple_ui() ? 2 : 4;
+    int count = 4;
     for (int slot = 0; slot < count; ++slot) {
-        int i = count == 2 ? (slot ? 3 : 0) : slot;
+        int i = nav_routes[slot];
         int center = (slot * 2 + 1) * UI_LOCK_WIDTH / (count * 2);
         if (i == active) ui_fill_rect_fast((EpdRect){center - 28, UI_NAV_TOP + 1, 56, 5}, UI_GRAY_BLACK, fb);
         icon(fb, i, center, UI_NAV_TOP + 27);
-        ui_text(fb, center, UI_NAV_TOP + 74, 17, app_settings_simple_ui() && i == 0 ? "Đọc tiếp" : labels[i], EPD_DRAW_ALIGN_CENTER, false);
+        ui_text(fb, center, UI_NAV_TOP + 74, 17, labels[slot], EPD_DRAW_ALIGN_CENTER, false);
     }
 #endif
 }
@@ -349,11 +361,10 @@ void ui_nav_reader_status(uint8_t *fb) { draw_status(fb, true); }
 
 int ui_nav_hit(uint16_t x, uint16_t y) {
     if (x >= UI_LOCK_WIDTH || y < UI_NAV_TOUCH_TOP || y >= UI_LOCK_HEIGHT) return -1;
-    if (app_settings_simple_ui()) return x < UI_LOCK_WIDTH / 2 ? 0 : 3;
     int tab = x * 4 / UI_LOCK_WIDTH;
-    return tab < 4 ? tab : -1;
+    return tab < 4 ? nav_routes[tab] : -1;
 }
 
 void ui_nav_request(app_ctx_t *ctx, int index) {
-    if (index >= 0 && index < 4) ctx->request_app = app_at(app_settings_simple_ui() && index == 2 ? 5 : index);
+    if ((index >= 0 && index < 4) || index == UI_NAV_APPS) ctx->request_app = app_at(index);
 }

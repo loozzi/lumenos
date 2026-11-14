@@ -149,7 +149,7 @@ bool ui_click_feedback_press(uint8_t *fb, int x, int y, EpdRect *area) {
 // 还原单次放大/复位反馈；新点击优先，连点同一图标用轻微尺寸差避免被差分吞掉。
 // Restore one enlargement/settle; new contacts win and a small repeated-tap variation prevents identical-frame skips.
 void ui_click_feedback_nav_request(int tab) {
-    if(tab<0||tab>=4)return;
+    if(ui_nav_slot(tab)<0)return;
     bool accent=s_nav.tab==tab&&s_pixels ? !s_nav.accent : false;
     if(s_pixels) {
         if(s_active.kind==UI_CLICK_NAV)s_nav.dirty=nav_union(s_nav.dirty,changed_area(s_frame));
@@ -184,9 +184,9 @@ bool ui_click_feedback_nav_tick(uint8_t *fb,int64_t now_ms,EpdRect *area) {
         }
         // 书架正等待封面时新帧尚未注册底栏；按稳定公共布局反馈，不能等待目标页出现。
         // While shelf covers load, the new frame may lack registrations; use the stable common footer immediately.
-        static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER_OPEN,UI_ICON_SLIDERS_HORIZONTAL};
-        int center=app_settings_simple_ui()?(s_nav.tab==0?UI_LOCK_WIDTH/4:UI_LOCK_WIDTH*3/4):(s_nav.tab*2+1)*UI_LOCK_WIDTH/8;
-        s_active=control?*control:(click_control_t){(EpdRect){center-30,UI_NAV_TOP+15,60,60},UI_CLICK_NAV,tabs[s_nav.tab]};
+        static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_COPY,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER_OPEN};
+        int center=(ui_nav_slot(s_nav.tab)*2+1)*UI_LOCK_WIDTH/8;
+        s_active=control?*control:(click_control_t){(EpdRect){center-30,UI_NAV_TOP+15,60,60},UI_CLICK_NAV,tabs[ui_nav_slot(s_nav.tab)]};
         EpdRect r=s_active.area;
         s_pixels=heap_caps_malloc((size_t)r.width*r.height,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
         if(!s_pixels) {

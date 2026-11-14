@@ -30,6 +30,18 @@ Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Lov
 
 Các ảnh dpReader cũ trong `docs/screenshots/` được giữ để tham khảo lịch sử. Xem [nguồn và cách tạo lại ảnh](docs/screenshots/lumenos/README.md).
 
+## App và cờ caro
+
+Nhánh phát triển App bổ sung thanh dưới **Trang chủ | App | Kệ sách | Tệp tin**.
+Kho App chứa ứng dụng tích hợp sẵn, mở và chơi ngoại tuyến. Cài đặt vẫn vào từ
+Trang chủ hoặc nút Cài đặt trong App. Home kiểu bìa toàn màn hình có thêm mục
+App trong menu bật lên. Các ảnh minh họa 1.5.0 phía trên vẫn là bố cục trước thay đổi này.
+
+Ứng dụng đầu tiên là **Cờ caro**: hai người chơi chung máy, bàn 15×15, X đi trước,
+ít nhất năm quân liên tiếp theo hàng/cột/chéo là thắng; không áp dụng luật chặn hai đầu.
+Có đi lại từng nước và xác nhận ván mới. Ván giữ trong RAM khi chuyển tab hoặc
+Light Sleep, mất khi khởi động lại. Xem [cách chơi và cách thêm app](docs/APPS.md).
+
 ## Full và Love Book
 
 Hai bản dùng chung trình đọc, phông chữ, tiến độ đọc và phần điều khiển phần cứng. Đây là **hai cấu hình biên dịch**, khác với lựa chọn giao diện trong bản Full.

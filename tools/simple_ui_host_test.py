@@ -40,13 +40,15 @@ enum {UI_ICON_FOLDER_OPEN,UI_ICON_BOOK_OPEN,EPD_DRAW_ALIGN_LEFT,EPD_DRAW_ALIGN_C
 #define UI_LOCK_WIDTH 684
 #define UI_LOCK_HEIGHT 1216
 #define UI_NAV_TOUCH_TOP 1080
+enum { UI_NAV_HOME=0, UI_NAV_BOOKS=1, UI_NAV_FILES=2, UI_NAV_SETTINGS=3, UI_NAV_APPS=6 };
+static const int nav_routes[]={0,6,1,2};
 static bool simple=true,media=true,alloc_fail,read_fail,open_fail,stat_fail,books_missing;
 static int nav=-1,probes,visited,closed,opened,usb_requests;
 static const app_desc_t app_transfer;
 static void app_transfer_request_usb_start(void){++usb_requests;}
 static size_t allocated;
-static const app_desc_t apps[6];
-static const app_desc_t *app_at(int i){assert(i>=0&&i<6);return &apps[i];}
+static const app_desc_t apps[8];
+static const app_desc_t *app_at(int i){assert(i>=0&&i<8);return &apps[i];}
 static bool app_settings_simple_ui(void){return simple;}
 static const char *app_settings_books_dir(void){return "/sdcard/books";}
 static bool read_pico_sd_io_ready(void){return media;}
@@ -100,25 +102,26 @@ preamble += '\n#define real_stat stat\n'
 # Use function-like macro for stat instead, so struct declarations remain intact.
 preamble=preamble.replace('#define stat fake_stat','#define stat(...) fake_stat(__VA_ARGS__)')
 nav_source=ROOT/'main/ui/ui_nav.c'
-unit=preamble+'\n'+function('ui_nav_hit',nav_source)+'\n'+function('ui_nav_request',nav_source)+'\n'+source+r'''
+unit=preamble+'\n'+function('ui_nav_slot',nav_source)+'\n'+function('ui_nav_next',nav_source)+'\n'+function('ui_nav_hit',nav_source)+'\n'+function('ui_nav_request',nav_source)+'\n'+source+r'''
 static bool front_key_opens_action_menu(int key,bool held){(void)key;(void)held;return false;}
 static void app_action_menu_request(void){}
+static bool front_key_locks(int key,bool held){(void)key;(void)held;return false;}
+static void app_lock_request(void){}
 static int app_index_of(const app_desc_t *app){return (int)(app-apps);}
 '''+function('main_key_action',ROOT/'main/app/app_loop.c')+r'''
 static void tap(app_ctx_t *ctx,unsigned x,unsigned y){ui_gesture_event_t e={UI_GESTURE_TAP,x,y};gesture(ctx,&e);}
 int main(void){
  app_ctx_t ctx={0};
- for(int i=0;i<2;++i)for(int key=UI_KEY_1;key<=UI_KEY_3;key+=2){
-  int tab=i?3:0;ctx.request_app=NULL;
+ for(int i=0;i<4;++i)for(int key=UI_KEY_1;key<=UI_KEY_3;key+=2){
+  int tab=nav_routes[i];ctx.request_app=NULL;
   assert(main_key_action(&ctx,app_at(tab),key,false)==APP_REDRAW_NONE);
-  assert(ctx.request_app==app_at(i?0:3));
+  assert(ctx.request_app==app_at(nav_routes[(i+(key==UI_KEY_1?3:1))%4]));
  }
  ctx.request_app=NULL;
-
- for(unsigned x=0;x<684;++x){assert(ui_nav_hit(x,1080)==(x<342?0:3));assert(ui_nav_hit(x,1079)==-1);}
+ for(unsigned x=0;x<684;++x){assert(ui_nav_hit(x,1080)==nav_routes[x*4/684]);assert(ui_nav_hit(x,1079)==-1);}
  assert(ui_nav_hit(684,1100)==-1);
- simple=false;for(unsigned x=0;x<684;++x)assert(ui_nav_hit(x,1100)==(int)(x*4/684));simple=true;
- ui_nav_request(&ctx,2);assert(ctx.request_app==app_at(5));ctx.request_app=NULL;
+ simple=false;for(unsigned x=0;x<684;++x)assert(ui_nav_hit(x,1100)==nav_routes[x*4/684]);simple=true;
+ ui_nav_request(&ctx,2);assert(ctx.request_app==app_at(2));ctx.request_app=NULL;
  entries[0]=".hidden.epub";entries[1]="ignored.png";entries[2]="folder";entries[3]="Việt.EPUB";
  for(unsigned i=4;i<20;++i)entries[i]="book.txt";total=20;
  enter(&ctx);assert(probes==1&&s_pending);tick(&ctx);assert(!strcmp(s_directory,"/sdcard/Books"));

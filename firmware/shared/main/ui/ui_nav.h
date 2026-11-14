@@ -43,3 +43,8 @@ void ui_nav_back(uint8_t *fb, int x, int y);
 /// 四栏整列热区向上扩16px，互不重叠；不改变画面和刷新区域。/ Four nonoverlapping full-column hits extend 16px upward, without changing paint or refresh bounds.
 int ui_nav_hit(uint16_t x, uint16_t y);
 void ui_nav_request(app_ctx_t *ctx, int index);
+
+// Stable route IDs retain existing reader/file/settings callers and boot records.
+enum { UI_NAV_HOME=0, UI_NAV_BOOKS=1, UI_NAV_FILES=2, UI_NAV_SETTINGS=3, UI_NAV_APPS=6 };
+int ui_nav_slot(int route);
+int ui_nav_next(int route, int direction);

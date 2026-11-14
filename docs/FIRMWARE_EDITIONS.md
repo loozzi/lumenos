@@ -34,3 +34,10 @@ Mã nguồn thật nằm ở `firmware/shared`, `firmware/full`, `firmware/love_
 Xem [cây tính năng Love Book](LOVE_BOOK_FEATURES.md) để tra vị trí các chức năng.
 
 Love Book không dùng PIN khi mở máy hoặc đánh thức. Mã PIN đã lưu chỉ được bản Full sử dụng.
+
+## App tích hợp
+
+Cả Full và Love Book có kho App và Cờ caro dùng chung mã nguồn. Thanh điều hướng
+hiện Trang chủ | App | Kệ sách | Tệp tin. Love Book tiếp tục dùng trình chọn sách
+khi vào Kệ sách, không bật lại thư viện/bìa kệ. Tab Tệp tin mở trình quản lý tệp;
+Home bìa toàn màn hình vẫn dùng menu bật lên, có thêm mục App.
