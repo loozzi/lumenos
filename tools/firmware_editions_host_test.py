@@ -10,7 +10,7 @@ from build_firmware import ROOT, metadata, check_image
 from home_cover_cache_host_test import function
 
 full, love = (metadata('metalio47', e) for e in ('full', 'love-book'))
-assert love['version'] == full['version'].removesuffix('-vn') + '-love-vn'
+assert love['version'] == full['version'].removesuffix('-vn') + ('-love-vn' if full['version'].endswith('-vn') else '-love')
 assert full['image_chip_id'] == love['image_chip_id'] == 32
 with tempfile.TemporaryDirectory() as folder:
     sdk=Path(folder)
@@ -37,6 +37,9 @@ with tempfile.TemporaryDirectory() as folder:
 #include <assert.h>
 #include "firmware_edition.h"
 int main(void) {
+ assert(firmware_same_edition("1.5.0-love",32,"1.4.5-love-vn",32));
+ assert(firmware_same_edition("1.5.0",32,"1.4.5-vn",32));
+ assert(!firmware_same_edition("1.5.0-love",32,"1.5.0",32));
  char bad[32];memset(bad,'a',sizeof(bad));
  assert(firmware_same_edition("1.3.3RC4-vn",32,"1.3.2-vn",32));
  assert(firmware_same_edition("1.3.3RC4-love-vn",32,"1.3.3-love-vn",32));
@@ -63,7 +66,8 @@ int main(void) {
 #include "lock_pin.h"
 typedef void EpdiyHighlevelState;
 typedef void *cst836u_handle_t, *sc7a20h_handle_t;
-static bool s_boot_lock_draw, s_boot_power_on, s_boot_power_wake, resume;
+static bool s_boot_lock_draw, s_boot_power_on, s_boot_power_wake, resume, s_lock_deep_ready;
+static cst836u_handle_t s_lock_sleep_touch;
 static unsigned presses=1, waits, restored;
 static void lock_hint_begin(void *frame){(void)frame;}
 static void lock_hint_end(void){}
@@ -101,7 +105,7 @@ with tempfile.TemporaryDirectory() as folder:
     p=Path(folder)
     unit='#include <assert.h>\n#include <stdbool.h>\n#include <string.h>\n#include <stdlib.h>\n#include <ctype.h>\n'
     unit+=function('version_parts',ROOT/'main/ota_release.c')+'\n'+function('pico_version_compare',ROOT/'main/ota_release.c')
-    unit+='\nint main(void){unsigned n[4];assert(version_parts("1.3.3-love-vn",n));assert(version_parts("1.3.3RC4-love-vn",n));assert(!version_parts("1.3.3-other",n));assert(pico_version_compare("1.3.3-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.3RC10-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.4RC1-love-vn","1.3.3-love-vn")>0);assert(pico_version_compare("1.3.3-vn","1.3.3RC4-vn")>0);}'
+    unit+='\nint main(void){unsigned n[4];assert(version_parts("1.5.0-love",n));assert(version_parts("1.5.0",n));assert(pico_version_compare("1.5.0-love","1.4.5-love-vn")>0);assert(version_parts("1.3.3-love-vn",n));assert(version_parts("1.3.3RC4-love-vn",n));assert(!version_parts("1.3.3-other",n));assert(pico_version_compare("1.3.3-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.3RC10-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.4RC1-love-vn","1.3.3-love-vn")>0);assert(pico_version_compare("1.3.3-vn","1.3.3RC4-vn")>0);}'
     (p/'versions.c').write_text(unit)
     subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds',str(p/'versions.c'),'-o',str(p/'versions')],check=True)
     subprocess.run([str(p/'versions')],check=True)

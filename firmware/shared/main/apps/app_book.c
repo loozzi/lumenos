@@ -862,7 +862,7 @@ static int shelf_rows(void) {
 #define SHELF_FAST_COVER_STRIDE ((SHELF_FAST_COVER_WIDTH + 7) / 8)
 #define SHELF_FAST_COVER_BYTES (SHELF_FAST_COVER_STRIDE * SHELF_FAST_COVER_HEIGHT)
 #define SHELF_FAST_CACHE_RESERVE (512u * 1024u)
-#define SHELF_GUARD_CACHE_BYTES (644u * 90u / 2u)
+#define SHELF_GUARD_CACHE_BYTES (644u * 60u / 2u)
 typedef struct { EpdRect rect; int rotation, contrast; bool binary, valid; } shelf_guard_key_t;
 static uint8_t *s_guard_cache;
 static shelf_guard_key_t s_guard_keys[3];
@@ -1427,7 +1427,7 @@ static void draw_shelf_furniture(uint8_t* fb) {
             ui_hairline(fb, top + 214, 36, 612, 0x58);
             ui_hairline(fb, top + 225, 36, 612, 0x10);
         } else if (style == 2) {
-            EpdRect acrylic = {20, top + 136, 644, 90};
+            EpdRect acrylic = {20, top + 166, 644, 60};
             draw_shelf_guard(fb, acrylic, row);
 
         }

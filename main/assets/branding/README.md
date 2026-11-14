@@ -1,35 +1,29 @@
-# dpReader logo assets
+# LumenOS logo assets
 
-The user supplied `dpreader-logo-source.png`. Preserve its wordmark and open-book underline.
+`lumen-logo-source.png` is a byte-identical copy of the user's
+`Claude_AI_symbol.black.png`: black symbol on a transparent PNG canvas.
+The supplied shape is retained without redrawing or image generation.
 
-## Firmware
-
-`../startup_logo_4bpp.bin` is generated from the original monochrome source at 540 × 178, centered by the startup renderer. The runtime reads its packed pixels directly from flash; it does not allocate a logo framebuffer. The existing startup caption and retained lock-screen path are preserved.
-
-Regenerate with Pillow installed:
+`../startup_logo_4bpp.bin` combines this mark with the **LumenOS** wordmark,
+rasterized using the existing embedded font. The generator composites transparency
+onto white and encodes a centered 4bpp image for the firmware. Runtime drawing
+reads packed pixels directly from flash without a logo framebuffer.
 
 ```sh
 python3 tools/gen_startup_logo.py
 ```
 
-The generated header records the source SHA-256. Do not hand-edit the packed bitmap or its dimensions.
+The generated header records dimensions and the source/font SHA-256 hashes.
+Do not hand-edit the bitmap or its header. `--wordmark ''` encodes only the mark.
 
-## Red Studio
-
-`dpreader-logo-red-studio-master.png` is the selected output from the built-in image_gen tool. The design uses near-white “dp” and a red “Reader”/book underline on a dark background, based on the existing UI palette: accent `#FF3C50`, foreground `#F1F1F5`, background `#0B0B10`.
-
-`web/assets/dpreader-logo-red-studio.png` is a 512 × 176 web-size derivative. It crops empty dark margins (luminance above 80 finds the mark, with 20 source pixels of padding), then resizes with Lanczos. The master remains unchanged.
-
-Both web headers consume the same PNG. The local transfer page embeds its bytes to work without Internet or an additional device route. After changing the web PNG, run:
+`web/assets/lumen-logo.png` retains the same supplied PNG bytes. Web headers place
+**LumenOS** beside it; CSS inverts the black mark on the existing dark background.
+The local transfer portal embeds the PNG so it needs no Internet request:
 
 ```sh
 python3 tools/sync_brand_logo.py
 ```
 
-These are local source changes; publishing Web Flasher remains a separate release action.
-
-## Final image-generation prompt
-
-Mode: built-in image_gen edit, original user image as the edit target, opaque background.
-
-Use case: precise-object-edit. Edit the ORIGINAL attached black-on-white dpReader logo, preserving its exact serif glyph silhouettes, spacing, and open-book underline. Change only colors: lowercase 'dp' solid flat #F1F1F5, 'Reader' solid flat #FF3C50, entire book underline solid flat #FF3C50. Replace white backdrop with a perfectly uniform solid #0B0B10 backdrop, matching a dark web UI. Critical cleanup: absolutely smooth continuous filled letter interiors, clean antialiased edges, clean transparent-looking counters using the same background #0B0B10. NO stray specks, grunge, texture, distressed edges, outlines, shadow, glow, bevel, lighting, gradient, extra marks, or new text. This is a clean flat production brand asset, not a textured illustration. The text must be exactly 'dpReader'. Keep full logo uncropped in a 3:1 horizontal canvas with modest background padding. Use only the stated colors apart from antialiasing at edges.
+The older `dpreader-logo-*` assets remain for historical references. Existing
+release binaries and download URLs retain their original contents and identities;
+changing website branding does not create or publish a LumenOS firmware release.

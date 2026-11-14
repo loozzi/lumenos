@@ -365,8 +365,6 @@ bool read_pico_pmu_take_key_wakeup_single(void) {
     bool wake=action==READ_PICO_PMU_KEY_SHORT || action==READ_PICO_PMU_KEY_LONG;
     action=READ_PICO_PMU_KEY_NONE; s_wake_click=(power_double_click_t){0};
     portEXIT_CRITICAL(&key_lock);
-    if (metalio_take_volume()!=0) wake=true;
-    if (metalio_take_ai()!=METALIO_AI_NONE) wake=true;
     return wake;
 }
 esp_err_t read_pico_pmu_report_sleep(void) { return ESP_ERR_NOT_SUPPORTED; }

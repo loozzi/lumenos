@@ -86,6 +86,10 @@ int main(void) {
  strcpy(running.version,"1.3.3-love-vn");strcpy(candidate.version,"1.3.3-vn");
  assert(check_feed()&&outcome==PICO_UPDATE_AVAILABLE);
  strcpy(candidate.version,"1.3.2-vn");assert(check_feed()&&outcome==PICO_UPDATE_LATEST);
+ strcpy(running.version,"1.5.0");strcpy(candidate.version,"1.5.1-love");
+ s_target_love=true;assert(check_feed()&&outcome==PICO_UPDATE_AVAILABLE);
+ s_target_love=false;assert(!check_feed()&&outcome==PICO_UPDATE_FAILED);
+ strcpy(candidate.version,"1.5.1");assert(check_feed()&&outcome==PICO_UPDATE_AVAILABLE);
  strcpy(candidate.project,"OtherBoard");assert(!check_feed()&&outcome==PICO_UPDATE_FAILED);
  assert(pico_release_url_valid("https://dephia31.github.io/dpReader31/releases/love-book/dpReader_metalio47_firmware.bin"));
  assert(pico_release_url_valid("https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/dpReader_metalio47_firmware.bin"));

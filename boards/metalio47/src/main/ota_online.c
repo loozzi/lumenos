@@ -443,7 +443,7 @@ static esp_err_t start(bool downloading) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     bool busy = s_status->busy;
     bool available = s_status->state == PICO_UPDATE_AVAILABLE &&
-        ((strstr(s_status->release.version, "-love-vn") != NULL) == (edition == 1));
+        (firmware_love_edition(s_status->release.version, sizeof(s_status->release.version)) == (edition == 1));
     xSemaphoreGive(s_mutex);
     if (busy || (downloading && !available)) return ESP_ERR_INVALID_STATE;
     if (s_joinable) { xSemaphoreTake(s_done, portMAX_DELAY); s_joinable = false; }
@@ -468,6 +468,7 @@ static esp_err_t start(bool downloading) {
 }
 esp_err_t pico_online_check(void) { return start(false); }
 esp_err_t pico_online_download(void) { return start(true); }
+void pico_online_request_cancel(void) { atomic_store(&s_cancel,true); }
 void pico_online_cancel_join(void) {
     if (s_joinable) {
         atomic_store(&s_cancel, true);

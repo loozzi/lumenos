@@ -89,9 +89,10 @@ int main(int argc, char **argv) {
     assert(ttf_aa_boost(128) == 192);
     assert((15u * (255u - ttf_aa_boost(128)) + 127u) / 255u == 4);
     s_antialias = false;
-    for (int a = 0; a < 256; ++a) assert(mix_ink(a,0,15) == (a >= 128 ? 0 : 15));
+    for (int a = 0; a < 256; ++a) assert(mix_ink(a,0,15) == (a >= 104 ? 0 : 15));
     assert(ttf_set_text_contrast(false));
-    printf("PASS: 65536 ink combinations; real Vietnamese glyphs: %u/%u pixels corrected; binary unchanged\n", corrected, samples);
+    for(int a=0;a<256;++a)assert(mix_ink(a,0,15)==(a>=128?0:15));
+    printf("PASS: 65536 ink combinations; real Vietnamese glyphs: %u/%u pixels corrected; binary contrast threshold and default\n", corrected, samples);
 }
 '''
 with tempfile.TemporaryDirectory() as directory:

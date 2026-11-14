@@ -17,7 +17,7 @@
  * User revision: fast Home retains only a 1-bit cover, releases gray after conversion, and drops stale formats on mode/contrast changes.
  * 用户2026-11-05修订：完全简洁首页保留灰阶封面用于打开的书壳及锁屏同款背景，其他首页不变。
  * User revision 2026-11-05: fully simple Home retains gray art for the open book and lock-style background; other Home modes keep their policy.
- * I Love Book uses a dark diamond pattern and a dpReader cover while cover art is unavailable.
+ * I Love Book uses a dark diamond pattern and a LumenOS cover while cover art is unavailable.
  * 用户修订：首页原比例点阵独立落卡，复用灰阶缩略图；普通/水波纹复用灰阶缓存，始终预留内存。
  * User revision: persist proportional Home monochrome separately and reuse gray thumbnail files; ordinary/water reuse gray caches with a memory reserve.
  * 中文：首页使用真实续读、完整缓存书摘、可选书夹/时钟与月阅读记录；绘图不读卡。
@@ -1245,7 +1245,14 @@ static void on_media_lost(app_ctx_t *ctx) {
     s_avatar_ready=s_avatar_pending=false;
 #endif
 }
-static void on_media_ready(app_ctx_t *ctx) {(void)ctx;s_books_cache_valid=false;s_scan_pending=true;avatar_prepare_state();}
+static void on_media_ready(app_ctx_t *ctx) {
+    (void)ctx;
+    read_pico_sd_info_t info={0};
+    if(read_pico_sd_get_info(&info)==ESP_OK && s_books_cache_valid &&
+       s_cached_store_revision==book_store_revision() && s_cached_sd_present==info.present &&
+       s_cached_sd_mounted==info.mounted && !strcmp(s_cached_books_dir,app_settings_books_dir()))return;
+    s_books_cache_valid=false;s_scan_pending=true;avatar_prepare_state();
+}
 static app_redraw_t on_tick(app_ctx_t *ctx) {
     if(s_view==HOME_TIME||s_view==HOME_COMPONENT)clock_base_prepare();
     if(ctx->consumed||(ctx->touch&&ctx->touch->touched))return APP_REDRAW_NONE;

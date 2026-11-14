@@ -148,7 +148,7 @@ static bool report_write(const report_t *r) {
     if(stat(path,&st)==0)return st.st_size>0;
     FILE *f=fopen(tmp,"w");
     if(!f)return false;
-    bool ok=fprintf(f,"dpReader crash_log\nfirmware=%s\nprevious_firmware=%s\nreset_reason=%lu (%s)\n"
+    bool ok=fprintf(f,"LumenOS crash_log\nfirmware=%s\nprevious_firmware=%s\nreset_reason=%lu (%s)\n"
         "recorded_at=%s (UTC+07:00, boot or first export)\nevent=%08lx:%08lx\nprevious_uptime_s=%lu\nconsecutive_short_boots=%lu\n"
         "older_events_not_retained=%lu\n%s\n%s\n",
         r->version,r->previous_version,(unsigned long)r->reason,report_reason(r->reason),date,

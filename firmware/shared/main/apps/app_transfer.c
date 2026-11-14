@@ -47,6 +47,7 @@
 #endif
 #include "e0470_epaper_waveform.h"
 #include "esp_heap_caps.h"
+#include "log_export.h"
 #include "esp_log.h"
 #include "read_pico_transfer.h"
 #include "read_pico_sd.h"
@@ -876,7 +877,7 @@ static void render_content(app_ctx_t* ctx, uint8_t* fb) {
             ui_fill_round_rect(fb, tab, 18, (s_qr_url == (i == 1)) ? 0x42 : UI_GRAY_WHITE);
             ui_draw_round_rect(fb, tab, 18, 0x92);
             ui_text_box(fb,(EpdRect){tab.x+12,tab.y+8,tab.width-24,tab.height-16},21,
-                       i ? "Web truyền sách" : "WiFi dpReader31",EPD_DRAW_ALIGN_CENTER,s_qr_url==(i==1));
+                       i ? "Web truyền sách" : "WiFi LumenOS",EPD_DRAW_ALIGN_CENTER,s_qr_url==(i==1));
         }
     } else {
         ui_text_vc(fb, 342, 602, url_px,
@@ -902,6 +903,7 @@ static void render(app_ctx_t *ctx,uint8_t *fb) {
 
 
 static void on_enter(app_ctx_t* ctx) {
+    log_export_heap_checkpoint("transfer.enter");
     (void)ctx;
     display_set_bulk_io(true);
     s_media_lost = false;
@@ -1094,6 +1096,7 @@ static void transfer_on_exit(app_ctx_t* ctx) {
     s_direct_entry = false;
     display_set_bulk_io(false);
     if (s_any_changed) book_store_notify_changed();
+    log_export_heap_checkpoint("transfer.leave");
     ESP_LOGI(TAG, "leave heap before=%u after=%u internal_before=%u internal_after=%u",
              (unsigned)s_heap_before, (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
              (unsigned)s_internal_before, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));

@@ -1,4 +1,5 @@
 /*
+ * User revision2026-11-14: prepare lock resources before feedback and retain the page on refusal; returning from reading to Home requests one full cleanup.
  * SPDX-FileCopyrightText: 2026 mindreset
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -899,7 +900,8 @@ static void switch_to(
 #if DPREADER_BOARD_METALIO47
     const bool home_water = next == &app_dashboard &&
         app_settings_main_refresh_mode() == APP_MAIN_REFRESH_WATER;
-    const bool reader_to_home_water = home_water && *current == &app_book && app_book_reader_open();
+    const bool reader_to_home = next == &app_dashboard && *current == &app_book && app_book_reader_open();
+    const bool reader_to_home_water = home_water && reader_to_home;
     const bool settings_to_home_water = home_water && *current == &app_device_settings;
 #endif
     bool main_source = navigation_page_ready(ctx, *current);
@@ -928,6 +930,13 @@ static void switch_to(
     if (settings_to_home_water || reader_to_home_water) {
         ctx->request_back_ripple = true;
         s_present_all_rows = true;
+    }
+    if(reader_to_home) {
+        display_main_transition_disarm();
+        display_request_full_refresh();
+        s_reader_to_home_water=false;
+        ctx->request_back_ripple=false;
+        enter_full=true;
     }
 #endif
     app_present(ctx, next, enter_full ? APP_REDRAW_FULL : APP_REDRAW_PAGE);
@@ -1096,7 +1105,10 @@ static bool poll_media(app_ctx_t* ctx, const app_desc_t* current,
 // Save the current page first, then settle a clock-free static frame so shutdown never leaves a misleading frozen time.
 // 锁屏前先由页面保存进度，再持久化一次恢复上下文；不在翻页或点击时写入。
 // Flush page progress before persisting one lock checkpoint; never write it on page turns or taps.
-static void prepare_lock(app_ctx_t *ctx, const app_desc_t *current, bool feedback) {
+static bool prepare_lock(app_ctx_t *ctx, const app_desc_t *current, bool feedback) {
+#if DPREADER_BOARD_METALIO47
+    if(!app_lock_prepare_resources())return false;
+#endif
     if (feedback) app_lock_feedback(ctx->hl);
     if (current->on_before_lock) current->on_before_lock(ctx);
     int tab = app_index_of(current);
@@ -1111,10 +1123,11 @@ static void prepare_lock(app_ctx_t *ctx, const app_desc_t *current, bool feedbac
 #else
     (void)pico_boot_save_resume(&resume);
 #endif
+    return true;
 }
 static void run_power_action(app_ctx_t *ctx, const app_desc_t *current, bool restart) {
     if(kosync_busy()){app_present(ctx,current,APP_REDRAW_PAGE);return;}
-    prepare_lock(ctx, current, false);
+    if(!prepare_lock(ctx, current, false)){app_present(ctx,current,APP_REDRAW_PAGE);return;}
     ui_power_final_draw(ctx->fb, restart);
     guard_draw_result(ctx->hl, update_display_full(ctx->hl));
     app_lock_wait_key_idle(800);
@@ -1547,7 +1560,7 @@ void app_loop_run(const app_loop_config_t* config) {
                         power_dialog_open = false;
                         ui_power_dialog_end();
                         ui_power_dialog_reset(&power_dialog, false);
-                        prepare_lock(&ctx, current, true);
+                        if(!prepare_lock(&ctx, current, true)){ctx.consumed=true;continue;}
 
                         main_lock_boundary();
                         enter_lock_and_sleep(ctx.hl, &s_lock_ignore_until_ms, ctx.acc, ctx.tp, false);
@@ -1735,7 +1748,7 @@ void app_loop_run(const app_loop_config_t* config) {
             read_pico_transfer_status_t lock_transfer;
             read_pico_transfer_get_status(&lock_transfer);
             if (!power_dialog_open && !current->holds_pmu && !usb_storage_active() &&
-                !app_download_active() && !pico_online_busy() &&
+                !app_download_active() &&
                 lock_transfer.state != READ_PICO_TRANSFER_UPLOADING &&
                 (!current->navigation_enabled || current->navigation_enabled(&ctx))) {
                 quick_lock_requested = true;
@@ -1777,7 +1790,7 @@ void app_loop_run(const app_loop_config_t* config) {
                     bool reader_power_lock = !menu_open && current == &app_book &&
                         app_book_reader_body_visible() && app_settings_reader_power_turn();
                     if (reader_power_lock) {
-                        prepare_lock(&ctx, current, true);
+                        if(!prepare_lock(&ctx, current, true)){ctx.consumed=true;continue;}
                         main_lock_boundary();
                         enter_lock_and_sleep(ctx.hl, &s_lock_ignore_until_ms, ctx.acc, ctx.tp, false);
                         display_request_full_refresh();
@@ -1818,7 +1831,7 @@ void app_loop_run(const app_loop_config_t* config) {
                         present_page(&ctx, current, &gesture, power_redraw);
                         ctx.consumed = true;
                     } else {
-                        prepare_lock(&ctx, current, true);
+                        if(!prepare_lock(&ctx, current, true)){ctx.consumed=true;continue;}
 
                         main_lock_boundary();
                         enter_lock_and_sleep(ctx.hl, &s_lock_ignore_until_ms, ctx.acc, ctx.tp, false);
@@ -1902,14 +1915,14 @@ void app_loop_run(const app_loop_config_t* config) {
             read_pico_transfer_status_t lock_transfer;
             read_pico_transfer_get_status(&lock_transfer);
             if (!power_dialog_open && !current->holds_pmu && !usb_storage_active() &&
-                !app_download_active() && !pico_online_busy() &&
+                !app_download_active() &&
                 lock_transfer.state != READ_PICO_TRANSFER_UPLOADING &&
                 (!current->navigation_enabled || current->navigation_enabled(&ctx))) {
                 held_key = -1;
                 cancel_gesture(&ctx, current, &gesture);
                 if (menu_pressed >= 0) menu_feedback(&ctx, current, menu_leaf, menu_pressed, false, &feedback);
                 menu_pressed = UI_MENU_HIT_NONE;
-                prepare_lock(&ctx, current, true);
+                if(!prepare_lock(&ctx, current, true)){ctx.consumed=true;continue;}
 
                 main_lock_boundary();
                 enter_lock_and_sleep(ctx.hl, &s_lock_ignore_until_ms, ctx.acc, ctx.tp, false);
@@ -2042,7 +2055,7 @@ void app_loop_run(const app_loop_config_t* config) {
             cancel_gesture(&ctx, current, &gesture);
             if (menu_pressed >= 0) menu_feedback(&ctx, current, menu_leaf, menu_pressed, false, &feedback);
             menu_pressed = UI_MENU_HIT_NONE;
-            prepare_lock(&ctx, current, false);
+            if(!prepare_lock(&ctx, current, false)){last_input_ms=ctx.now_ms;continue;}
 
             main_lock_boundary();
             enter_lock_and_sleep(ctx.hl, &s_lock_ignore_until_ms, ctx.acc, ctx.tp, true);

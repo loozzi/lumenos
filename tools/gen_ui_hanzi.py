@@ -12,17 +12,30 @@ RECORD=77
 def main():
     from fontTools.ttLib import TTFont
     from fontTools.varLib.instancer import instantiateVariableFont
-    parser=argparse.ArgumentParser();parser.add_argument('--src',type=Path,default=ROOT/'sdcard/fonts/Hei.ttf');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--src',type=Path,default=ROOT/'sdcard/fonts/Hei.ttf');parser.add_argument('--supplement',type=Path,help='Reuse existing PIF1 glyph records and render only missing source glyphs');args=parser.parse_args()
     work=ROOT/'build/ui-hanzi-generator';work.mkdir(parents=True,exist_ok=True)
     dest=work/'medium.ttf';stamp=work/'source.sha256';digest=hashlib.sha256(args.src.read_bytes()).hexdigest()
     if not dest.is_file() or not stamp.is_file() or stamp.read_text()!=digest:
-        font=TTFont(args.src);font=instantiateVariableFont(font,{'wght':500},inplace=True);font.save(dest);font.close();stamp.write_text(digest)
+        font=TTFont(args.src)
+        if 'fvar' in font:font=instantiateVariableFont(font,{'wght':500},inplace=True)
+        font.save(dest);font.close();stamp.write_text(digest)
     covered=set(TTFont(ROOT/'main/assets/builtin.ttf').getBestCmap());wanted=set()
     for hi in range(0xb0,0xf8):
         for lo in range(0xa1,0xff):
             try:wanted.add(ord(bytes([hi,lo]).decode('gb2312')))
             except UnicodeDecodeError:pass
     chars=sorted(wanted-covered)
+    existing={}
+    if args.supplement:
+        payload=args.supplement.read_bytes()
+        magic,count,px,block=struct.unpack_from('<4sIII',payload)
+        assert (magic,px,block)==(b'PIF1',BASE,BLOCK)
+        cps=struct.unpack_from('<'+'H'*count,payload,16)
+        offsets=struct.unpack_from('<'+'I'*((count+BLOCK-1)//BLOCK+1),payload,16+2*count)
+        start=16+2*count+4*len(offsets)
+        for i in range(len(offsets)-1):
+            decoded=zlib.decompress(payload[start+offsets[i]:start+offsets[i+1]])
+            for j in range(0,len(decoded),RECORD):existing[cps[i*BLOCK+j//RECORD]]=decoded[j:j+RECORD]
     helper=work/'glyph.c';helper.write_text('''#include <stdint.h>
 #include <string.h>
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -45,6 +58,7 @@ int render(uint32_t cp,uint8_t *out){
     lib=ctypes.CDLL(str(libpath));buffer=ctypes.create_string_buffer(dest.read_bytes());assert lib.init(buffer)
     record=(ctypes.c_uint8*RECORD)();raw=[]
     for cp in chars:
+        if cp in existing:raw.append(existing[cp]);continue
         assert lib.render(cp,record),f'missing source glyph {cp:x}'
         raw.append(bytes(record))
     offsets=[0];blocks=b''

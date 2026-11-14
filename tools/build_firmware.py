@@ -29,7 +29,7 @@ def metadata(board, edition="full"):
         raise ValueError('Unknown firmware edition: ' + edition)
     value['edition'] = edition
     if edition == 'love-book':
-        value['version'] = value['version'].removesuffix('-vn') + '-love-vn'
+        value['version'] = value['version'].removesuffix('-vn') + ('-love-vn' if value['version'].endswith('-vn') else '-love')
         value['name'] += ' / Love Book'
     return value
 
@@ -160,7 +160,7 @@ exit 0
     (output / 'FLASH_USB.command').chmod(0o755)
 
 
-def export(build, output, board, edition="full", sdk=None, python=None):
+def export(build, output, board, edition="full", sdk=None, python=None, local_build=False):
     info = metadata(board, edition)
     app = build / (info['project'] + '.bin')
     identity = check_image(app.read_bytes(), board, edition)
@@ -218,7 +218,7 @@ def export(build, output, board, edition="full", sdk=None, python=None):
                 'experimental_fast_reader_panels': bool(experimental_fast_panels),
                 'experimental_network_probe': bool(experimental_network),
                 'local_transfer_start_test': bool(transfer_start),
-                'project': identity['project'], 'new_install_prompt_erase': False,
+                'project': identity['project'], 'local_delivery': bool(local_build), 'new_install_prompt_erase': False,
                 'builds': [{'chipFamily': 'ESP32-S3' if board == 'pico' else 'ESP32-S31', 'parts': []}]}
     checksums, args = [], [shlex.join(plan['write_flash_args'])]
     for name, source, offset in parts:
@@ -262,7 +262,7 @@ def export(build, output, board, edition="full", sdk=None, python=None):
     checksums.append(f"{hashlib.sha256((output / 'OFL-Bitter.txt').read_bytes()).hexdigest()}  OFL-Bitter.txt\n")
     (output / 'SHA256SUMS.txt').write_text(''.join(checksums))
     (output / 'HUONG_DAN_FLASH.txt').write_text(
-        f"Firmware dpReader / {info['name']} / {info['idf_target']} / {identity['version']}\n"
+        f"Firmware {info['name']} / {info['idf_target']} / {identity['version']}\n"
         "- File gộp đầy đủ (nạp tại địa chỉ 0x0): dpReader_metalio47_full.bin\n"
         "- File chỉ riêng ứng dụng (nạp tại 0x10000 hoặc cập nhật thẻ nhớ): dpReader_metalio47_firmware.bin\n"
         "- Chi tiết câu lệnh esptool xem trong flash-command.txt và flash_args.\n")
@@ -283,7 +283,7 @@ def export(build, output, board, edition="full", sdk=None, python=None):
               'local_transfer_start_test': bool(transfer_start),
               'automatic_backup': auto_backup, 'automatic_restore': auto_restore,
               'runtime_memory_validation': 'not_performed_by_build',
-              'built': True, 'device_flashed': False, 'published': False}
+              'built': True, 'device_flashed': False, 'published': False, 'local_delivery': bool(local_build)}
     (output / 'verification.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     write_usb_launcher(output)
     (output / 'BUILD_NOTES.txt').write_text(
@@ -313,9 +313,9 @@ def export(build, output, board, edition="full", sdk=None, python=None):
             "Python cần esptool >= 5.6 và pyserial. Cài sạch từ bố cục cũ bằng USB.\n"
             "Launcher tự cài sạch từ bố cục cũ, xóa cài đặt và tệp trong /flash. Thẻ SD giữ nguyên.\n"
             "USB trên bố cục mới chỉ ghi app và vùng chọn boot.\n")
-        if 'RC' in identity['version']:
+        if local_build or 'RC' in identity['version']:
             instructions = (
-                f"dpReader {identity['version']} — NVS256 local RC\n"
+                f"{info['name']} {identity['version']} — bản build cục bộ\n"
                 "Chạy FLASH_USB.command (macOS) hoặc FLASH_USB.bat (Windows).\n"
                 "Yêu cầu layout NVS256 đang dùng ở firmware1.4.2 trở lên.\n"
                 "Chỉ ghi app và vùng chọn boot; giữ bootloader,NVS,sách và dữ liệu.\n"
@@ -324,8 +324,10 @@ def export(build, output, board, edition="full", sdk=None, python=None):
         (output / 'HUONG_DAN_FLASH.txt').write_text(instructions)
         (output / 'BUILD_NOTES.txt').write_text(instructions)
         result.pop('full_bin', None)
-        result['storage_layout'] = 'nvs256-clean'
-        result['usb_clean_install_required_from_legacy'] = True
+        result['storage_layout'] = 'nvs256' if local_build else 'nvs256-clean'
+        result['usb_clean_install_required_from_legacy'] = not local_build
+        if local_build:
+            (output / 'NVS256_MIGRATION.md').unlink(missing_ok=True)
         (output / 'verification.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     (output / 'SHA256SUMS.txt').write_text(''.join(
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
@@ -338,7 +340,7 @@ def export(build, output, board, edition="full", sdk=None, python=None):
 
 
 def export_test_bundle(source, destination):
-    """Never replace an existing RC with different bytes; publish a complete folder."""
+    """Never replace an existing delivered version with different bytes; publish a complete folder."""
     source, destination = Path(source), Path(destination)
     if destination.exists():
         expected = {p.name: hashlib.sha256(p.read_bytes()).digest()
@@ -346,7 +348,7 @@ def export_test_bundle(source, destination):
         actual = {p.name: hashlib.sha256(p.read_bytes()).digest()
                   for p in destination.iterdir() if p.is_file()}
         if actual != expected:
-            raise FileExistsError(f"Refusing to overwrite existing test build: {destination}. Choose a new RC.")
+            raise FileExistsError(f"Refusing to overwrite existing test build: {destination}. Choose a new version.")
         return
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix='.' + destination.name + '-', dir=destination.parent))
@@ -448,8 +450,8 @@ def build_one(board, args):
     if result.returncode:
         print((work / 'build.log').read_text(errors='replace')[-8000:])
         raise RuntimeError(f'{board} build failed; see {work / "build.log"}')
-    result = export(build, args.output.resolve() / 'packages' / board, board, args.edition, sdk, python)
-    if 'RC' in info['version'] and not getattr(args, 'no_test_export', False):
+    result = export(build, args.output.resolve() / 'packages' / board, board, args.edition, sdk, python, local_build=args.local_build)
+    if (args.local_build or 'RC' in info['version']) and not getattr(args, 'no_test_export', False):
         destination = ROOT / 'Test Build' / info['version']
         export_test_bundle(args.output.resolve() / 'packages' / board, destination)
     (work / '.dpreader-built-version').write_text(info['version'] + '\n')
@@ -467,6 +469,7 @@ def main():
     for board in BOARDS:
         parser.add_argument('--idf-' + board, dest='idf_' + board)
         parser.add_argument('--managed-' + board, dest='managed_' + board, type=Path)
+    parser.add_argument('--local-build', action='store_true', help='Local versioned app-only delivery; preserve data and never stage Web Flash')
     parser.add_argument('--no-test-export', action='store_true', help='Compile/package verification only; do not write Test Build/')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--list', action='store_true')
@@ -504,7 +507,7 @@ def main():
         args.output = output / edition
         for board in boards:
             build_one(board, args)
-    if editions == ('full', 'love-book') and 'metalio47' in boards and not args.dry_run and not args.no_test_export and 'RC' not in metadata('metalio47')['version']:
+    if editions == ('full', 'love-book') and 'metalio47' in boards and not args.dry_run and not args.no_test_export and not args.local_build and 'RC' not in metadata('metalio47')['version']:
         from stage_edition_web import stage
         stage(output, output / 'web-preview')
 

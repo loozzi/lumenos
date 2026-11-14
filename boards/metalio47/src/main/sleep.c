@@ -1,4 +1,5 @@
 /*
+ * User revision2026-11-14: selected AI/volume keys may wake Light Sleep; boot locks retain the sleep context, no timer without a deadline, and resources quiesce before lock feedback.
  * SPDX-FileCopyrightText: 2026 mindreset
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -63,6 +64,7 @@
 #include "read_pico_transfer.h"
 #include "sc7a20h_lab.h"
 #include "settings.h"
+#include "online_font.h"
 #include "ui_kit.h"
 #include "ui_image_dither.h"
 #include "ui_wallpaper.h"
@@ -73,7 +75,16 @@
 static const char* TAG = "read_pico";
 // 只消费新动作；单击选项不把持续按住的锁屏长按当作下一次解锁。
 // Consume new actions only: a held lock-initiating press cannot unlock again.
+static bool s_lock_aux_wake_pending;
+static bool s_lock_keys_restore_pending;
 static bool lock_take_key_wakeup(void) {
+    const uint8_t buttons=app_settings_wake_buttons();
+    const int ai=metalio_take_ai(),volume=metalio_take_volume();
+    if((s_lock_aux_wake_pending && !s_lock_keys_restore_pending) || ((buttons&APP_WAKE_BUTTON_AI) && ai!=METALIO_AI_NONE) ||
+       ((buttons&APP_WAKE_BUTTON_VOLUME) && volume!=0)) {
+        s_lock_aux_wake_pending=false;
+        return true;
+    }
     return app_settings_wake_presses() == 1 ? read_pico_pmu_take_key_wakeup_single() :
         read_pico_pmu_take_key_wakeup();
 }
@@ -131,7 +142,6 @@ static bool s_lock_feedback_started;
 static bool s_lock_deep_ready;
 static bool s_lock_frame_cached;
 static cst836u_handle_t s_lock_sleep_touch;
-static bool s_lock_keys_restore_pending;
 #if CONFIG_DPREADER_AUTO_BACKUP
 static void sleep_backup_checkpoint(void) {
     if (!app_settings_autobackup_enabled() || s_lock_io_pending || usb_storage_active() ||
@@ -159,6 +169,17 @@ extern const uint8_t lock_4bpp_bin_start[] asm("_binary_lock_4bpp_bin_start");
 
 // 中文：保留S31灭灯/按键边界，反馈期间的新按键留给锁屏唤醒。
 // English: Keep S31 lamp/key boundaries; preserve new presses during feedback for waking.
+bool app_lock_prepare_resources(void) {
+    pico_online_request_cancel();
+    bool fonts_idle=online_font_request_cancel();
+    if(!fonts_idle || pico_online_busy() || usb_storage_active())return false;
+    bool wifi=read_pico_transfer_pause_for_sleep();
+    bool ble=ble_pt_suspend_for_sleep()==ESP_OK;
+    bool jobs=book_cover_jobs_quiesce(2000) && ui_avatar_quiesce(2000);
+    if(wifi && ble && jobs)return true;
+    ble_pt_resume_after_sleep();read_pico_transfer_resume_after_sleep();
+    return false;
+}
 void app_lock_feedback(EpdiyHighlevelState *hl) {
     s_lock_feedback_started = false;
     if (!hl || app_settings_lock_style() != 2 || pico_online_busy()) return;
@@ -442,6 +463,7 @@ app_wake_source_t app_light_sleep_wait(sc7a20h_handle_t acc) {
 
 static void lock_restore_key_wake(void) {
     (void)esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    (void)gpio_wakeup_disable(METALIO_AI_KEY_GPIO);
     esp_err_t err=ESP_ERR_INVALID_STATE;
     for(unsigned attempt=0;attempt<3;++attempt) {
         err=metalio_restore_key_io();
@@ -459,8 +481,11 @@ static void lock_restore_key_wake(void) {
     else ESP_LOGE(TAG,"S31 sleep input restore pending: %s",esp_err_to_name(err));
 }
 
-static bool lock_prepare_key_wake(void) {
+static bool lock_prepare_key_wake(bool light) {
     if(read_pico_pmu_keys_pause()!=ESP_OK) return false;
+    const uint8_t buttons=light?app_settings_wake_buttons():0;
+    const uint16_t idle_mask=0x8300u;
+    // Keep all physical buttons as inputs; deselected volume IRQs never authorize unlock.
     esp_err_t err=metalio_prepare_key_wake();
     bool idle=false;
     // 对齐原厂 WaitIntLineHigh 的有界等待；确认电源键和共享低有效线已释放。
@@ -468,12 +493,17 @@ static bool lock_prepare_key_wake(void) {
     for(unsigned tries=0;err==ESP_OK && tries<30;tries++) {
         uint16_t inputs;
         err=metalio_io_read(&inputs);
-        if(err==ESP_OK && (inputs&0x8300u)==0x8300u && read_pico_ioe_int_level()!=0) { idle=true; break; }
+        if(err==ESP_OK && (inputs&idle_mask)==idle_mask && read_pico_ioe_int_level()!=0 &&
+            (!(buttons&APP_WAKE_BUTTON_AI)||gpio_get_level(METALIO_AI_KEY_GPIO)!=0)) { idle=true; break; }
         vTaskDelay(pdMS_TO_TICKS(20));
     }
     if(idle) {
         err=esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
         if(err==ESP_OK) err=esp_sleep_enable_ext1_wakeup_io(1ULL<<READ_PICO_IOE_INT_GPIO,ESP_EXT1_WAKEUP_ANY_LOW);
+    }
+    if(err==ESP_OK && idle && (buttons&APP_WAKE_BUTTON_AI)) {
+        err=gpio_wakeup_enable(METALIO_AI_KEY_GPIO,GPIO_INTR_LOW_LEVEL);
+        if(err==ESP_OK)err=esp_sleep_enable_gpio_wakeup();
     }
     if(err==ESP_OK && idle) return true;
     ESP_LOGW(TAG,"S31 deep sleep deferred: shared IRQ=%d result=%s",read_pico_ioe_int_level(),esp_err_to_name(err));
@@ -488,9 +518,20 @@ static bool lock_prepare_key_wake(void) {
 // 维护切片不跨越用户设定小时交接点；定时到达只恢复外设，不作为解锁动作。
 // Maintenance slices cannot overrun the ten-minute handoff; a deadline restores peripherals, never unlocks.
 static uint64_t lock_light_sleep_slice_us(int64_t wake_by) {
-    int64_t remaining=wake_by?wake_by-esp_timer_get_time():INT64_C(60000000);
+    if(!wake_by)return 0;
+    int64_t remaining=wake_by-esp_timer_get_time();
     if(remaining<1) return 1;
     return remaining<INT64_C(60000000)?(uint64_t)remaining:UINT64_C(60000000);
+}
+static bool lock_confirm_aux_wake(void) {
+    const uint8_t buttons=app_settings_wake_buttons();
+    uint16_t first=0xffff,again=0xffff;
+    bool ai=(buttons&APP_WAKE_BUTTON_AI) && gpio_get_level(METALIO_AI_KEY_GPIO)==0;
+    bool volume=(buttons&APP_WAKE_BUTTON_VOLUME) && metalio_io_read(&first)==ESP_OK && (first&0x0300u)!=0x0300u;
+    if(!ai&&!volume)return false;
+    vTaskDelay(pdMS_TO_TICKS(30));
+    return (ai&&gpio_get_level(METALIO_AI_KEY_GPIO)==0) ||
+        (volume&&metalio_io_read(&again)==ESP_OK&&((~first & ~again)&0x0300u)!=0);
 }
 static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t touch,bool *key_wake,int64_t wake_by) {
     *key_wake=false;
@@ -507,7 +548,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
 #endif
     bool touch_asleep=false,sd_closed=false,lcd_stopped=false,keys_ready=false,rails_cut=false,pins_prepared=false;
     uint16_t saved_rails=0;
-    bool key_irq=false,power_confirmed=false;
+    bool key_irq=false,power_confirmed=false,aux_confirmed=false;
     s_lock_io_no_media=!info.mounted && !s_lock_io_pending;
     s_lock_io_pending=true;
     esp_err_t err=book_suspend_io();
@@ -532,8 +573,8 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
     if(err==ESP_OK && lock_take_key_wakeup()) {
         *key_wake=true; err=ESP_ERR_INVALID_STATE;
     }
-    if(err==ESP_OK) { keys_ready=lock_prepare_key_wake(); if(!keys_ready) err=ESP_ERR_INVALID_STATE; }
-    if(err==ESP_OK) err=esp_sleep_enable_timer_wakeup(lock_light_sleep_slice_us(wake_by));
+    if(err==ESP_OK) { keys_ready=lock_prepare_key_wake(true); if(!keys_ready) err=ESP_ERR_INVALID_STATE; }
+    if(err==ESP_OK && wake_by) err=esp_sleep_enable_timer_wakeup(lock_light_sleep_slice_us(wake_by));
     if(err==ESP_OK && metalio_usb_blocks_sleep()) err=ESP_ERR_INVALID_STATE;
     if(err==ESP_OK) {
         rails_cut=true; err=metalio_sleep_cut_rails(&saved_rails, false);
@@ -543,7 +584,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
     }
     if(err==ESP_OK) {
         metalio_sleep_trace_phase(METALIO_SLEEP_TRACE_BEFORE_SLEEP);
-        ESP_LOGI(TAG,"S31 light sleep: slice<=60s; VOUT retained, handles paused, RAM/font/index retained");
+        ESP_LOGI(TAG,"S31 light sleep: timer only for a deadline; VOUT retained, handles paused, RAM/font/index retained");
         unsigned maintenance=0;
         for(;;) {
             if(wake_by && esp_timer_get_time()>=wake_by) break;
@@ -551,10 +592,10 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
             if(err!=ESP_OK) break;
             crash_report_poll(false);
             uint32_t causes=esp_sleep_get_wakeup_causes();
-            key_irq=(causes & (1u<<ESP_SLEEP_WAKEUP_EXT1))!=0;
+            key_irq=(causes & ((1u<<ESP_SLEEP_WAKEUP_EXT1)|(1u<<ESP_SLEEP_WAKEUP_GPIO)))!=0;
             // 恢复方向和慢挂卡之前验证P17；定时/USB/共享线毛刺不能补造解锁事件。
             // Verify P17 before direction/media restoration; timers, USB and shared-line glitches cannot synthesize unlocks.
-            if(key_irq)power_confirmed=metalio_confirm_power_key();
+            if(key_irq){power_confirmed=metalio_confirm_power_key();aux_confirmed=lock_confirm_aux_wake();}
             if(key_irq || !(causes & (1u<<ESP_SLEEP_WAKEUP_TIMER)) ||
                 (wake_by && esp_timer_get_time()>=wake_by)) break;
             /* A maintenance timer does not need SD/LCD/rail restoration. The
@@ -582,6 +623,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
     if(keys_ready) {
         metalio_sleep_trace_phase(METALIO_SLEEP_TRACE_KEYS);
         if(power_confirmed)s_lock_power_wake_pending=true;
+        if(aux_confirmed)s_lock_aux_wake_pending=true;
         lock_restore_key_wake();
         // 只补记已确认且在恢复期间松开的真实按键；共享IRQ本身不提供解锁授权。
         // Retain only a confirmed press released during restoration; a shared IRQ alone cannot authorize unlock.
@@ -673,7 +715,7 @@ esp_err_t app_enter_host_sleep(app_sleep_mode_t mode) {
         if(restore_radios) { ble_pt_resume_after_sleep(); read_pico_transfer_resume_after_sleep(); }
         return err;
     }
-    if (mode == APP_SLEEP_DEEP && !lock_prepare_key_wake()) {
+    if (mode == APP_SLEEP_DEEP && !lock_prepare_key_wake(false)) {
         if(restore_radios) { ble_pt_resume_after_sleep(); read_pico_transfer_resume_after_sleep(); }
         return ESP_ERR_INVALID_STATE;
     }
@@ -833,7 +875,7 @@ void enter_lock_and_sleep(
     EpdiyHighlevelState* hl, int64_t* ignore_until_ms, sc7a20h_handle_t acc, cst836u_handle_t touch,
     bool auto_lock
 ) {
-    if(pico_online_busy()) {
+    if(!app_lock_prepare_resources()) {
         s_lock_feedback_started=false;
         metalio_frontlight_restore();
         return;
@@ -892,6 +934,7 @@ void enter_lock_and_sleep(
         ui_lock_fallback_draw(framebuffer);
     }
     const int64_t draw_at = esp_timer_get_time();
+    if(lock_drawn && lock_style==3)book_lock_signature_draw(framebuffer);
     enum EpdDrawError result = lock_present_art(hl,lock_style);
     if (result != EPD_DRAW_SUCCESS) {
         guard_draw_result(hl, result);
@@ -955,6 +998,8 @@ void enter_lock_and_sleep(
 }
 
 void app_lock_boot_gate(EpdiyHighlevelState *hl, cst836u_handle_t touch, sc7a20h_handle_t acc) {
+    s_lock_sleep_touch=touch;
+    s_lock_deep_ready=pico_boot_has_resume();
     lock_hint_begin(hl);
     s_boot_lock_draw=true;
     lock_resume_service();
@@ -971,6 +1016,7 @@ void app_lock_boot_gate(EpdiyHighlevelState *hl, cst836u_handle_t touch, sc7a20h
         }
         lock_hint_end();
         (void)app_lock_resume_frame(NULL);
+        s_lock_sleep_touch=NULL;s_lock_deep_ready=false;
         read_pico_transfer_resume_after_sleep();
         ble_pt_resume_after_sleep();
         return;
@@ -988,6 +1034,7 @@ void app_lock_boot_gate(EpdiyHighlevelState *hl, cst836u_handle_t touch, sc7a20h
         bool drawn = app_settings_lock_style() == 0 ? book_ticket_draw(fb, false) :
             app_settings_lock_style() == 2 ? book_lock_collage_prepare(fb) :
             app_settings_lock_style() == 3 ? book_lock_bookmark_draw(fb,app_settings_bookmark_path()) : draw_wallpaper(fb);
+        if(drawn && app_settings_lock_style()==3)book_lock_signature_draw(fb);
         if (!drawn) ui_lock_fallback_draw(fb);
         enum EpdDrawError result=lock_present_art(hl,app_settings_lock_style());
         guard_draw_result(hl,result);epd_poweroff();
@@ -997,6 +1044,7 @@ void app_lock_boot_gate(EpdiyHighlevelState *hl, cst836u_handle_t touch, sc7a20h
     lock_hint_end();
     (void)app_lock_resume_frame(NULL);
     app_font_end_lock(&saved);
+    s_lock_sleep_touch=NULL;s_lock_deep_ready=false;
     read_pico_transfer_resume_after_sleep();
     ble_pt_resume_after_sleep();
 #endif

@@ -47,6 +47,7 @@ static void state(online_font_phase_t phase,const char *message){
     portEXIT_CRITICAL(&s_lock);
 }
 static bool cancelled(void *ctx){(void)ctx;return atomic_load(&s_cancel)||!read_pico_sd_io_ready();}
+bool online_font_request_cancel(void){atomic_store(&s_cancel,true);return !atomic_load(&s_running);}
 void online_font_cancel_join(void){
     atomic_store(&s_cancel,true);
     while(atomic_load(&s_running))vTaskDelay(pdMS_TO_TICKS(10));

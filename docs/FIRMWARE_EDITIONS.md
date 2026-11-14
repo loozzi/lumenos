@@ -6,13 +6,15 @@ Cùng mã nguồn, hai cấu hình biên dịch. Full giữ các chức năng hi
 
 Dùng `python3 tools/build_firmware.py --board metalio47` với SDK/Python/tools như hướng dẫn BOARDS. Mặc định `--edition all` tạo cả hai; `--edition full` hoặc `--edition love-book` dành cho xác minh riêng. `--output <root>` vẫn tách `<root>/full` và `<root>/love-book`; không chia sẻ sdkconfig/build cache giữa hai bản.
 
-Phiên bản gốc nằm ở `boards/metalio47/board.json`. Full dùng `1.3.3RC4-vn`, Love Book được suy ra `1.3.3RC4-love-vn`; bản chính thức tương ứng `1.3.3-vn` / `1.3.3-love-vn`. Trước giao gói mới, chọn RC tiếp theo chưa tồn tại ở cả hai bản. Phiên bản nhúng truyền từ công cụ build, không đổi tên Bin để giả phiên bản. Cả hai gói giữ nhận diện chip/project tương thích với bộ nạp S31 và phân vùng gốc.
+Phiên bản gốc nằm ở `boards/metalio47/board.json`. Từ LumenOS 1.5.0, Full dùng `1.5.0`, Love Book dùng `1.5.0-love`. Mỗi lần giao build mới tăng phiên bản riêng (tiếp theo `1.5.1`), không tiếp tục dãy RC của dpReader. Phiên bản nhúng phải khớp metadata và được đọc lại từ Bin. Định danh chip/project và phân vùng S31 được giữ để tương thích dữ liệu cũ.
 
-Gói RC xuất vào `Test Build/<version>/`, mỗi gói có Bin, SHA256SUMS, metadata `edition` và FLASH_USB.command/.bat. Việc chuyển Full/Love Book qua USB không xóa NVS/thẻ sách. Thiết lập giao diện cũ vẫn được giữ để quay lại Full; Love Book bỏ qua lựa chọn đó và không ghi đè.
+Gói cục bộ (`--local-build`) xuất vào `Test Build/<version>/`, mỗi gói có Bin, SHA256SUMS, metadata `edition` và FLASH_USB.command/.bat. Việc chuyển Full/Love Book qua USB không xóa NVS/thẻ sách. Thiết lập giao diện cũ vẫn được giữ để quay lại Full; Love Book bỏ qua lựa chọn đó và không ghi đè.
 
 ## Web Flash và cập nhật
 
-Web Flash có hai bộ chọn độc lập: phiên bản firmware Full/Love Book và cách nạp toàn phần/chỉ ứng dụng. Full giữ nguyên `releases/`; Love Book dùng `releases/love-book/`. Mỗi nhánh có `metalio-s31-update.json`, ứng dụng `dpReader_metalio47_firmware.bin`, ảnh toàn phần `dpReader_metalio47_full.bin` và thư mục lịch sử `<version>/`. Metadata Love Book phải có phiên bản kết thúc `-love-vn`. Thiếu/sai metadata thì khóa nạp và ẩn link tải của lựa chọn đó; không dùng gói Full thay thế.
+Web Flash có hai bộ chọn độc lập: phiên bản firmware Full/Love Book và cách nạp toàn phần/chỉ ứng dụng. Full giữ nguyên `releases/`; Love Book dùng `releases/love-book/`. Mỗi nhánh có `metalio-s31-update.json`, ứng dụng `dpReader_metalio47_firmware.bin`, ảnh toàn phần `dpReader_metalio47_full.bin` và thư mục lịch sử `<version>/`. Metadata Love Book dùng hậu tố `-love`; các bản cũ giữ `-love-vn`. Thiếu/sai metadata thì khóa nạp và ẩn link tải của lựa chọn đó; không dùng gói Full thay thế.
+
+Build với `--local-build` chỉ xuất gói cục bộ, không stage Web Flash dù số phiên bản không có RC.
 
 **Web Flash chỉ nhận bản chính thức, không nhận RC, kể cả xem thử cục bộ.** Build RC chỉ xuất hai gói thử USB/TF trong `Test Build/`, không tạo Web Flash preview. Sau dual build bản chính thức thành công mới tạo `build/editions/web-preview/`. Công cụ stage và mã Web Flash đều từ chối RC; không đưa RC lên website, Pages hoặc OTA.
 

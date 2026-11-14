@@ -99,6 +99,8 @@ void app_restart_host(void);
 /// Prepare the S31 download port for host-triggered USJ reset; retain fonts/TF/display.
 esp_err_t app_enter_download(void);
 bool app_download_active(void);
+/// Cancel downloads and park radios before any lock feedback; false retains the current page.
+bool app_lock_prepare_resources(void);
 void app_cancel_download(void);
 #else
 #endif

@@ -7,6 +7,8 @@
  */
 
 #include "ui_wallpaper.h"
+#include "settings.h"
+#include "book_ticket.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -192,6 +194,8 @@ bool ui_wallpaper_prepare_lock(uint8_t *fb,const char *path) {
     wallpaper_cache_t wanted={.magic=WALL_LOCK_MAGIC,.version=WALL_LOCK_VERSION,
         .width=UI_LOCK_WIDTH,.height=UI_LOCK_HEIGHT,.rotation=epd_get_rotation(),
         .bytes=WALL_LOCK_BYTES,.key=wallpaper_key(path,&st)};
+    const char *signature=app_settings_status_signature();
+    wanted.key=wallpaper_hash(wanted.key,signature,strlen(signature)+1);
     FILE *file=fopen(WALL_LOCK_CACHE,"rb");
     if (file) {
         wallpaper_cache_t h;
@@ -203,6 +207,7 @@ bool ui_wallpaper_prepare_lock(uint8_t *fb,const char *path) {
         if (good) return true;
     }
     if (!ui_wallpaper_draw(fb,path,(EpdRect){0,0,UI_LOCK_WIDTH,UI_LOCK_HEIGHT})) return false;
+    book_lock_signature_draw(fb);
     struct stat after;
     if (!stat(path,&after) && after.st_size==st.st_size && after.st_mtime==st.st_mtime) {
         s_wall_pending=wanted; s_wall_pending_fb=fb;

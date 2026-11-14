@@ -1,4 +1,5 @@
 /*
+ * User revision2026-11-14: both editions share the large-cover layout and use the configured status signature in the footer.
  * SPDX-FileCopyrightText: 2026 mindreset
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -10,6 +11,7 @@
  * User revision: lock entry selects the system face; truncation must measure the actual UI face and size.
  */
 #include "book_ticket.h"
+#include "settings.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -385,30 +387,21 @@ bool book_ticket_draw(uint8_t *fb, bool allow_cover_decode) {
         char meta_title[256] = {0};
         (void)book_epub_metadata_cached(path, meta_title, sizeof(meta_title), author, sizeof(author));
     }
-#if !DPREADER_LOVE_BOOK
-    ticket_stats_t stats; stats_load(&stats);
-    uint32_t day = local_day();
-#endif
     unsigned cover_width=0,cover_height=0;
     uint8_t *gray = cover_load(path, title, author, &cover_width, &cover_height, allow_cover_decode && file_valid);
     book_ticket_draw_background(fb, gray, cover_width, cover_height, false);
     book_ticket_draw_shadow(fb);
     book_ticket_draw_paper(fb);
-    ui_text(fb, 82, 98, 28, "dpReader  /  Thẻ đọc sách", EPD_DRAW_ALIGN_LEFT, false);
+    ui_text(fb, 82, 98, 28, "LumenOS  /  Thẻ đọc sách", EPD_DRAW_ALIGN_LEFT, false);
     ui_hairline(fb, 156, 82, 520, UI_GRAY_BLACK);
     int lines=ticket_heading(fb,202,112,50,title);
     const int author_top = lines > 1 ? 326 : 274;
     if (author[0]) ticket_heading(fb, author_top, 44, 28, author);
-#if DPREADER_LOVE_BOOK
-    // Keep a gap below the last text row and above the progress divider.
+    // Both editions share the larger cover and compact signature footer.
     const int heading_bottom = author[0] ? author_top + 44 : (lines > 1 ? 314 : 266);
     const int cover_top = heading_bottom + 14;
     const int progress_divider = 870;
     EpdRect cover_box = {150, cover_top, 384, progress_divider - 26 - cover_top};
-#else
-    const int progress_divider = 768;
-    EpdRect cover_box = {216, 378, 252, 344};
-#endif
     cover_draw(fb, gray, cover_width, cover_height, title, cover_box);
     free(gray);
     ui_hairline(fb, progress_divider, 82, 520, UI_GRAY_BLACK);
@@ -421,21 +414,18 @@ bool book_ticket_draw(uint8_t *fb, bool allow_cover_decode) {
     ui_fill_rect_fast(track, UI_GRAY_LIGHT, fb);
     track.width = progress_valid ? track.width * progress.pct / 100 : 0;
     if (track.width) ui_fill_rect_fast(track, UI_GRAY_BLACK, fb);
-#if DPREADER_LOVE_BOOK
     ui_hairline(fb, 1012, 82, 520, UI_GRAY_BLACK);
+    const char *signature=app_settings_status_signature();
     ui_text_caption(fb, (EpdRect){82, 1030, 520, 88}, 26,
-                    "Lưu giữ dấu ấn thời gian qua từng trang sách", EPD_DRAW_ALIGN_CENTER, false);
-#else
-    if (day && stats.day == day) snprintf(line, sizeof(line), "Hôm nay %llu phút  ·  Lật %u trang",
-        (unsigned long long)(stats.today_seconds / 60), (unsigned)stats.today_turns);
-    else snprintf(line, sizeof(line), "Hôm nay —  ·  Chưa đồng bộ ngày");
-    ticket_stat(fb, 914, 48, 28, line);
-    snprintf(line, sizeof(line), "Tổng cộng %llu giờ %llu phút  ·  Lật %u trang",
-             (unsigned long long)(stats.total_seconds / 3600),
-             (unsigned long long)((stats.total_seconds / 60) % 60), (unsigned)stats.total_turns);
-    ticket_stat(fb, 969, 74, 28, line);
-    ui_hairline(fb, 1050, 82, 520, UI_GRAY_BLACK);
-    ui_text(fb, 82, 1080, 26, "Lưu giữ dấu ấn thời gian qua từng trang sách", EPD_DRAW_ALIGN_LEFT, false);
-#endif
+                    signature[0]?signature:"Lưu giữ dấu ấn thời gian qua từng trang sách",
+                    EPD_DRAW_ALIGN_CENTER, false);
     return true;
+}
+
+void book_lock_signature_draw(uint8_t *fb) {
+    const char *signature=app_settings_status_signature();
+    if(!fb||!signature[0])return;
+    EpdRect box={54,1104,576,64};
+    ui_fill_rect_fast(box,UI_GRAY_WHITE,fb);
+    ui_text_caption(fb,box,24,signature,EPD_DRAW_ALIGN_CENTER,false);
 }

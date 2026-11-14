@@ -93,7 +93,7 @@ static app_redraw_t edge_back_key(app_ctx_t *ctx,int key) {
     (void)ctx;assert(key==UI_KEY_1);++edge_returns;
     return edge_blocked?APP_REDRAW_NONE:APP_REDRAW_PAGE;
 }
-enum EpdDrawError update_display_water_turn(EpdiyHighlevelState* hl,EpdRect area,int dir) {(void)hl;assert(area.x==0&&area.y==0&&area.width==684&&(area.height==1216||area.height==UI_NAV_MARKER_SCAN_END));assert(dir==E0470_TURN_LTR||dir==E0470_TURN_RTL);last_ripple_dir=dir;++back_ripples;persistent_ripple_height=area.height;return EPD_DRAW_SUCCESS;}
+enum EpdDrawError update_display_water_turn(EpdiyHighlevelState* hl,EpdRect area,int dir) {(void)hl;assert(area.x==0&&area.y==0&&area.width==684&&(area.height==1216||area.height==UI_NAV_REFRESH_END));assert(dir==E0470_TURN_LTR||dir==E0470_TURN_RTL||dir==E0470_TURN_TTB||dir==E0470_TURN_BTT);last_ripple_dir=dir;++back_ripples;persistent_ripple_height=area.height;return EPD_DRAW_SUCCESS;}
 static app_redraw_t long_key(app_ctx_t* c, int k) { assert(k==UI_KEY_2); ++long_keys; c->request_menu=true; return APP_REDRAW_NONE; }
 static app_redraw_t response;
 static bool request_on_touch, request_on_tick, menu_on_tick, menu_on_touch, cancel_clobber;
@@ -109,6 +109,7 @@ static int du_areas, gl_areas;
 static bool main_fast, main_water;
 bool app_settings_simple_ui(void){return false;}
 bool app_settings_simple_full_ui(void){return false;}
+bool app_settings_main_fast_refresh(void){return main_fast;}
 int app_settings_main_refresh_mode(void) {return main_water?APP_MAIN_REFRESH_WATER:main_fast?APP_MAIN_REFRESH_FAST:APP_MAIN_REFRESH_NORMAL;}
 static int shelf_exit_arms;
 static int nav_arms, nav_draws, nav_full_arms, nav_area_draws;
@@ -278,6 +279,7 @@ EpdRect ui_nav_status_area(void) {return (EpdRect){0,12,684,56};}
 read_pico_pmu_key_action_t read_pico_pmu_take_key_action(void) {return step==power_trigger_step?READ_PICO_PMU_KEY_LONG:READ_PICO_PMU_KEY_SHORT;}
 void enter_lock_and_sleep(EpdiyHighlevelState*h,int64_t*t,void*a,void*tp,bool automatic) {(void)tp;(void)h;(void)t;(void)a;last_lock_automatic=automatic;assert(!nav_armed);if(check_clean_action)assert(frame[0]==0x11&&panel_marker==0x11);++idle_locks;lock_due=false;time_offset+=1000000;}
 void app_lock_set_resume_ready(bool ready) {(void)ready;}
+bool app_lock_prepare_resources(void){return true;}
 void app_lock_feedback(EpdiyHighlevelState*h) {(void)h;++lock_feedback_calls;if(feedback_enabled){assert(!before_locks&&!idle_locks);++lock_badges;}}
 void app_lock_wait_key_idle(int ms) {(void)ms;}
 esp_err_t app_enter_host_sleep(app_sleep_mode_t mode) {assert(mode==APP_SLEEP_OFF);++shutdowns;longjmp(done,1);}
@@ -632,7 +634,7 @@ int main(void) {
         reset();main_fast=policy==1;main_water=policy==2;first.persistent_navigation=true;
         first.on_gesture=gesture;first.on_key=edge_back_key;first.edge_back_enabled=edge_allowed;edge_enabled=true;
         add(12,400,1,0);add(150,410,1,0);add(0,0,0,0);run();
-        assert(back_ripples==1&&persistent_ripple_height==UI_NAV_MARKER_SCAN_END&&fulls==1);
+        assert(back_ripples==1&&persistent_ripple_height==UI_NAV_REFRESH_END&&fulls==1);
     }
 
     // 首帧保持全刷；切页一次完成，按住、松开、空闲都不安排第二次刷新。
@@ -856,7 +858,8 @@ int main(void) {
         reset();first.binary_ui=true;main_fast=policy==1;main_water=policy==2;
         first.on_gesture=binary_tap;
         add(tap_back?60:200,tap_back?110:400,1,0);add(0,0,0,0);run();
-        assert(!binary_scope&&fulls==1&&binary_outputs==1);
+        assert(!binary_scope&&fulls==1&&binary_outputs==(policy==1?1:0));
+        assert(policy==1||gl_areas>0);
         assert(back_ripples==0);
     }
     reset();first.binary_ui=true;first.on_gesture=gesture;first.on_key=edge_back_key;
@@ -869,7 +872,7 @@ int main(void) {
         add(340,1160,1,0);add(0,0,0,0);run();
         assert(back_ripples==(policy==2?1:0));
         if(policy==2)assert(last_ripple_dir==E0470_TURN_RTL);
-        assert(binary_outputs==(policy==2?0:1));
+        assert(binary_outputs==(policy==1?1:0));
         assert(!binary_scope&&!navigation_scope);
     }
     for(int policy=0;policy<3;++policy){
@@ -877,7 +880,7 @@ int main(void) {
         main_source_visible=false;first.on_gesture=tap_return_to_root;
         main_fast=policy==1;main_water=policy==2;
         add(60,110,1,0);add(0,0,0,0);run();
-        assert(!back_ripples&&binary_outputs==1&&!binary_scope&&!navigation_scope);
+        assert(!back_ripples&&binary_outputs==(policy==1?1:0)&&!binary_scope&&!navigation_scope);
     }
     puts("PASS: system roots honor Water, child taps/top-left stay ordinary, edge returns use logical portrait LTR, scoped navigation restored");
     puts("PASS: S31 edge/central right-swipe return admission,one output,short/status/multitouch/refused boundaries");
@@ -937,19 +940,24 @@ int main(void) {
     }
     for(int held=0;held<2;++held){
         reset();ai_step=1;ai_event=METALIO_AI_LONG;ai_second_step=3;ai_second_event=held?METALIO_AI_LONG:METALIO_AI_SHORT;
-        for(int i=0;i<5;++i)add(0,0,0,0);run();
+        for(int i=0;i<5;++i){add(0,0,0,0);}
+        run();
         assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2);
     }
     reset();time_step=3000000;power_trigger_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();int power_only_updates=gl_areas;
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();int power_only_updates=gl_areas;
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=3000000;power_trigger_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==power_only_updates+1&&power_open_draws==1);
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=3000000;power_tap_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2&&idle_locks==1&&!power_open_draws);
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=30000000;idle_minutes=1;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2&&idle_locks==1);
     puts("PASS: actual AI scheduler one open/close scan,underlay frozen,selection executes once without saving,OOM fallback,short full/light actions and upload/update/PMU/online guards");
     puts("PASS: actual S31 volume events cycle all four roots, retain page-owned reader/child keys and reject online/power/menu input");

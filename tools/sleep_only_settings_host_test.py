@@ -24,6 +24,8 @@ typedef int esp_err_t;typedef int nvs_handle_t;
 #define NVS_KEY_SLEEP_OFF_HOURS "sleep_off_h"
 #define NVS_READWRITE 1
 #define ESP_SLEEP_WAKEUP_ALL 99
+#define METALIO_AI_KEY_GPIO 61
+static int gpio_wakeup_disable(int pin){assert(pin==61);return 0;}
 #define pdMS_TO_TICKS(ms) (ms)
 #define ESP_LOGE(...) ((void)0)
 #define ESP_LOGW(...) ((void)0)

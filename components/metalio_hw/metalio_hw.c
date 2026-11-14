@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
+ * User revision2026-11-14: only two valid low power samples confirm power; optional volume wake is filtered by the lock policy while retaining the vendor input mask.
  * 中文：新 I2C 驱动统一管理 S31 外设；失败时关闭 TPS，不保留调试供电。
  * English: Use one new I2C bus for S31 peripherals and shut TPS down on errors.
  */
@@ -218,11 +219,10 @@ bool metalio_key_down(void) {
     return metalio_io_read(&inputs)==ESP_OK && !(inputs&(1u<<15));
 }
 bool metalio_confirm_power_key(void) {
-    const uint16_t mask=(1u<<15)|(1u<<9)|(1u<<8);
     uint16_t first=0xffff,again=0xffff;
-    if(metalio_io_read(&first)!=ESP_OK || (first&mask)==mask) return false;
+    if(metalio_io_read(&first)!=ESP_OK || (first&(1u<<15)))return false;
     vTaskDelay(pdMS_TO_TICKS(30));
-    return metalio_io_read(&again)==ESP_OK;
+    return metalio_io_read(&again)==ESP_OK && !(again&(1u<<15));
 }
 bool metalio_boot_power_key(void) { return boot_power_key; }
 static struct {uint16_t stable,candidate;int64_t since,down_at[2];bool armed[2],long_sent[2];} volume_keys={.stable=0xffff,.candidate=0xffff};

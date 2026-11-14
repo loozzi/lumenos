@@ -28,28 +28,28 @@ static bool prepare_payload(const char *p){strcpy(payload_copy,p);return true;}
 for name in ('READ_PICO_TRANSFER_SSID','READ_PICO_TRANSFER_PASSWORD'):
  unit+=re.search(r'^#define '+name+r' .*',header,re.M)[0]+'\n'
 blocks=re.findall(r'        uint8_t mac\[6\];[\s\S]*?portEXIT_CRITICAL\(&s_lock\);',source)
-assert len(blocks)==2
+assert len(blocks) in (1,2)  # Materialized board view selects one maintained backend.
 for i,body in enumerate(blocks):
  unit+='static void setup'+str(i)+r'''(void){int err=0;
  struct{struct{uint8_t ssid[32],password[64];int ssid_len,channel,max_connection,authmode;}ap;}wifi;
  memset(&wifi,0,sizeof(wifi));
 '''+body+r'''
  assert(wifi.ap.authmode==WIFI_AUTH_OPEN&&wifi.ap.password[0]==0);
- assert(wifi.ap.ssid_len==10&&!strcmp((char*)wifi.ap.ssid,"dpReader31"));
- assert(!strcmp(s_status.ssid,"dpReader31"));assert(wifi.ap.max_connection==1);
+ assert(wifi.ap.ssid_len==7&&!strcmp((char*)wifi.ap.ssid,"LumenOS"));
+ assert(!strcmp(s_status.ssid,"LumenOS"));assert(wifi.ap.max_connection==1);
  return;fail:assert(!err);
 }
 '''
 for name in ('escape_field','ui_wifi_qr_prepare'):
  unit+=function(name,root/'main/ui/ui_wifi_qr.c')+'\n'
-unit+=r'''
-int main(void){setup0();setup1();
+unit+='int main(void){'+''.join('setup'+str(i)+'();' for i in range(len(blocks)))+r'''
+
  assert(ui_wifi_qr_prepare(READ_PICO_TRANSFER_SSID,READ_PICO_TRANSFER_PASSWORD));
- assert(!strcmp(payload_copy,"WIFI:T:nopass;S:dpReader31;P:;;"));
+ assert(!strcmp(payload_copy,"WIFI:T:nopass;S:LumenOS;P:;;"));
  assert(ui_wifi_qr_prepare("A;B","password"));
  assert(!strcmp(payload_copy,"WIFI:T:WPA;S:A\\;B;P:password;;"));
  assert(!ui_wifi_qr_prepare("", ""));
- puts("PASS both AP backends: dpReader31/open/empty password/single client; actual QR nopass and escaped WPA payloads");}
+ puts("PASS selected AP setup: LumenOS/open/empty password/single client; actual QR nopass and escaped WPA payloads");}
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)

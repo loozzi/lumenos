@@ -9,12 +9,12 @@ unit=r'''
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-enum {APP_REDRAW_AREA=1,EPD_DRAW_SUCCESS=0};
-enum EpdDrawError {ERR=1};
+enum {APP_REDRAW_AREA=1};
+enum EpdDrawError {EPD_DRAW_SUCCESS=0,ERR=1};
 typedef struct{int x,y,width,height;} EpdRect;
 typedef struct{void *hl;uint8_t *fb;}app_ctx_t;
 static bool s_clock_pending,fail,full;
-enum {HOME_ROOT};static int s_view,s_ticket_battery;
+enum {HOME_ROOT,HOME_POP_MENU};static int s_view,s_ticket_battery;
 static bool app_settings_simple_full_ui(void){return full;}
 static EpdRect simple_ticket_status_rect(void){return (EpdRect){60,80,564,58};}
 static void draw_simple_ticket_status(uint8_t *fb){fb[0]=80;}static int64_t s_clock_minute;static unsigned calls,paints,guards;
@@ -29,6 +29,7 @@ int main(void){uint8_t fb[1]={0};app_ctx_t ctx={NULL,fb};
  s_clock_pending=true;s_clock_minute=1233;fail=true;assert(run(&ctx)&&s_clock_minute==1233&&calls==1&&guards==1&&!s_clock_pending);
  s_clock_pending=true;fail=false;assert(run(&ctx)&&s_clock_minute==1234&&calls==2&&guards==2&&paints==2&&fb[0]==71);
  full=true;s_clock_pending=true;assert(run(&ctx)&&calls==3&&paints==2&&fb[0]==80);
+ s_view=HOME_POP_MENU;s_clock_pending=true;assert(run(&ctx)&&calls==4&&paints==2&&fb[0]==80);
  puts("PASS Home minute refresh: only status clock area, single output, failed output retries without consuming minute");}
 '''
 with tempfile.TemporaryDirectory() as d:

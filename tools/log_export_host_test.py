@@ -38,7 +38,8 @@ static void emit(const char *fmt,...);
 static char saved[70000];
 static FILE *checked_open(const char *name,const char *mode){
  (void)name;(void)mode;assert(!depth);if(failure==4)return NULL;
- if(inject)emit("DURING_SD\n");return tmpfile();
+ if(inject){emit("DURING_SD\n");}
+ return tmpfile();
 }
 static int checked_print(FILE *f,const char *fmt,...){assert(!depth);va_list a;va_start(a,fmt);int n=vfprintf(f,fmt,a);va_end(a);return n;}
 static size_t checked_write(const void *p,size_t size,size_t n,FILE *f){assert(!depth);if(failure==1)return n?fwrite(p,size,n-1,f):0;return fwrite(p,size,n,f);}
@@ -54,6 +55,7 @@ static int checked_close(FILE *f){assert(!depth);rewind(f);size_t n=fread(saved,
 #define fclose checked_close
 static void *heap_caps_malloc(size_t n,int caps){(void)caps;assert(!depth);if(allocation_fail)return NULL;void *p=malloc(n);if(p)++allocated;return p;}
 static void heap_caps_free(void *p){assert(!depth);if(p)++freed;free(p);}
+static void log_export_heap_checkpoint(const char *phase){assert(phase && !depth);}
 static unsigned heap_caps_get_free_size(int caps){(void)caps;return 1000;}
 static unsigned heap_caps_get_minimum_free_size(int caps){(void)caps;return 500;}
 static unsigned heap_caps_get_total_size(int caps){(void)caps;return 2000;}

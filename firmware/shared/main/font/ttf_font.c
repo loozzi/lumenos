@@ -1,4 +1,5 @@
 /*
+ * User revision2026-11-14: missing primary Han glyphs use the bounded built-in supplement; monochrome contrast adds a small stroke adjustment with a distinct cache key.
  * SPDX-FileCopyrightText: 2026 mindreset
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,6 +17,8 @@
  */
 
 #include "ttf_font.h"
+#include "ui_hanzi.h"
+#include "ui_hanzi_scale.h"
 #include "font_family.h"
 #include "../dpreader_board_config.h"
 #if defined(TEST_METALIO) && !defined(DPREADER_BOARD_METALIO47)
@@ -143,6 +146,7 @@ static const char* const k_font_dirs[] = {
 };
 
 static bool s_antialias = true;
+static bool s_text_contrast;
 
 typedef struct glyph_entry {
     uint32_t codepoint;
@@ -157,6 +161,7 @@ typedef struct glyph_entry {
     uint8_t* bitmap;
     size_t bitmap_bytes;
 #if DPREADER_BOARD_METALIO47
+    bool contrast_mono;
     uint64_t cache_tick;
     bool mono_mode,packed_mono,hinted_gray;
     int16_t layout_left,layout_top,layout_height;
@@ -2158,12 +2163,14 @@ static bool mono_bitmap(uint32_t cp,float scale,ttf_mono_bitmap_t *bitmap) {
         if(!s_cur->f_mono)ESP_LOGW(TAG,"mono hinting unavailable; keep native binary fallback");
         else ESP_LOGI(TAG,"TrueType mono hinting ready; engine PSRAM=%u",(unsigned)ttf_mono_bytes());
     }
+    int stroke=s_stroke_adjust+(!s_antialias && s_text_contrast?2:0);
+    if(stroke>32)stroke=32;
     if (s_cur->f_synthetic_style)
         return ttf_render_styled(s_cur->f_mono,cp,scale,gvar_ready?current_weight:-1,
-                                 s_stroke_adjust,s_antialias,s_cur->f_synthetic_style,bitmap);
+                                 stroke,s_antialias,s_cur->f_synthetic_style,bitmap);
     return s_antialias
         ? ttf_gray_render_stroke(s_cur->f_mono,cp,scale,gvar_ready?current_weight:-1,s_stroke_adjust,bitmap)
-        : ttf_mono_render_stroke(s_cur->f_mono,cp,scale,gvar_ready?current_weight:-1,s_stroke_adjust,bitmap);
+        : ttf_mono_render_stroke(s_cur->f_mono,cp,scale,gvar_ready?current_weight:-1,stroke,bitmap);
 }
 #endif
 
@@ -2174,6 +2181,7 @@ static glyph_entry_t* cache_lookup(uint32_t codepoint, int size) {
             && entry->weight == (uint16_t)current_weight && entry->stroke == s_stroke_adjust
 #if DPREADER_BOARD_METALIO47
             && entry->mono_mode == !s_antialias
+            && entry->contrast_mono == (!s_antialias && s_text_contrast)
 #endif
             ) {
             lru_touch(entry);
@@ -2185,10 +2193,18 @@ static glyph_entry_t* cache_lookup(uint32_t codepoint, int size) {
 
 static glyph_entry_t* rasterize_glyph(uint32_t codepoint, int pixel_height) {
     int gid = stbtt_FindGlyphIndex(&font_info, (int)codepoint);
-    if(!pack_glyph_tree(gid))return NULL;
+    uint8_t extra[UI_HANZI_RECORD];
+    bool supplemental=!gid && ui_hanzi_get(codepoint,extra);
+    if(!supplemental && !pack_glyph_tree(gid))return NULL;
     float scale = stbtt_ScaleForPixelHeight(&font_info, (float)pixel_height);
     int x0=0,y0=0,x1=0,y1=0;
     stbtt_GetGlyphBitmapBox(&font_info,gid,scale,scale,&x0,&y0,&x1,&y1);
+    if(supplemental) {
+        x0=(int)floorf((int8_t)extra[0]*(float)pixel_height/UI_HANZI_BASE_PX);
+        y0=(int)floorf((int8_t)extra[1]*(float)pixel_height/UI_HANZI_BASE_PX);
+        x1=x0+(extra[2]*pixel_height+UI_HANZI_BASE_PX-1)/UI_HANZI_BASE_PX;
+        y1=y0+(extra[3]*pixel_height+UI_HANZI_BASE_PX-1)/UI_HANZI_BASE_PX;
+    }
 #if DPREADER_BOARD_METALIO47
     // Keep the pre-existing layout metrics even when the hinted ink moves a pixel.
     int layout_left=x0,layout_top=-y0,layout_height=y1-y0;
@@ -2197,7 +2213,7 @@ static glyph_entry_t* rasterize_glyph(uint32_t codepoint, int pixel_height) {
         layout_left-=pad;layout_top+=pad;layout_height+=2*pad;
     }
     ttf_mono_bitmap_t mono={0};
-    bool hinted=mono_bitmap(codepoint,scale,&mono);
+    bool hinted=!supplemental && mono_bitmap(codepoint,scale,&mono);
     if(hinted){x0=mono.left;y0=-mono.top;x1=x0+mono.width;y1=y0+mono.height;}
 #endif
 
@@ -2239,7 +2255,10 @@ static glyph_entry_t* rasterize_glyph(uint32_t codepoint, int pixel_height) {
                 memcpy(entry->bitmap+(size_t)y*width,mono.pixels+(size_t)y*mono.pitch,width);
         } else
 #endif
-        stbtt_MakeGlyphBitmap(
+        if(supplemental) {
+            for(int y=0;y<height;++y)for(int x=0;x<width;++x)
+                entry->bitmap[(size_t)y*width+x]=ui_hanzi_coverage(extra,width,height,x,y);
+        } else stbtt_MakeGlyphBitmap(
             &font_info, entry->bitmap, width, height, width, scale, scale, gid
         );
     }
@@ -2271,7 +2290,7 @@ static glyph_entry_t* rasterize_glyph(uint32_t codepoint, int pixel_height) {
 #endif
     }
 #if DPREADER_BOARD_METALIO47
-    entry->mono_mode=!s_antialias;entry->hinted_gray=hinted&&s_antialias;
+    entry->mono_mode=!s_antialias;entry->contrast_mono=!s_antialias&&s_text_contrast;entry->hinted_gray=hinted&&s_antialias;
     entry->layout_left=layout_left;entry->layout_top=layout_top;entry->layout_height=layout_height;
     if(entry->mono_mode && bitmap_bytes && !entry->packed_mono) {
         size_t stride=((unsigned)width+7u)/8u,bytes=stride*(size_t)height;
@@ -2295,7 +2314,7 @@ static glyph_entry_t* rasterize_glyph(uint32_t codepoint, int pixel_height) {
     entry->height = (int16_t)height;
     entry->left = (int16_t)x0;
     entry->top = (int16_t)(-y0);
-    entry->advance_x = (int16_t)lroundf(advance * scale);
+    entry->advance_x = supplemental ? (extra[4]*pixel_height+UI_HANZI_BASE_PX/2)/UI_HANZI_BASE_PX : (int16_t)lroundf(advance * scale);
     entry->bitmap_bytes = bitmap_bytes;
 
     unsigned bucket = cache_bucket(codepoint, pixel_height);
@@ -2455,7 +2474,9 @@ static int measure_width(int pixel_height, const char* text) {
             int advance = 0, lsb = 0;
             int gid = stbtt_FindGlyphIndex(&font_info, (int)cp);
             stbtt_GetGlyphHMetrics(&font_info, gid, &advance, &lsb);
-            width += (int)lroundf(advance * scale);
+            uint8_t extra[UI_HANZI_RECORD];
+            width += !gid && ui_hanzi_get(cp,extra) ?
+                (extra[4]*pixel_height+UI_HANZI_BASE_PX/2)/UI_HANZI_BASE_PX : (int)lroundf(advance * scale);
         }
     }
     return width;
@@ -2474,7 +2495,8 @@ bool ttf_font_has_text(const char *text) {
     const ttf_slot_t* sys = &s_slots[TTF_FONT_SLOT_SYSTEM];
     if (!sys->f_ready || !text) return false;
     while (*text) {
-        if (!stbtt_FindGlyphIndex(&sys->f_font_info, (int)decode_utf8(&text))) return false;
+        uint32_t cp=decode_utf8(&text);
+        if (!stbtt_FindGlyphIndex(&sys->f_font_info, (int)cp) && !ui_hanzi_has(cp)) return false;
     }
     return true;
 }
@@ -2769,7 +2791,8 @@ bool ttf_font_slot_has_text(int slot, const char* text) {
     const ttf_slot_t* s = &s_slots[slot];
     if (!s->f_ready) return false;
     while (*text) {
-        if (!stbtt_FindGlyphIndex(&s->f_font_info, (int)decode_utf8(&text))) return false;
+        uint32_t cp=decode_utf8(&text);
+        if (!stbtt_FindGlyphIndex(&s->f_font_info, (int)cp) && !ui_hanzi_has(cp)) return false;
     }
     return true;
 }
@@ -3242,7 +3265,6 @@ int ttf_text_left_bearing_px(int pixel_height, const char* text) {
 
 // 线性抗锯齿的中间灰在这块屏上偏亮。按 TTF_COVER_GAMMA 抬覆盖率，半透明边缘更深。
 static uint8_t s_cover[256];
-static bool s_text_contrast;
 bool ttf_set_text_contrast(bool enabled) {
     bool previous = s_text_contrast;
     s_text_contrast = enabled;
@@ -3270,7 +3292,7 @@ static void ttf_cover_lut_init(void) {
 }
 
 static uint8_t mix_ink(uint8_t alpha, uint8_t fg, uint8_t bg) {
-    if (!s_antialias) return alpha >= 128 ? fg : bg;
+    if (!s_antialias) return alpha >= (s_text_contrast ? 104 : 128) ? fg : bg;
     // Round the final luminance, not a signed delta: truncation toward the
     // background weakens contrast for both dark and inverted glyph edges.
     unsigned coverage = s_cover[alpha];
@@ -3280,6 +3302,7 @@ static uint8_t mix_ink(uint8_t alpha, uint8_t fg, uint8_t bg) {
 
 static uint8_t mix_glyph_ink(const glyph_entry_t *glyph,uint8_t alpha,uint8_t fg,uint8_t bg) {
 #if DPREADER_BOARD_METALIO47
+    if(!s_antialias) return mix_ink(alpha,fg,bg);
     if(glyph->hinted_gray) {
         unsigned coverage=ttf_aa_coverage(alpha);
         if (s_text_contrast) coverage = ttf_aa_boost((uint8_t)coverage);

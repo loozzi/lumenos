@@ -274,15 +274,21 @@ int main(void){
   }
   assert(ui_click_feedback_nav_tick(frame,200,&r)&&!live&&!memcmp(frame,saved,BYTES));
  }
- // 切页的固定底栏可能保留物理按下姿态；新页完成后必须从同一控件原像素复位，不能截留放大图标。
- // Frozen navigation can retain the physical pressed pose; settle from the same control baseline after the page paint.
+ // A new S31 page discards the previous pill baseline and recaptures after painting.
  ui_click_feedback_nav_request(0);assert(ui_click_feedback_nav_tick(frame,0,&r));
- memcpy(again,frame,BYTES);ui_click_feedback_begin(frame);assert(live==1&&!memcmp(frame,saved,BYTES));
+ memcpy(again,frame,BYTES);ui_click_feedback_begin(frame);
+ assert(!live&&!memcmp(frame,again,BYTES)&&ui_click_feedback_nav_pending());
  epd_fill_rect((EpdRect){0,0,684,1000},0xa0,frame);
- for(int y=1111;y<1170;++y)for(int x=0;x<684;++x)epd_draw_pixel(x,y,pixel(again,x,y),frame);
- assert(ui_click_feedback_nav_tick(frame,200,&r)&&!live);
- for(int y=0;y<1216;++y)for(int x=0;x<684;++x)
-  if(pixel(frame,x,y)!=(y<1000?0xaa:pixel(saved,x,y))) {fprintf(stderr,"frozen mismatch %d,%d actual %02x expected %02x\n",x,y,pixel(frame,x,y),y<1000?0xaa:pixel(saved,x,y));assert(false);}
+ epd_fill_rect((EpdRect){0,UI_NAV_TOP,684,1216-UI_NAV_TOP},0xdd,frame);
+ for(int tab=0;tab<4;++tab){
+  int center=(tab*2+1)*684/8;
+  ui_draw_icon(frame,center,1141,44,tabs[tab],0);
+  ui_click_feedback_register(frame,(EpdRect){center-30,1111,60,60},UI_CLICK_NAV,tabs[tab]);
+ }
+ memcpy(saved,frame,BYTES);
+ assert(ui_click_feedback_nav_tick(frame,200,&r)&&live==1&&memcmp(frame,saved,BYTES));
+ assert(ui_click_feedback_nav_tick(frame,265,&r)&&!live&&!ui_click_feedback_nav_pending());
+ assert(!memcmp(frame,saved,BYTES));
  // 加载中底栏还没有完成注册，同样给到即时反馈；不等待下一页。
  // Loading before footer registration still gives immediate feedback without waiting for a new page.
  memset(frame,0xee,BYTES);ui_click_feedback_begin(frame);
@@ -359,5 +365,5 @@ assert '!ctx.request_app' not in press
 assert loop.index('ui_click_feedback_nav_tick(ctx.fb,esp_timer_get_time()/1000,&click_area)') < loop.index('switch_to(&ctx, &current, next);')
 for path,name in [('main/ui/ui_nav.c','ui_nav_back'),('main/apps/app_book.c','draw_sheet_back')]:
  draw=function(path,name)
- assert 'UI_ICON_ANIMATE_CIRCLE_CHEVRON_LEFT' in draw
+ assert 'UI_ICON_ARROW_LEFT' in draw
  assert 'epd_draw_circle' not in draw and 'ui_draw_round_rect' not in draw

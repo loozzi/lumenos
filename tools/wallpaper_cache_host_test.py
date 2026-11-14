@@ -8,6 +8,9 @@ ROOT=Path(__file__).resolve().parents[1]
 source=ROOT/'main/ui/ui_wallpaper.c'
 unit=r'''
 #include <assert.h>
+static char signature[96];
+static const char *app_settings_status_signature(void){return signature;}
+static void book_lock_signature_draw(unsigned char *fb){(void)fb;}
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -104,6 +107,11 @@ int main(void){
  assert(!ui_wallpaper_avatar_cached("/sdcard/other.png",avatar,82));
  set_source("replacement.jpg",6300);assert(!ui_wallpaper_avatar_cached("/sdcard/avatar.png",avatar,82));alloc_fail=true;assert(!ui_wallpaper_prepare_avatar("/sdcard/avatar.png",avatar,82));alloc_fail=false;
  source_mutates=true;assert(ui_wallpaper_prepare_avatar("/sdcard/avatar.png",avatar,82));source_mutates=false;assert(!ui_wallpaper_avatar_cached("/sdcard/avatar.png",avatar,82));assert(ui_wallpaper_prepare_avatar("/sdcard/avatar.png",avatar,82));
+ unsigned signature_loads=loads;
+ strcpy(signature,"Chữ ký mới");assert(ui_wallpaper_prepare_lock(frame,"/sdcard/wallpaper.jpg"));
+ assert(loads==signature_loads+1);ui_wallpaper_cache_commit(frame);
+ assert(ui_wallpaper_prepare_lock(frame,"/sdcard/wallpaper.jpg")&&loads==signature_loads+1);
+ signature[0]=0;assert(ui_wallpaper_prepare_lock(frame,"/sdcard/wallpaper.jpg")&&loads==signature_loads+2);
  assert(!remove(source_file)&&!ui_wallpaper_avatar_cached("/sdcard/avatar.png",avatar,82));
 
  assert(!ui_wallpaper_prepare_avatar("/sdcard/avatar.png",avatar,129));

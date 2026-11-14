@@ -75,7 +75,8 @@ int main(void){char buf[32768];for(size_t i=0;i<sizeof(input);++i)input[i]=(unsi
  for(unsigned test=0;test<17;++test){reset();close_error=false;if(test>=1&&test<=7)fail_alloc=test;if(test==8)fail_task=1;if(test==9)bad_receive=10;if(test==10){bad_receive=10;oversize=true;}if(test>=11&&test<=13)short_write=test-10;if(test==14)packet=32768;if(test==15)packet=1;
   FILE*f=fopen("target.epub","wb");assert(f);assert(fwrite("old",1,3,f)==3);assert(!fclose(f));
   close_error=test==16;size_t total=test==15?127:sizeof(input);int result=receive_file("target.epub","target.part",total,buf,sizeof(buf),receive_test,NULL,progress_test);
-  if(threads)assert(!pthread_join(thread,NULL));assert(!sem_live);
+  if(threads){assert(!pthread_join(thread,NULL));}
+  assert(!sem_live);
   if((test>=9&&test<=13)||test==16){assert(result==(test<=10?408:507));f=fopen("target.epub","rb");assert(f&&fread(output,1,sizeof(output),f)==3&&!memcmp(output,"old",3));}
   else {assert(!result&&received==total&&progress_bytes==total);f=fopen("target.epub","rb");assert(f&&fread(output,1,sizeof(output),f)==total&&!memcmp(input,output,total));if(!test)assert(overlaps&&threads==1&&s_receive_metrics.writes==10);}
   assert(!fclose(f));assert(access("target.part",F_OK));assert(!remove("target.epub"));

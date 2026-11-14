@@ -379,3 +379,96 @@ Các trang con Cài đặt và trang chọn mạng WiFi dùng chung nền thẻ2
 Mục lục, danh sách dấu trang, Thống kê, Cài đặt đọc, Phông chữ và các trang chọn bên trong dùng chung thẻ221/mục chọn187; nút Xong/Quay lại chữ đen trên nền xám, bảng trắng không khung đậm. Giữ nguyên các hình chữ nhật vẽ/chạm, phân trang, xác nhận xóa, đồng bộ và quyền sở hữu phông. Phông mẫu có ô xem trước trắng bên trong thẻ xám để giữ đường raster nền trắng của bộ font. Thanh kéo, nút gạt và biểu đồ vẫn có nét tương phản cần thiết.
 
 Đánh dấu và Đồng bộ trên quick action tiếp tục thực hiện ngay; danh sách dấu trang vẫn vào qua Thống kê. Không tạo thêm trang chức năng giả hay đổi luồng lưu/khôi phục. Các bảng vẫn dùng đường refresh vùng xám và bộ nhớ đệm nền đọc hiện có; đóng bảng khôi phục trang đang đọc.
+
+
+## Sleep, fallback chữ Hán và log
+
+S31 tách xác nhận phím Nguồn khỏi AI/âm lượng. Nguồn phải có hai mẫu P17 thấp
+hợp lệ; lỗi I²C hoặc ngắt chung không cấp quyền mở khóa. Tùy chọn đánh thức phụ
+chỉ áp dụng trong Light Sleep: âm lượng qua TCA9555 và AI qua GPIO61. Giữ
+nguyên mask input 0x83 của hãng cho các nút; âm lượng chưa chọn có thể đánh
+thức CPU qua IRQ chung nhưng không mở khóa hoặc bật đèn. GPIO61
+cần miền GPIO còn nguồn (`PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP` tắt trong
+cấu hình hiện hành). Deep Sleep giữ đường Nguồn cũ. Màn khóa reboot cấp cùng
+ngữ cảnh touch để chờ Light Sleep, vẫn giữ PIN và kiểm tra tài nguyên. Không có
+thời hạn thì không bật timer; timer có thời hạn giữ nguyên giao dịch ngoại vi đã
+park. Đường chuẩn bị khóa yêu cầu hủy OTA/phông nền không chờ vô hạn; tài
+nguyên bận từ chối khóa trước phản hồi và không đổi trang.
+
+Backup v32 giữ kích thước khối preferences: hai bit thấp của `wake_presses`
+lưu 1/2 lần nhấn, hai bit tiếp theo lưu lựa chọn AI/âm lượng. Bản sao lưu v32 cũ
+có hai bit trên bằng 0, khôi phục chỉ Nguồn; firmware cũ có thể từ chối bản sao
+lưu mới có bật nút phụ thay vì diễn giải sai dữ liệu.
+
+Bộ `ui-hanzi.bin` bổ sung các chữ GB2312 thiếu trong builtin hiện tại, dùng
+Noto Sans SC theo OFL có sẵn trong kho. Decoder chỉ giải nén 32 glyph mỗi khối
+(2.464 byte), đặt cả inflater/cache trong PSRAM; không nạp toàn bộ phông. Cả UI
+và trình đọc chỉ dùng fallback khi phông đang chọn thiếu glyph. Để tái tạo từ dữ
+liệu đã lưu trong lịch sử, xuất `main/assets/builtin.ttf` và
+`main/assets/ui-hanzi.bin` từ commit `a9a350a` vào thư mục build, rồi chạy
+`python3 tools/gen_ui_hanzi.py --src build/hanzi-source.ttf --supplement build/original-ui-hanzi.bin`.
+Không sửa bitmap bằng tay. Tương phản chữ đen trắng dùng thêm 2/16 pixel cho
+outline, giữ nguyên advance; cache phân biệt chữ có/không tương phản.
+
+Mốc `log_export.begin`, `log_export.snapshot`, `log_export.end`,
+`transfer.enter` và `transfer.leave` ghi free/minimum/largest block cho RAM nội
+và PSRAM. Đây là số đo tại mốc tài nguyên, không gọi trong render hoặc khi đang
+giữ khóa ring log. Xem trước log chừa đủ chỗ cho dấu ba chấm UTF-8 và byte NUL.
+
+
+Kiểm thử các thay đổi Sleep/reader/log bằng:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/sleep-refinements-host
+(cd build/sleep-refinements-host && bash tools/run_sleep_reader_refinements_tests.sh)
+```
+
+Host tests bao phủ lỗi I²C/NVS/tài nguyên, lựa chọn nguồn đánh thức, giới hạn
+log, backup, glyph/cache và bố cục hai edition. Chúng không đo công suất Sleep,
+tốc độ đánh thức, độ đậm nét hay bóng mờ trên màn hình thật. Thanh Acrylic
+90→60 px là đường vẽ kệ cũ; giao diện lưới hiện hành đã không dùng thanh này,
+không bật lại kiểu kệ đã bỏ.
+
+
+### Kiểm thử fixture host
+
+Các fixture Metalio47 trong `boards/metalio47/tests/tools/` được chọn khi sinh
+host view; không sửa bản generic trong `tools/` để thay cho bản theo bo.
+Chạy nhóm scheduler, backup, Home, cache phản hồi và truyền tệp bằng:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/legacy-fixtures
+(cd build/legacy-fixtures && bash tools/run_legacy_fixture_tests.sh)
+```
+
+Test dùng ranh giới nội dung `UI_NAV_REFRESH_END`, giữ grayscale ở Normal/Water
+và chỉ yêu cầu binary ở Fast. Cache nhấn S31 phải bỏ nền trang cũ, lấy lại nền
+sau paint rồi phục hồi chính xác. Backup kiểm tra đơn vị giãn dòng có dấu và đủ
+18 mức giãn đoạn, gồm các mức âm. Trình trích đoạn C không dựa vào nội dung
+comment đã dịch.
+
+`reader_layout_choices_host_test.py` thay test giữ nút `+/-` chỉnh lùi đầu dòng
+cũ: giao diện hiện dùng tám menu lựa chọn. Test mới kiểm tra từng điểm chạm,
+khoảng trống, nút Quay lại và lựa chọn chỉnh lùi đầu dòng riêng; không bật lại
+hành vi giữ nút đã bỏ.
+
+
+### Thương hiệu LumenOS
+
+LumenOS dùng `main/assets/branding/lumen-logo-source.png`, bản sao nguyên byte của
+`Claude_AI_symbol.black.png` do người dùng cung cấp. Generator ghép biểu tượng
+và wordmark LumenOS bằng phông nhúng, ghi 4bpp vào flash; trang truyền tệp dùng PNG
+nhúng offline. Tên mặc định cũ được đổi ở lớp hiển thị, giữ tên cá nhân. Product
+name là LumenOS; project `dpReader`/`Kiikoread_Metalio_S31`, namespace NVS, backup,
+đường dẫn sách, KOSync ID và URL cập nhật vẫn giữ hợp đồng tương thích cũ.
+
+Sau khi sinh host view S31, chạy `bash tools/run_lumen_branding_tests.sh` để kiểm
+tra asset nguồn/PNG nhúng, pixel startup thực, migration tên và SSID/QR. Bộ này
+xuất `build/lumen-startup.png` làm preview từ renderer C thật, không phải ảnh
+chụp thiết bị. Web Flash vẫn ghi rõ các tải xuống hiện có là bản dpReader đã
+phát hành; việc đổi header không thay hoặc phát hành binary LumenOS.
+
+LumenOS từ phiên bản 1.5.0 dùng số phiên bản độc lập cho mỗi build được giao
+(tiếp theo 1.5.1); Love Book thêm `-love`. Build cục bộ bằng
+`tools/build_firmware.py --board metalio47 --edition all --local-build`,
+xuất hai gói vào `Test Build/<version>/`, không stage hoặc phát hành online.

@@ -40,4 +40,5 @@ bool online_font_installed(unsigned index);
 esp_err_t online_font_start(unsigned index);
 void online_font_status(online_font_status_t *out);
 /// 取消并等待释放网络/卡句柄；离页、锁屏和拔卡前调用。/ Cancel and join network/card handles on exit, lock or removal.
+bool online_font_request_cancel(void);
 void online_font_cancel_join(void);

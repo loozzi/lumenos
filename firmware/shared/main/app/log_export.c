@@ -145,7 +145,19 @@ static size_t log_snapshot(char *out) {
     return count;
 }
 
+void log_export_heap_checkpoint(const char *phase) {
+    ESP_LOGI("heap", "%s internal free=%u min=%u largest=%u; psram free=%u min=%u largest=%u",
+        phase?phase:"checkpoint",
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+}
+
 esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, size_t err_msg_size) {
+    log_export_heap_checkpoint("log_export.begin");
     read_pico_sd_info_t sd = {0};
     esp_err_t err = read_pico_sd_get_info(&sd);
     if (err != ESP_OK || !sd.mounted) {
@@ -168,6 +180,7 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
         if(err_msg&&err_msg_size)snprintf(err_msg,err_msg_size,"Không đủ bộ nhớ để xuất log");
         return ESP_ERR_NO_MEM;
     }
+    log_export_heap_checkpoint("log_export.snapshot");
     size_t snapshot_size=log_snapshot(snapshot);
     FILE *f = fopen(target, "w");
     if (!f) {
@@ -181,7 +194,7 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     // 1. Header & Version
     const esp_app_desc_t *app_desc = esp_app_get_description();
     fprintf(f, "========================================================\n");
-    fprintf(f, "dpReader System & Diagnostic Log\n");
+    fprintf(f, "LumenOS System & Diagnostic Log\n");
     fprintf(f, "Board: Metalio E-Ink4 Plus (ESP32-S31)\n");
     if (app_desc) {
         fprintf(f, "Firmware: %s\n", app_desc->version);
@@ -280,6 +293,7 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
         return ESP_FAIL;
     }
 
+    log_export_heap_checkpoint("log_export.end");
     ESP_LOGI("log_export", "System logs exported successfully to %s", target);
     return ESP_OK;
 }
