@@ -93,7 +93,7 @@ static app_redraw_t edge_back_key(app_ctx_t *ctx,int key) {
     (void)ctx;assert(key==UI_KEY_1);++edge_returns;
     return edge_blocked?APP_REDRAW_NONE:APP_REDRAW_PAGE;
 }
-enum EpdDrawError update_display_water_turn(EpdiyHighlevelState* hl,EpdRect area,int dir) {(void)hl;assert(area.x==0&&area.y==0&&area.width==684&&(area.height==1216||area.height==UI_NAV_MARKER_SCAN_END));assert(dir==E0470_TURN_LTR||dir==E0470_TURN_RTL);last_ripple_dir=dir;++back_ripples;persistent_ripple_height=area.height;return EPD_DRAW_SUCCESS;}
+enum EpdDrawError update_display_water_turn(EpdiyHighlevelState* hl,EpdRect area,int dir) {(void)hl;assert(area.x==0&&area.y==0&&area.width==684&&(area.height==1216||area.height==UI_NAV_REFRESH_END));assert(dir==E0470_TURN_LTR||dir==E0470_TURN_RTL||dir==E0470_TURN_TTB||dir==E0470_TURN_BTT);last_ripple_dir=dir;++back_ripples;persistent_ripple_height=area.height;return EPD_DRAW_SUCCESS;}
 static app_redraw_t long_key(app_ctx_t* c, int k) { assert(k==UI_KEY_2); ++long_keys; c->request_menu=true; return APP_REDRAW_NONE; }
 static app_redraw_t response;
 static bool request_on_touch, request_on_tick, menu_on_tick, menu_on_touch, cancel_clobber;
@@ -634,7 +634,7 @@ int main(void) {
         reset();main_fast=policy==1;main_water=policy==2;first.persistent_navigation=true;
         first.on_gesture=gesture;first.on_key=edge_back_key;first.edge_back_enabled=edge_allowed;edge_enabled=true;
         add(12,400,1,0);add(150,410,1,0);add(0,0,0,0);run();
-        assert(back_ripples==1&&persistent_ripple_height==UI_NAV_MARKER_SCAN_END&&fulls==1);
+        assert(back_ripples==1&&persistent_ripple_height==UI_NAV_REFRESH_END&&fulls==1);
     }
 
     // 首帧保持全刷；切页一次完成，按住、松开、空闲都不安排第二次刷新。
@@ -858,7 +858,8 @@ int main(void) {
         reset();first.binary_ui=true;main_fast=policy==1;main_water=policy==2;
         first.on_gesture=binary_tap;
         add(tap_back?60:200,tap_back?110:400,1,0);add(0,0,0,0);run();
-        assert(!binary_scope&&fulls==1&&binary_outputs==1);
+        assert(!binary_scope&&fulls==1&&binary_outputs==(policy==1?1:0));
+        assert(policy==1||gl_areas>0);
         assert(back_ripples==0);
     }
     reset();first.binary_ui=true;first.on_gesture=gesture;first.on_key=edge_back_key;
@@ -871,7 +872,7 @@ int main(void) {
         add(340,1160,1,0);add(0,0,0,0);run();
         assert(back_ripples==(policy==2?1:0));
         if(policy==2)assert(last_ripple_dir==E0470_TURN_RTL);
-        assert(binary_outputs==(policy==2?0:1));
+        assert(binary_outputs==(policy==1?1:0));
         assert(!binary_scope&&!navigation_scope);
     }
     for(int policy=0;policy<3;++policy){
@@ -879,7 +880,7 @@ int main(void) {
         main_source_visible=false;first.on_gesture=tap_return_to_root;
         main_fast=policy==1;main_water=policy==2;
         add(60,110,1,0);add(0,0,0,0);run();
-        assert(!back_ripples&&binary_outputs==1&&!binary_scope&&!navigation_scope);
+        assert(!back_ripples&&binary_outputs==(policy==1?1:0)&&!binary_scope&&!navigation_scope);
     }
     puts("PASS: system roots honor Water, child taps/top-left stay ordinary, edge returns use logical portrait LTR, scoped navigation restored");
     puts("PASS: S31 edge/central right-swipe return admission,one output,short/status/multitouch/refused boundaries");

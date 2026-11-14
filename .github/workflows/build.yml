@@ -158,6 +158,7 @@ jobs:
           python3 tools/test_lcd_frame_lifecycle.py
           sh tools/run_app_loop_host_tests.sh
           python3 tools/reader_spacing_host_test.py
+          python3 tools/reader_layout_choices_host_test.py
           python3 tools/test_book_toc.py
           node tools/flasher_integrity_host_test.cjs
           node tools/flasher_risk_host_test.cjs

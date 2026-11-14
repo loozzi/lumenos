@@ -272,7 +272,7 @@ int main(void) {
     assert(app_settings_set_book_antialias(false));
     app_settings_set_reader_key_preset(1);assert(app_settings_reader_hold_action()==APP_READER_KEY_HOME);
     assert(app_settings_system_contrast() == 130);
-    assert(app_settings_book_line_spacing() == 130); /* New installations start at the middle slider stop. */
+    assert((int8_t)app_settings_book_line_spacing() == 0); /* Legacy 130% maps to the neutral signed adjustment. */
 
     assert(app_settings_book_indent_adjust()==0);
     app_settings_set_book_indent_adjust(-20);assert(loaded_adjust==0);
@@ -812,8 +812,8 @@ int main(void) {
         int px=(int)old-4;if(px>15)px=15;
         assert(s_book_tracking==px-APP_BOOK_TRACK_MIN&&loaded_tracking==192+s_book_tracking);
     }
-    const uint8_t paragraph_stops[]={(uint8_t)-10,(uint8_t)-5,0,5,10,15,20,25,30,40,50,75};
-    assert(APP_BOOK_PARAGRAPH_COUNT==12);
+    const uint8_t paragraph_stops[]={(uint8_t)-70,(uint8_t)-60,(uint8_t)-50,(uint8_t)-40,(uint8_t)-30,(uint8_t)-20,(uint8_t)-10,(uint8_t)-5,0,5,10,15,20,25,30,40,50,75};
+    assert(APP_BOOK_PARAGRAPH_COUNT==sizeof(paragraph_stops));
     for(unsigned i=0;i<APP_BOOK_PARAGRAPH_COUNT;++i){
         assert(app_settings_book_paragraph_value(i)==paragraph_stops[i]);
         assert(app_settings_book_paragraph_level(paragraph_stops[i])==i);
@@ -823,7 +823,7 @@ int main(void) {
         assert(app_settings_backup_save()==ESP_OK);s_book_para=255;
         assert(app_settings_backup_restore()==ESP_OK&&s_book_para==paragraph_stops[i]);
     }
-    assert(app_settings_book_paragraph_value(APP_BOOK_PARAGRAPH_COUNT/2)==20);
+    assert(app_settings_book_paragraph_value(app_settings_book_paragraph_level(0))==0);
     has_tracking=false;s_book_tracking=-APP_BOOK_TRACK_MIN;
     // PNG书签独立于壁纸保存；恢复缺失PNG时退票根，不能留无效锁屏入口。
     // PNG bookmarks persist independently of wallpapers; a missing restored PNG falls back to a usable ticket.

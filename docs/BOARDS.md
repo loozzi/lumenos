@@ -428,3 +428,26 @@ log, backup, glyph/cache và bố cục hai edition. Chúng không đo công su�
 tốc độ đánh thức, độ đậm nét hay bóng mờ trên màn hình thật. Thanh Acrylic
 90→60 px là đường vẽ kệ cũ; giao diện lưới hiện hành đã không dùng thanh này,
 không bật lại kiểu kệ đã bỏ.
+
+
+### Kiểm thử fixture host
+
+Các fixture Metalio47 trong `boards/metalio47/tests/tools/` được chọn khi sinh
+host view; không sửa bản generic trong `tools/` để thay cho bản theo bo.
+Chạy nhóm scheduler, backup, Home, cache phản hồi và truyền tệp bằng:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/legacy-fixtures
+(cd build/legacy-fixtures && bash tools/run_legacy_fixture_tests.sh)
+```
+
+Test dùng ranh giới nội dung `UI_NAV_REFRESH_END`, giữ grayscale ở Normal/Water
+và chỉ yêu cầu binary ở Fast. Cache nhấn S31 phải bỏ nền trang cũ, lấy lại nền
+sau paint rồi phục hồi chính xác. Backup kiểm tra đơn vị giãn dòng có dấu và đủ
+18 mức giãn đoạn, gồm các mức âm. Trình trích đoạn C không dựa vào nội dung
+comment đã dịch.
+
+`reader_layout_choices_host_test.py` thay test giữ nút `+/-` chỉnh lùi đầu dòng
+cũ: giao diện hiện dùng tám menu lựa chọn. Test mới kiểm tra từng điểm chạm,
+khoảng trống, nút Quay lại và lựa chọn chỉnh lùi đầu dòng riêng; không bật lại
+hành vi giữ nút đã bỏ.
