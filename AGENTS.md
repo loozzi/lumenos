@@ -37,6 +37,9 @@ Cấu hình CI chỉ dùng để kiểm tra biên dịch. Dùng cấu hình sả
 
 ### Số phiên bản và bản thử cục bộ
 
+**Quyết định mới ngày 2026-11-14 cho LumenOS, thay quy tắc RC bên dưới:** Bắt đầu ở Full `1.5.0`, Love Book `1.5.0-love`. Mỗi lần giao build tiếp theo tăng phiên bản riêng (`1.5.1`, `1.5.2`, …), không tiếp tục lấy bản dpReader cũ làm cơ sở phiên bản và không tự thêm RC hoặc `-vn`. Đồng bộ metadata/descriptor/hiển thị và kiểm tra version từ Bin thực; không đổi tên Bin để giả phiên bản. Retry cùng một lần giao được giữ số; một build mới đã giao phải dùng số chưa tồn tại trong Test Build. Dùng `--local-build` để xuất gói cục bộ vào `Test Build/<version>/` với checksum và launcher app-only/NVS256; không tự stage/publish Web Flash, OTA hay Release chỉ vì số phiên bản không có RC. Các quy tắc bảo toàn dữ liệu, kiểm tra chip/MAC/phân vùng, `--no-stub` và đóng cửa sổ Terminal thành công vẫn áp dụng.
+
+
 Khi model chính là GPT-6 Astra, hoàn tất phân tích, sửa mã và kiểm thử phù hợp trước. Nếu công việc cần giao bản RC cục bộ, giao riêng bước biên dịch, xác minh và đóng gói cho subagent `dpreader_rc_builder` (GPT-6.1 Sol, Light) trong cùng worktree. Cung cấp nhánh, commit hoặc trạng thái mã cần build, phiên bản RC đã chọn, edition, lệnh build và kết quả kiểm thử. Chờ agent trả kết quả rồi bàn giao link launcher. Nếu lỗi build cần thay đổi mã hoặc cấu hình sản phẩm, model chính xử lý và giao lại bước build. Áp dụng quy tắc này cả khi model chính được dùng để triển khai tính năng mới.
 
 When GPT-6 Astra is the primary model, finish analysis, code changes and relevant tests first. For a local RC delivery, delegate only compilation, verification and packaging to the `dpreader_rc_builder` subagent (GPT-6.1 Sol, Light) in the same worktree. Pass the branch, source revision or working-tree state, selected RC version, editions, build command and test results. Wait for its result before delivering launcher links. If a failure requires source or product configuration changes, the primary model fixes it and delegates the build again. This applies to new implementations as well as fixes.
@@ -203,7 +206,7 @@ Defined in [`main/app/app.h`](main/app/app.h). The loop presents via `app_presen
 
 ## Quy tắc bắt buộc
 
-- Dùng tên thương hiệu `dpReader` trong giao diện, mã nguồn và tài liệu của dự án. Giữ các URL đã phát hành và định danh dữ liệu cũ khi firmware hoặc công cụ còn cần chúng để tương thích.
+- Theo yêu cầu người dùng ngày 2026-11-14, thương hiệu hiển thị của nhánh cá nhân là `LumenOS`, dùng logo do người dùng cung cấp (`Claude_AI_symbol.black.png`). Quyết định này thay quy tắc tên `dpReader` trước đây. Giữ nguyên URL đã phát hành, tên project/chip, namespace NVS, đường dẫn dữ liệu/backup và thông báo bản quyền của nguồn gốc để tương thích; không đổi các định danh kỹ thuật bằng thay thế hàng loạt.
 
 `冻结 / Frozen:` 段落是产品决策，不是建议。改行为前必须先改这段，并说明为什么决策变了。
 

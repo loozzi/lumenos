@@ -131,9 +131,9 @@ def main():
         subprocess.run(command(port, 'read-flash', '--flash-size', '16MB', '--no-progress',
                                '0x8000', '0x1000', str(table), before='no-reset'), check=True)
         layout = validate_partitions(table.read_bytes())
-        # 中文：本地RC仅允许匹配布局的应用更新，不迁移或清理用户存储。/ English: Local RCs only update apps on a matching layout; never migrate or erase user storage.
-        if layout != 'new' and 'RC' in info['version']:
-            raise RuntimeError('Local RC requires the existing NVS256 partition layout (firmware 1.4.2 or newer). No flash performed.')
+        # 中文：本地构建仅允许匹配布局的应用更新，不迁移或清理用户存储。/ English: Local builds only update apps on a matching layout; never migrate or erase user storage.
+        if layout != 'new' and (info.get('local_delivery') or 'RC' in info['version']):
+            raise RuntimeError('This local build requires the existing NVS256 partition layout (firmware 1.4.2 or newer). No flash performed.')
         if layout != 'new':
             print('CÀI SẠCH: đang chuẩn bị tạo lại NVS và bộ nhớ trong /flash. Thẻ SD giữ nguyên.', flush=True)
 

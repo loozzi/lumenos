@@ -877,7 +877,7 @@ static void render_content(app_ctx_t* ctx, uint8_t* fb) {
             ui_fill_round_rect(fb, tab, 18, (s_qr_url == (i == 1)) ? 0x42 : UI_GRAY_WHITE);
             ui_draw_round_rect(fb, tab, 18, 0x92);
             ui_text_box(fb,(EpdRect){tab.x+12,tab.y+8,tab.width-24,tab.height-16},21,
-                       i ? "Web truyền sách" : "WiFi dpReader31",EPD_DRAW_ALIGN_CENTER,s_qr_url==(i==1));
+                       i ? "Web truyền sách" : "WiFi LumenOS",EPD_DRAW_ALIGN_CENTER,s_qr_url==(i==1));
         }
     } else {
         ui_text_vc(fb, 342, 602, url_px,

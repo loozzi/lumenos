@@ -64,7 +64,7 @@ static void draw_import(uint8_t* fb) {
         "Tải sách trực tiếp từ kho sách trực tuyến OPDS",
         "Xem thư mục, mở hoặc quản lý sách trên thẻ nhớ",
         "Điện thoại/máy tính cùng mạng Wi-Fi với máy đọc sách",
-        "Kết nối vào mạng Wi-Fi dpReader để tải sách lên",
+        "Kết nối vào mạng Wi-Fi LumenOS để tải sách lên",
         "Cắm cáp vào máy tính, chép sách vào thư mục books"
     };
     for (int i = 0; i < 5; ++i) {

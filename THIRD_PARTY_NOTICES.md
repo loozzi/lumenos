@@ -1,4 +1,4 @@
-# Thông báo giấy phép bên thứ ba của dpReader
+# Thông báo giấy phép bên thứ ba của LumenOS
 
 Giải mã JPEG kết hợp trên S31 dùng `esp_driver_jpeg` của Espressif (Apache-2.0) và `espressif/libjpeg-turbo 3.2.0~1` (IJG/BSD-3-Clause cho mã gốc, Apache-2.0 cho phần đóng gói Espressif).
 This software is based in part on the work of the Independent JPEG Group.
@@ -14,7 +14,7 @@ based on the [MindReset demo firmware](https://github.com/MindReset/read_pico_fi
 which is licensed under Apache-2.0. The original copyright and license notices
 remain in the source. This project is not an official MindReset release.
 
-dpReader là firmware độc lập phát triển từ firmware mẫu MindReset Read Pico. Thông báo bản quyền và giấy phép Apache-2.0 gốc được giữ trong mã nguồn.
+LumenOS là nhánh cá nhân phát triển từ dpReader và firmware mẫu MindReset Read Pico. Thông báo bản quyền và giấy phép Apache-2.0 gốc được giữ trong mã nguồn.
 
 | Thành phần | Giấy phép | Thông báo |
 | --- | --- | --- |

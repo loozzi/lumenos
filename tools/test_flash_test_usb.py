@@ -10,7 +10,7 @@ import flash_test_usb as usb
 
 
 class UsbPackageTest(unittest.TestCase):
-    def fixture(self, folder, version='1.1.7RC1-vn'):
+    def fixture(self, folder, version='1.1.7RC1-vn', local_delivery=False):
         data = bytearray(512)
         data[0] = 0xe9
         struct.pack_into('<H', data, 12, 32)
@@ -20,7 +20,7 @@ class UsbPackageTest(unittest.TestCase):
         data[80:80+len(project)] = project
         (folder / usb.APP_NAME).write_bytes(data)
         info = dict(board='metalio47', target='esp32s31', chip_id=32,
-                    version=version, size=len(data), sha256=hashlib.sha256(data).hexdigest(),
+                    version=version, local_delivery=local_delivery, size=len(data), sha256=hashlib.sha256(data).hexdigest(),
                     partitions={k: [0, 0, *v] for k, v in usb.EXPECTED.items()})
         (folder / 'verification.json').write_text(json.dumps(info))
         table = bytearray(b'\xff' * 4096)
@@ -149,11 +149,11 @@ class UsbPackageTest(unittest.TestCase):
                     first.add('0x2000')
                 self.assertEqual(writes, [first, {'0x8000'}])
 
-    def test_local_rc_rejects_migration_without_writes(self):
+    def test_local_semver_rejects_migration_without_writes(self):
         import types
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
-            self.fixture(folder, version='1.4.6RC1-vn')
+            self.fixture(folder, version='1.5.0', local_delivery=True)
             for layout in (usb.LEGACY, usb.RC_LAYOUT, {}):
                 table = bytearray(b'\xff' * 4096)
                 for i, (name, (offset, size)) in enumerate(layout.items()):

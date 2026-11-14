@@ -24,7 +24,7 @@ static bool version_parts(const char *s, unsigned parts[4]) {
     // 正式版排在该版本所有 rc 之后。/ A stable release sorts after its release candidates.
     parts[3] = 65536;
     if (!*s) return true;
-    if (!strcmp(s,"-love-vn")) { parts[3]=65537; return true; }
+    if (!strcmp(s,"-love") || !strcmp(s,"-love-vn")) { parts[3]=65537; return true; }
     if (!strncmp(s, "-vn", 3)) {
         s += 3;
         parts[3] = 65537;
@@ -40,7 +40,7 @@ static bool version_parts(const char *s, unsigned parts[4]) {
     else return false;
     if (!isdigit((unsigned char)*s)) return false;
     char *end; unsigned long n = strtoul(s, &end, 10);
-    if ((*end && strcmp(end,"-vn") && strcmp(end,"-love-vn")) || n > 65535) return false;
+    if ((*end && strcmp(end,"-vn") && strcmp(end,"-love-vn") && strcmp(end,"-love")) || n > 65535) return false;
     parts[3] = (unsigned)n;
     return true;
 }

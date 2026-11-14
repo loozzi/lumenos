@@ -1732,10 +1732,10 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
         section(fb,l.preview_title,"Xem trước hiệu ứng");
         settings_card(fb,l.preview,22,UI_GRAY_WHITE,0x70);
 #if DPREADER_BOARD_METALIO47
-        ui_text_box(fb,(EpdRect){60,l.preview.y+12,564,66},29,ui_text_system_percent()>200?"Đọc cùng dpReader":"Đọc sách mỗi ngày cùng dpReader",EPD_DRAW_ALIGN_LEFT,false);
+        ui_text_box(fb,(EpdRect){60,l.preview.y+12,564,66},29,ui_text_system_percent()>200?"Đọc cùng LumenOS":"Đọc sách mỗi ngày cùng LumenOS",EPD_DRAW_ALIGN_LEFT,false);
         ui_text_box(fb,(EpdRect){60,l.preview.y+90,564,52},25,"Aa 123",EPD_DRAW_ALIGN_LEFT,false);
 #else
-        settings_center_line(fb,60,l.preview.y+(settings_stacked()?68:51),29,"Đọc sách mỗi ngày cùng dpReader",EPD_DRAW_ALIGN_LEFT,false);
+        settings_center_line(fb,60,l.preview.y+(settings_stacked()?68:51),29,"Đọc sách mỗi ngày cùng LumenOS",EPD_DRAW_ALIGN_LEFT,false);
         settings_center_line(fb,60,l.preview.y+(settings_stacked()?151:107),25,"Aa 123",EPD_DRAW_ALIGN_LEFT,false);
 #endif
         ui_text_box(fb,(EpdRect){40,l.font_title,380,38},22,"Chọn phông chữ",EPD_DRAW_ALIGN_LEFT,false);
@@ -2098,7 +2098,7 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
         settings_card(fb, (EpdRect){36, 254, 612, 298}, 22, UI_GRAY_WHITE, 0x70);
 #if DPREADER_BOARD_METALIO47
         settings_line(fb, 60, 288, 29, "Chuẩn bị cổng nạp BOOT", EPD_DRAW_ALIGN_LEFT, false);
-        settings_line(fb, 60, 350, 22, "Dùng để nạp firmware dpReader hoặc khôi phục qua USB", EPD_DRAW_ALIGN_LEFT, false);
+        settings_line(fb, 60, 350, 22, "Dùng để nạp firmware LumenOS hoặc khôi phục qua USB", EPD_DRAW_ALIGN_LEFT, false);
         settings_button(fb, (EpdRect){60, 438, 564, 78}, s_boot_pending ? "Đang chuẩn bị" :
             app_download_active() ? "Mở lại cổng nạp ROM" : "Mở cổng nạp ROM", false);
         settings_line(fb, 48, 620, 22, s_boot_notice[0] ? s_boot_notice :

@@ -194,7 +194,7 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     // 1. Header & Version
     const esp_app_desc_t *app_desc = esp_app_get_description();
     fprintf(f, "========================================================\n");
-    fprintf(f, "dpReader System & Diagnostic Log\n");
+    fprintf(f, "LumenOS System & Diagnostic Log\n");
     fprintf(f, "Board: Metalio E-Ink4 Plus (ESP32-S31)\n");
     if (app_desc) {
         fprintf(f, "Firmware: %s\n", app_desc->version);

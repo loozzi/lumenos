@@ -113,3 +113,17 @@ trạng thái, chân Thẻ đọc sách và ảnh nền/khung PNG khóa. Chữ k
 định trên Thẻ đọc sách và không thêm nhãn lên ảnh khóa. Full và Love Book dùng
 cùng bố cục Thẻ đọc sách với bìa lớn. Đổi chữ ký làm mất hiệu lực cache ảnh khóa
 cũ; không cần thay lại tệp ảnh.
+
+
+### Tên và logo LumenOS
+
+Nhánh cá nhân dùng tên **LumenOS** và logo PNG trắng đen đã cung cấp. Khi tải
+cấu hình, các tên mặc định cũ dpReader/Pico/kiikoread/Metalio S31 chuyển thành
+LumenOS; tên do người dùng tự đặt vẫn được giữ. Điểm phát truyền sách mặc định
+hiện là **LumenOS**, QR dùng cùng tên này. Các mạng Wi-Fi và tài khoản đã lưu vẫn
+được giữ.
+
+Đường dẫn dữ liệu, backup `dpReader-settings.backup`, hostname tương thích và
+định danh KOSync không đổi. Trang Web Flash chưa phát hành gói LumenOS; các gói
+trực tuyến có sẵn vẫn là bản dpReader gốc. Khi có gói LumenOS đã xác minh, dùng
+cập nhật riêng ứng dụng trên máy có cùng bố cục phân vùng để giữ dữ liệu.

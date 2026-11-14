@@ -392,7 +392,7 @@ bool book_ticket_draw(uint8_t *fb, bool allow_cover_decode) {
     book_ticket_draw_background(fb, gray, cover_width, cover_height, false);
     book_ticket_draw_shadow(fb);
     book_ticket_draw_paper(fb);
-    ui_text(fb, 82, 98, 28, "dpReader  /  Thẻ đọc sách", EPD_DRAW_ALIGN_LEFT, false);
+    ui_text(fb, 82, 98, 28, "LumenOS  /  Thẻ đọc sách", EPD_DRAW_ALIGN_LEFT, false);
     ui_hairline(fb, 156, 82, 520, UI_GRAY_BLACK);
     int lines=ticket_heading(fb,202,112,50,title);
     const int author_top = lines > 1 ? 326 : 274;

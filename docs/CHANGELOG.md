@@ -1,4 +1,4 @@
-## dpReader 1.4.6-vn · Chưa phát hành
+## LumenOS 1.5.0 / 1.5.0-love · Build cục bộ · 2026-11-14
 
 - Làm mới bốn trang chính theo mẫu thẻ xám phẳng: ngày trên Trang chủ, lối tắt riêng, danh sách tệp thoáng và nhóm Cài đặt bo góc; thanh điều hướng nền trắng chỉ tô mục đang chọn.
 - Tăng độ đậm nền thẻ và mục chọn, giữ đúng màu ở tương phản giao diện100–140%. Chế độ Thường/Sóng nước giữ nền xám của Tệp tin, Cài đặt và WiFi; Fast giữ đường đen trắng.
@@ -10,7 +10,8 @@
 - Sửa dư ảnh khi chuyển tab hoặc vuốt trở về bằng refresh xám đầy đủ thanh dưới cùng; phản hồi nhấn lấy lại nền mới sau khi chuyển trang.
 
 
-## Chưa phát hành
+
+- Đổi thương hiệu hiển thị sang **LumenOS**, dùng logo PNG trắng đen do người dùng cung cấp; giữ định danh cập nhật, lưu trữ và dữ liệu cũ.
 
 - Chọn thêm AI, âm lượng hoặc cả hai để đánh thức từ Sleep; màn khóa sau reboot có thể Light Sleep, không đặt timer nếu không có thời hạn ngủ/tắt nguồn.
 - Yêu cầu hủy tải và dừng Wi-Fi/Bluetooth trước phản hồi khóa; tài nguyên chưa rảnh thì giữ trang hiện tại.

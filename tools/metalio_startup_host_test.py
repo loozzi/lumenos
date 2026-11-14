@@ -38,6 +38,9 @@ static inline int tinfl_decompress(tinfl_decompressor *s,const unsigned char *in
  (work/'assets.c').write_text(assets)
  unit=r'''
 #include "ui_font.h"
+#include "ttf_mono.h"
+ttf_mono_face_t *ttf_mono_open(ttf_mono_read_t read,void *ctx,uint32_t len){(void)read;(void)ctx;(void)len;return NULL;}
+bool ttf_gray_render_stroke(ttf_mono_face_t *f,uint32_t cp,float scale,int weight,int steps,ttf_mono_bitmap_t *b){(void)f;(void)cp;(void)scale;(void)weight;(void)steps;(void)b;return false;}
 #include "startup_logo.h"
 extern const uint8_t startup_logo_start[DPREADER_STARTUP_LOGO_WIDTH*DPREADER_STARTUP_LOGO_HEIGHT/2];
 #define startup_logo_end (startup_logo_start+sizeof(startup_logo_start))
@@ -70,11 +73,11 @@ int main(int argc,char **argv){
  assert(allocated<128*1024);unsigned middle=0;
  for(size_t i=0;i<sizeof(pixels);++i){if(pixels[i]!=0&&pixels[i]!=255)++middle;}
  assert(middle>50);FILE *file=fopen(argv[1],"wb");assert(file&&fwrite(pixels,1,sizeof(pixels),file)==sizeof(pixels));fclose(file);
- printf("PASS: supplied dpReader logo matches every packed asset pixel; centered bounds, original caption and warm cache reuse, PSRAM allocations=%zu bytes\n",allocated);
+ printf("PASS: supplied LumenOS logo matches every packed asset pixel; centered bounds, original caption and warm cache reuse, PSRAM allocations=%zu bytes\n",allocated);
 }
 '''
  (work/'test.c').write_text(unit)
- subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function',('-fsanitize=undefined' if sys.platform=='darwin' else '-fsanitize=address,undefined'),'-I'+str(work),'-I'+str(ROOT/'main/font'),'-I'+str(ROOT/'main/assets'),'-I'+str(ROOT/'tools/ui_gesture_stubs'),str(work/'test.c'),str(work/'assets.c'),str(ROOT/'main/font/ui_font.c'),str(ROOT/'main/font/ui_hanzi.c'),'-lz','-o',str(work/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function',('-fsanitize=undefined' if sys.platform=='darwin' else '-fsanitize=address,undefined'),'-I'+str(work),'-I'+str(ROOT/'main/font'),'-I'+str(ROOT/'main/assets'),'-I'+str(ROOT/'tools/ui_gesture_stubs'),str(work/'test.c'),str(work/'assets.c'),str(ROOT/'main/font/ui_font.c'),str(ROOT/'main/font/ui_hanzi.c'),'-lz','-lm','-o',str(work/'test')],check=True)
  subprocess.run([str(work/'test'),str(work/'preview.raw')],check=True)
  if args.output:
   raw=(work/'preview.raw').read_bytes();assert len(raw)==684*1216

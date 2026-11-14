@@ -5,7 +5,7 @@ import base64
 from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
-asset=ROOT/'web/assets/dpreader-logo-red-studio.png'
+asset=ROOT/'web/assets/lumen-logo.png'
 page=ROOT/'components/read_pico_transfer/upload.html'
 uri='data:image/png;base64,'+base64.b64encode(asset.read_bytes()).decode('ascii')
 html=page.read_text()

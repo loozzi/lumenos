@@ -72,9 +72,9 @@
 /* ---- Sao lưu và tên thiết bị ---- */
 /// Values kept byte-identical to the standalone test31-test36 firmware so existing backups
 /// and the default device name keep matching.
-/// Giữ định dạng từng byte của test31 đến test36 để dùng được bản sao lưu và tên mặc định cũ.
+/// LumenOS đổi tên hiển thị; giữ tiền tố backup và định danh dự án để đọc dữ liệu cũ.
 #define DPREADER_BOARD_BACKUP_PREFIX "dpReader-settings"
-#define DPREADER_BOARD_PRODUCT_NAME "dpReader"
+#define DPREADER_BOARD_PRODUCT_NAME "LumenOS"
 
 /* ---- Chính sách hiển thị ---- */
 /// One epd_clear_checked baseline instead of the Pico blind-repair cycles.

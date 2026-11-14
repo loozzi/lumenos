@@ -91,14 +91,13 @@ def icon(img, name, x, y, size=34, gray=0):
 def base(reader=False):
     img = Image.new('L', (W, H), 255)
     d = ImageDraw.Draw(img)
-    text(img, (30, 20), 'dpReader', 20)
+    text(img, (30, 20), 'LumenOS', 20)
     text(img, (342, 20), '09:41', 20, anchor='mt')
     icon(img, 'WIFI', 555, 32, 24)
     d.rounded_rectangle((591, 23, 627, 41), 4, outline=34, width=2)
     d.rectangle((595, 27, 619, 37), fill=34)
     text(img, (640, 20), '88', 18)
     if reader:
-        text(img, (342, 76), 'TRUYỆN KIỀU', 20, 85, 'mt')
         lines = ['Trăm năm trong cõi người ta,', 'Chữ tài chữ mệnh khéo là ghét nhau.',
                  'Trải qua một cuộc bể dâu,', 'Những điều trông thấy mà đau đớn lòng.',
                  'Lạ gì bỉ sắc tư phong,', 'Trời xanh quen thói má hồng đánh ghen.',
@@ -108,7 +107,7 @@ def base(reader=False):
                  'Một trai con thứ rốt lòng,', 'Vương Quan là chữ, nối dòng nho gia.',
                  'Đầu lòng hai ả tố nga,', 'Thúy Kiều là chị, em là Thúy Vân.']
         for i, line in enumerate(lines):
-            text(img, (40+(20 if i % 2 else 0), 140+i*59), line, 26, serif=True)
+            text(img, (40+(20 if i % 2 else 0), 86+i*59), line, 26, serif=True)
         text(img, (30, 1178), 'Chương 1 · Gặp gỡ Kim Trọng', 19, 68)
         text(img, (654, 1178), '42 / 168', 19, 68, 'rt')
         return img
@@ -191,7 +190,7 @@ def settings_page(detail=False):
     text(img, (34, 82), 'Cài đặt', 46)
     d.rounded_rectangle((30, 172, 654, 303), 24, fill=255, outline=221)
     d.ellipse((52, 196, 134, 278), fill=238)
-    text(img, (93, 213), 'D', 34, 68, 'mt')
+    text(img, (93, 213), 'L', 34, 68, 'mt')
     text(img, (156, 195), 'dephia31', 29)
     text(img, (156, 241), 'Hồ sơ của bạn', 21, 102)
     icon(img, 'CHEVRON_RIGHT', 623, 237, 24, 85)

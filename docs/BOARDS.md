@@ -451,3 +451,24 @@ comment đã dịch.
 cũ: giao diện hiện dùng tám menu lựa chọn. Test mới kiểm tra từng điểm chạm,
 khoảng trống, nút Quay lại và lựa chọn chỉnh lùi đầu dòng riêng; không bật lại
 hành vi giữ nút đã bỏ.
+
+
+### Thương hiệu LumenOS
+
+LumenOS dùng `main/assets/branding/lumen-logo-source.png`, bản sao nguyên byte của
+`Claude_AI_symbol.black.png` do người dùng cung cấp. Generator ghép biểu tượng
+và wordmark LumenOS bằng phông nhúng, ghi 4bpp vào flash; trang truyền tệp dùng PNG
+nhúng offline. Tên mặc định cũ được đổi ở lớp hiển thị, giữ tên cá nhân. Product
+name là LumenOS; project `dpReader`/`Kiikoread_Metalio_S31`, namespace NVS, backup,
+đường dẫn sách, KOSync ID và URL cập nhật vẫn giữ hợp đồng tương thích cũ.
+
+Sau khi sinh host view S31, chạy `bash tools/run_lumen_branding_tests.sh` để kiểm
+tra asset nguồn/PNG nhúng, pixel startup thực, migration tên và SSID/QR. Bộ này
+xuất `build/lumen-startup.png` làm preview từ renderer C thật, không phải ảnh
+chụp thiết bị. Web Flash vẫn ghi rõ các tải xuống hiện có là bản dpReader đã
+phát hành; việc đổi header không thay hoặc phát hành binary LumenOS.
+
+LumenOS từ phiên bản 1.5.0 dùng số phiên bản độc lập cho mỗi build được giao
+(tiếp theo 1.5.1); Love Book thêm `-love`. Build cục bộ bằng
+`tools/build_firmware.py --board metalio47 --edition all --local-build`,
+xuất hai gói vào `Test Build/<version>/`, không stage hoặc phát hành online.

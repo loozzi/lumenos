@@ -40,10 +40,10 @@ def shell(active,title=None):
 
 def home():
  img=shell(0)
- text(img,(36,103),'Thứ Sáu, 13 tháng 11',30)
+ text(img,(36,103),'Thứ Bảy, 14 tháng 11',30)
  text(img,(490,104),'28 phút',24,anchor='rt')
  d=ImageDraw.Draw(img);d.ellipse((510,88,570,148),outline=68,width=7)
- d.ellipse((588,88,648,148),fill=238);text(img,(618,99),'D',30,anchor='mt')
+ d.ellipse((588,88,648,148),fill=238);text(img,(618,99),'L',30,anchor='mt')
  card(img,(36,184,612,378))
  text(img,(60,204),'Đọc tiếp',26)
  cover(img,0,(60,278,176,240))
@@ -103,8 +103,8 @@ def files():
 
 def settings():
  img=shell(3,'Cài đặt');card(img,(36,180,612,106))
- card(img,(57,192,82,82),20,True);text(img,(98,207),'D',40,anchor='mt')
- text(img,(164,211),'dpReader',32);text(img,(588,218),'Sửa',20,85,anchor='rt');icon(img,'CHEVRON_RIGHT',625,233,26)
+ card(img,(57,192,82,82),20,True);text(img,(98,207),'L',40,anchor='mt')
+ text(img,(164,211),'LumenOS',32);text(img,(588,218),'Sửa',20,85,anchor='rt');icon(img,'CHEVRON_RIGHT',625,233,26)
  rows=[('WIFI','Kết nối','WiFi · Bluetooth · KOSync · OPDS'),('SUN','Hiển thị','Phông chữ · Làm mới · Nguồn & Ngủ'),
        ('SLIDERS_HORIZONTAL','Cá nhân hóa','Tủ sách · Màn hình khóa · Chữ ký'),('BLUETOOTH','Điều khiển','Phím cứng & Cử chỉ'),
        ('DOWNLOAD','Cập nhật & Khôi phục','Cập nhật · Sao lưu · Chẩn đoán')]
@@ -164,7 +164,7 @@ def font_page():
  card(img,(36,197,612,118),22);text(img,(60,220),'Cỡ chữ hệ thống',27);text(img,(589,228),'100%',27,anchor='rt')
  text(img,(60,274),'Chạm để chọn cỡ chữ',18,68)
  text(img,(40,344),'Xem trước hiệu ứng',22)
- card(img,(36,398,612,154),22);text(img,(60,420),'Đọc sách mỗi ngày cùng dpReader',29)
+ card(img,(36,398,612,154),22);text(img,(60,420),'Đọc sách mỗi ngày cùng LumenOS',29)
  text(img,(60,494),'Aa 123',25)
  text(img,(40,580),'Chọn phông chữ',22)
  for i,label in enumerate(['Phông mặc định (Tích hợp)','Bitter Regular','Phông trên thẻ nhớ']):

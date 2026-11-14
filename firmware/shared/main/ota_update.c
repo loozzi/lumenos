@@ -36,7 +36,7 @@
 const __attribute__((section(".rodata_desc"))) esp_app_desc_t esp_app_desc = {
     .magic_word = ESP_APP_DESC_MAGIC_WORD,
 #ifndef DPREADER_FIRMWARE_VERSION
-#define DPREADER_FIRMWARE_VERSION "1.4.6RC10-vn"
+#define DPREADER_FIRMWARE_VERSION "1.5.0"
 #endif
     .version = DPREADER_FIRMWARE_VERSION,
     .project_name = "Kiikoread_Metalio_S31",
@@ -131,9 +131,9 @@ esp_err_t pico_ota_inspect(const char *path, pico_ota_info_t *info) {
     fclose(file);
     if (err != ESP_OK) {
 #if DPREADER_BOARD_METALIO47
-        set_message(info->message, sizeof(info->message), "Gói cập nhật không phải firmware dpReader hợp lệ");
+        set_message(info->message, sizeof(info->message), "Gói cập nhật không phải firmware LumenOS hợp lệ");
 #else
-        set_message(info->message, sizeof(info->message), "Gói cập nhật không phải firmware dpReader hợp lệ");
+        set_message(info->message, sizeof(info->message), "Gói cập nhật không phải firmware LumenOS hợp lệ");
 #endif
         return err;
     }
@@ -153,7 +153,7 @@ esp_err_t pico_ota_inspect(const char *path, pico_ota_info_t *info) {
 #if DPREADER_BOARD_METALIO47
         set_message(info->message, sizeof(info->message), "Gói cập nhật không thuộc dòng máy Metalio 4.7");
 #else
-        set_message(info->message, sizeof(info->message), "Gói cập nhật không thuộc firmware dpReader hiện tại");
+        set_message(info->message, sizeof(info->message), "Gói cập nhật không thuộc firmware LumenOS hiện tại");
 #endif
         return ESP_ERR_INVALID_RESPONSE;
     }
