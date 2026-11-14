@@ -44,6 +44,9 @@ static inline tinfl_status tinfl_decompress(tinfl_decompressor *s,const unsigned
  (work/'assets.c').write_text(assets)
  unit='''#include "ui_hanzi.h"
 #include "ui_font.h"
+#include "ttf_mono.h"
+ttf_mono_face_t *ttf_mono_open(ttf_mono_read_t read,void *ctx,uint32_t len){(void)read;(void)ctx;(void)len;return NULL;}
+bool ttf_gray_render_stroke(ttf_mono_face_t *f,uint32_t cp,float scale,int weight,int steps,ttf_mono_bitmap_t *b){(void)f;(void)cp;(void)scale;(void)weight;(void)steps;(void)b;return false;}
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,6 +77,6 @@ int main(void){
 }
 '''.replace('TEST_CP',str(chars[0])).replace('CPS',','.join(map(str,chars)))
  (work/'test.c').write_text(unit)
- subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(work),'-I'+str(ROOT/'main/font'),'-I'+str(ROOT/'tools/ui_gesture_stubs'),str(work/'test.c'),str(work/'assets.c'),str(ROOT/'main/font/ui_font.c'),str(ROOT/'main/font/ui_hanzi.c'),'-lz','-o',str(work/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(work),'-I'+str(ROOT/'main/font'),'-I'+str(ROOT/'tools/ui_gesture_stubs'),str(work/'test.c'),str(work/'assets.c'),str(ROOT/'main/font/ui_font.c'),str(ROOT/'main/font/ui_hanzi.c'),'-lz','-lm','-o',str(work/'test')],check=True)
  subprocess.run([str(work/'test')],check=True)
 print(f'Compressed blocks: PASS ({count} glyphs, {len(asset)} bytes; bounded decoding)')

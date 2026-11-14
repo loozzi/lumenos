@@ -10,6 +10,15 @@
 - Sửa dư ảnh khi chuyển tab hoặc vuốt trở về bằng refresh xám đầy đủ thanh dưới cùng; phản hồi nhấn lấy lại nền mới sau khi chuyển trang.
 
 
+## Chưa phát hành
+
+- Chọn thêm AI, âm lượng hoặc cả hai để đánh thức từ Sleep; màn khóa sau reboot có thể Light Sleep, không đặt timer nếu không có thời hạn ngủ/tắt nguồn.
+- Yêu cầu hủy tải và dừng Wi-Fi/Bluetooth trước phản hồi khóa; tài nguyên chưa rảnh thì giữ trang hiện tại.
+- Thẻ đọc sách Full dùng bố cục bìa lớn như Love Book, thêm chữ ký đã cấu hình cho thẻ và ảnh khóa; thu gọn thanh Acrylic cũ.
+- Bổ sung chữ Hán thông dụng khi phông chính thiếu; Tương phản chữ tăng nhẹ nét ở chế độ đen trắng.
+- Từ trang đọc về Home làm mới toàn màn hình để dọn bóng chữ; tránh quét/làm mới Home trùng khi thẻ đã được xử lý.
+- Sửa giới hạn bộ đệm xem trước log và ghi mốc heap khi xuất log/mở Truyền file.
+
 ## dpReader 1.4.5-vn / 1.4.5-love-vn · 2026-11-12
 
 - Thêm **Flash** trong Hiệu ứng lật trang. Flash quét đồng thời toàn màn hình, hỗ trợ ảnh và Đảo Màu.

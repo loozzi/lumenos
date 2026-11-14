@@ -109,6 +109,7 @@ static int du_areas, gl_areas;
 static bool main_fast, main_water;
 bool app_settings_simple_ui(void){return false;}
 bool app_settings_simple_full_ui(void){return false;}
+bool app_settings_main_fast_refresh(void){return main_fast;}
 int app_settings_main_refresh_mode(void) {return main_water?APP_MAIN_REFRESH_WATER:main_fast?APP_MAIN_REFRESH_FAST:APP_MAIN_REFRESH_NORMAL;}
 static int shelf_exit_arms;
 static int nav_arms, nav_draws, nav_full_arms, nav_area_draws;
@@ -278,6 +279,7 @@ EpdRect ui_nav_status_area(void) {return (EpdRect){0,12,684,56};}
 read_pico_pmu_key_action_t read_pico_pmu_take_key_action(void) {return step==power_trigger_step?READ_PICO_PMU_KEY_LONG:READ_PICO_PMU_KEY_SHORT;}
 void enter_lock_and_sleep(EpdiyHighlevelState*h,int64_t*t,void*a,void*tp,bool automatic) {(void)tp;(void)h;(void)t;(void)a;last_lock_automatic=automatic;assert(!nav_armed);if(check_clean_action)assert(frame[0]==0x11&&panel_marker==0x11);++idle_locks;lock_due=false;time_offset+=1000000;}
 void app_lock_set_resume_ready(bool ready) {(void)ready;}
+bool app_lock_prepare_resources(void){return true;}
 void app_lock_feedback(EpdiyHighlevelState*h) {(void)h;++lock_feedback_calls;if(feedback_enabled){assert(!before_locks&&!idle_locks);++lock_badges;}}
 void app_lock_wait_key_idle(int ms) {(void)ms;}
 esp_err_t app_enter_host_sleep(app_sleep_mode_t mode) {assert(mode==APP_SLEEP_OFF);++shutdowns;longjmp(done,1);}
@@ -937,19 +939,24 @@ int main(void) {
     }
     for(int held=0;held<2;++held){
         reset();ai_step=1;ai_event=METALIO_AI_LONG;ai_second_step=3;ai_second_event=held?METALIO_AI_LONG:METALIO_AI_SHORT;
-        for(int i=0;i<5;++i)add(0,0,0,0);run();
+        for(int i=0;i<5;++i){add(0,0,0,0);}
+        run();
         assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2);
     }
     reset();time_step=3000000;power_trigger_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();int power_only_updates=gl_areas;
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();int power_only_updates=gl_areas;
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=3000000;power_trigger_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==power_only_updates+1&&power_open_draws==1);
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=3000000;power_tap_step=3;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2&&idle_locks==1&&!power_open_draws);
     reset();ai_step=1;ai_event=METALIO_AI_LONG;time_step=30000000;idle_minutes=1;
-    for(int i=0;i<5;++i)add(0,0,0,0);run();
+    for(int i=0;i<5;++i){add(0,0,0,0);}
+    run();
     assert(ai_open_calls==1&&ai_restore_calls==1&&gl_areas==1&&fulls==2&&idle_locks==1);
     puts("PASS: actual AI scheduler one open/close scan,underlay frozen,selection executes once without saving,OOM fallback,short full/light actions and upload/update/PMU/online guards");
     puts("PASS: actual S31 volume events cycle all four roots, retain page-owned reader/child keys and reject online/power/menu input");

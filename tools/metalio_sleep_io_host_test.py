@@ -4,6 +4,8 @@ import subprocess, tempfile
 from home_cover_cache_host_test import function
 root=Path(__file__).resolve().parents[1]
 unit=r'''
+#define _POSIX_C_SOURCE 200809L
+static unsigned s_font_family_generation;
 #define _DARWIN_C_SOURCE 1
 #include <assert.h>
 #include <stdbool.h>

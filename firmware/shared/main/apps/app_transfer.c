@@ -47,6 +47,7 @@
 #endif
 #include "e0470_epaper_waveform.h"
 #include "esp_heap_caps.h"
+#include "log_export.h"
 #include "esp_log.h"
 #include "read_pico_transfer.h"
 #include "read_pico_sd.h"
@@ -902,6 +903,7 @@ static void render(app_ctx_t *ctx,uint8_t *fb) {
 
 
 static void on_enter(app_ctx_t* ctx) {
+    log_export_heap_checkpoint("transfer.enter");
     (void)ctx;
     display_set_bulk_io(true);
     s_media_lost = false;
@@ -1094,6 +1096,7 @@ static void transfer_on_exit(app_ctx_t* ctx) {
     s_direct_entry = false;
     display_set_bulk_io(false);
     if (s_any_changed) book_store_notify_changed();
+    log_export_heap_checkpoint("transfer.leave");
     ESP_LOGI(TAG, "leave heap before=%u after=%u internal_before=%u internal_after=%u",
              (unsigned)s_heap_before, (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
              (unsigned)s_internal_before, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));

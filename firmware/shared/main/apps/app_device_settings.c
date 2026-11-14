@@ -1351,7 +1351,7 @@ static void settings_log_preview(uint8_t *fb,const char *text) {
         line[used]=0;
         while(*cursor=='\n'||*cursor=='\r')++cursor;
         if(row==rows-1&&*cursor) {
-            while(used&&ui_text_fixed_width_px(physical,line)>540) {
+            while(used&&(used+sizeof("…")>sizeof(line)||ui_text_fixed_width_px(physical,line)>540)) {
                 do{--used;}while(used&&((unsigned char)line[used]&0xc0)==0x80);
                 line[used]=0;
             }
@@ -1573,7 +1573,7 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
                 desc = "Hiển thị trên thẻ hồ sơ trong phần Cài đặt";
                 break;
             case EDITOR_SIGNATURE:
-                title = "Chữ ký thanh trạng thái";
+                title = "Chữ ký trạng thái & màn khóa";
                 desc = "Hiển thị ở giữa thanh trạng thái, để trống sẽ ẩn";
                 break;
             case EDITOR_KOSYNC_URL:
@@ -2063,8 +2063,10 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
             settings_card(fb,(EpdRect){36,690,612,72},18,UI_GRAY_WHITE,0x70);
             ui_text_box(fb,(EpdRect){54,698,576,56},27,duration,EPD_DRAW_ALIGN_CENTER,false);
         }
-        settings_line(fb,54,822,20,"Thời gian tự khóa được đặt riêng ở mục Khóa màn hình",EPD_DRAW_ALIGN_LEFT,false);
-        settings_line(fb,54,874,20,"Chỉ đặt lại Chỉ Sleep khi cài phiên bản mới",EPD_DRAW_ALIGN_LEFT,false);
+        settings_card(fb,(EpdRect){36,804,612,118},18,UI_GRAY_WHITE,0x70);
+        ui_text_box(fb,(EpdRect){54,812,576,44},24,"Nút đánh thức từ Sleep",EPD_DRAW_ALIGN_LEFT,false);
+        static const char *const keys[]={"Chỉ nút nguồn","Nguồn + AI","Nguồn + Âm lượng","Nguồn + AI + Âm lượng"};
+        ui_text_box(fb,(EpdRect){54,864,576,44},22,keys[app_settings_wake_buttons()],EPD_DRAW_ALIGN_LEFT,false);
         settings_line(fb,54,926,18,"USB hoặc tác vụ đang bận sẽ tạm hoãn Sleep",EPD_DRAW_ALIGN_LEFT,false);
         settings_navigation(fb);
         return;
@@ -2497,12 +2499,12 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
                   display_icons,display_labels,display_values,SETTINGS_DISPLAY_ROWS);
     snprintf(signature,sizeof(signature),"%s",app_settings_status_signature()[0]?app_settings_status_signature():"Chưa đặt");
 #if DPREADER_LOVE_BOOK
-    const char *personal_labels[]={"Kiểu màn hình chờ","Chữ ký thanh trạng thái"};
+    const char *personal_labels[]={"Kiểu màn hình chờ","Chữ ký trạng thái & màn khóa"};
     const char *personal_values[]={app_settings_lock_style()==3?"Khung PNG trong suốt":app_settings_lock_style()==1?"Hình nền":"Thẻ đọc sách",
         signature};
     const int personal_icons[]={5,10};
 #else
-    const char *personal_labels[]={"Kiểu hiển thị Tủ sách","Kiểu màn hình khóa","Mật khẩu màn hình khóa","Chữ ký thanh trạng thái","Giao diện"};
+    const char *personal_labels[]={"Kiểu hiển thị Tủ sách","Kiểu màn hình khóa","Mật khẩu màn hình khóa","Chữ ký trạng thái & màn khóa","Giao diện"};
     const char *personal_values[]={app_settings_shelf_style()==5?"Danh sách":app_settings_shelf_style()==1?"Thanh kệ tối màu":"Lưới tối giản",
         app_settings_lock_style()==3?"Khung PNG trong suốt":app_settings_lock_style()==2?"Ghép bìa Tủ sách":app_settings_lock_style()==1?"Hình nền":"Thẻ đọc sách",
         lock_pin_enabled()?"Đã bật":"Đã tắt",signature,app_settings_simple_ui()?"I Love Book":"Đầy đủ"};
@@ -2567,13 +2569,14 @@ static bool settings_gray_preview(void) {
     return s_page==SETTINGS_WALLPAPER_PREVIEW||s_page==SETTINGS_SHELF_STYLE;
 }
 #endif
-enum {SET_PICK_SIZE,SET_PICK_WAKE,SET_PICK_GRACE,SET_PICK_HOURS,SET_PICK_YEAR,SET_PICK_MONTH,SET_PICK_DAY,SET_PICK_HOUR,SET_PICK_MINUTE,SET_PICK_BRIGHTNESS,SET_PICK_WARMTH,SET_PICK_LIGHT_ON_HOUR,SET_PICK_LIGHT_ON_MINUTE,SET_PICK_LIGHT_OFF_HOUR,SET_PICK_LIGHT_OFF_MINUTE,SET_PICK_LIGHT_LEVEL,SET_PICK_UI_MODE};
+enum {SET_PICK_SIZE,SET_PICK_WAKE,SET_PICK_GRACE,SET_PICK_HOURS,SET_PICK_YEAR,SET_PICK_MONTH,SET_PICK_DAY,SET_PICK_HOUR,SET_PICK_MINUTE,SET_PICK_BRIGHTNESS,SET_PICK_WARMTH,SET_PICK_LIGHT_ON_HOUR,SET_PICK_LIGHT_ON_MINUTE,SET_PICK_LIGHT_OFF_HOUR,SET_PICK_LIGHT_OFF_MINUTE,SET_PICK_LIGHT_LEVEL,SET_PICK_UI_MODE,SET_PICK_WAKE_BUTTONS};
 static ui_choice_t s_setting_choice;
 static const uint8_t s_ui_sizes[]={100,110,120,130,140,144,150,160,170,180,190,200,202};
 static void settings_choice_label(int kind,int index,char *out,size_t size) {
     if(kind==SET_PICK_UI_MODE){static const char *const modes[]={"Đầy đủ","I Love Book"};snprintf(out,size,"%s",modes[index]);}
     else if(kind==SET_PICK_SIZE)snprintf(out,size,"%u%%",s_ui_sizes[index]);
     else if(kind==SET_PICK_WAKE)snprintf(out,size,"%d lần nhấn",index+1);
+    else if(kind==SET_PICK_WAKE_BUTTONS){static const char *const keys[]={"Chỉ nút nguồn","Nguồn + AI","Nguồn + Âm lượng","Nguồn + AI + Âm lượng"};snprintf(out,size,"%s",keys[index]);}
     else if(kind==SET_PICK_HOURS)snprintf(out,size,"%d giờ",index+1);
     else if(kind>=SET_PICK_YEAR&&kind<=SET_PICK_MINUTE)snprintf(out,size,"%d",index+(kind==SET_PICK_YEAR?2024:kind==SET_PICK_MONTH||kind==SET_PICK_DAY?1:0));
 #if DPREADER_BOARD_METALIO47
@@ -2594,6 +2597,7 @@ static void settings_choice_open(int kind) {
 #if !DPREADER_LOVE_BOOK
     else if(kind==SET_PICK_GRACE){count=5;current=app_settings_pin_grace_code();title="Thời gian miễn nhập PIN";}
 #endif
+    else if(kind==SET_PICK_WAKE_BUTTONS){count=4;current=app_settings_wake_buttons();title="Nút đánh thức từ Sleep";}
     else if(kind==SET_PICK_HOURS){count=24;current=app_settings_sleep_off_hours()-1;title="Số giờ Sleep trước khi tắt";}
 #endif
     if(kind>=SET_PICK_YEAR&&kind<=SET_PICK_MINUTE){
@@ -2639,6 +2643,7 @@ static app_redraw_t settings_choice_gesture(app_ctx_t *ctx,const ui_gesture_even
 #if !DPREADER_LOVE_BOOK
     else if(s_setting_choice.kind==SET_PICK_GRACE){app_settings_set_pin_grace_code(index);ok=app_settings_pin_grace_code()==index;}
 #endif
+    else if(s_setting_choice.kind==SET_PICK_WAKE_BUTTONS)ok=app_settings_set_wake_buttons(index)==ESP_OK;
     else if(s_setting_choice.kind==SET_PICK_HOURS)ok=app_settings_set_sleep_off_hours(index+1)==ESP_OK;
 #endif
     if(s_setting_choice.kind>=SET_PICK_YEAR&&s_setting_choice.kind<=SET_PICK_MINUTE){
@@ -3740,6 +3745,7 @@ static app_redraw_t on_gesture(app_ctx_t *ctx, const ui_gesture_event_t *ev) {
     }
 #if DPREADER_BOARD_METALIO47
     if (s_page == SETTINGS_POWER_SLEEP) {
+        if(ui_rect_hit((EpdRect){36,804,612,118},ev->x0,ev->y0)){settings_choice_open(SET_PICK_WAKE_BUTTONS);return APP_REDRAW_PAGE;}
         for(int i=0;i<2;++i) {
             if(ui_rect_hit((EpdRect){36,300+i*154,612,132},ev->x0,ev->y0)) {
                 uint8_t hours=i?(app_settings_sleep_off_hours()?app_settings_sleep_off_hours():1):0;

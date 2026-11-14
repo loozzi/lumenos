@@ -25,11 +25,11 @@ enum {UI_GRAY_BLACK=0,UI_GRAY_WHITE=255,UI_GRAY_LIGHT=192,EPD_DRAW_ALIGN_LEFT,EP
 static bool oom;static unsigned allocations,reads,list_reads,grid_reads,source_case;
 static unsigned system_scale=100,advance_factor=1;
 static void *heap_caps_malloc(size_t n,int caps){assert(n==176*240&&caps==3);if(oom)return NULL;void *p=malloc(n);if(p)++allocations;return p;}
-static bool book_cover_load_gray(const char*p,const char*t,const char*a,uint8_t*out,bool decode,bool*pending){
+static bool book_cover_load_gray(const char*p,const char*t,const char*a,uint8_t out[BOOK_COVER_W * BOOK_COVER_H],bool decode,bool*pending){
  (void)p;(void)t;assert(!decode&&!pending);++reads;++grid_reads;
  if(source_case==2&&!strcmp(a,"")){memset(out,77,176*240);return true;}return false;
 }
-static bool book_cover_load_list_gray(const char*p,const char*t,const char*a,uint8_t*out,bool decode,bool*pending,unsigned*w,unsigned*h){
+static bool book_cover_load_list_gray(const char*p,const char*t,const char*a,uint8_t out[BOOK_COVER_W * BOOK_COVER_H],bool decode,bool*pending,unsigned*w,unsigned*h){
  (void)p;(void)t;assert(!decode&&!pending);++reads;++list_reads;
  if((source_case==1&&!strcmp(a,""))||source_case==3){*w=source_case==3?1:166;*h=240;for(unsigned y=0;y<*h;++y)for(unsigned x=0;x<*w;++x)out[y**w+x]=(x*13+y*7)&255;return true;}return false;
 }

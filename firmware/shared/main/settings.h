@@ -77,6 +77,9 @@ bool app_settings_staged_shutdown(void);
 void app_settings_set_staged_shutdown(bool staged);
 /// 电源键开机次数：1 单击开机，2 双击开机；默认 1，已保存的选择继续保留。
 /// Power-key boot presses: 1 boots on a single press, 2 needs a double click; defaults to 1 and retains an explicit saved choice.
+enum { APP_WAKE_BUTTON_AI=1, APP_WAKE_BUTTON_VOLUME=2 };
+uint8_t app_settings_wake_buttons(void);
+esp_err_t app_settings_set_wake_buttons(uint8_t buttons);
 uint8_t app_settings_wake_presses(void);
 void app_settings_set_wake_presses(uint8_t presses);
 #if DPREADER_BOARD_METALIO47

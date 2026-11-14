@@ -6,6 +6,17 @@ root=Path(__file__).resolve().parents[1]
 unit=r'''
 #define METALIO_CPU_GUARD_OR_RETURN(...) ((void)0)
 static _Bool s_lock_power_wake_pending;
+#define METALIO_AI_KEY_GPIO 61
+#define GPIO_INTR_LOW_LEVEL 4
+#define APP_WAKE_BUTTON_VOLUME 2
+#define APP_WAKE_BUTTON_AI 1
+static int wake_buttons,ai_level=1,gpio_wake;
+static int app_settings_wake_buttons(void){return wake_buttons;}
+static int gpio_get_level(int p){(void)p;return ai_level;}
+static int gpio_wakeup_disable(int p){(void)p;gpio_wake=0;return 0;}
+static int gpio_wakeup_enable(int p,int level){(void)p;(void)level;gpio_wake=1;return 0;}
+static int esp_sleep_enable_gpio_wakeup(void){return 0;}
+
 static void read_pico_pmu_latch_power_wakeup(void){}
 
 #include <assert.h>
@@ -102,14 +113,18 @@ for name in ('metalio_io_read','metalio_prepare_key_wake','metalio_restore_key_i
 for name in ('lock_restore_key_wake','lock_prepare_key_wake','lock_power_off','app_enter_host_sleep','lock_wait_for_unlock'):
     unit+=function(name,root/'main/sleep.c')+'\n'
 unit+=r'''
-static void reset(void){io_calls=io_fail_at=io_taken=delay_ms=irq_low=key_low=font_closed=sd_closed=sd_error=restored=hold_calls=lcd_deinit=wake_source=sleep_calls=0;paused=usb=transfer_busy=ble_failed=deep_success=false;config[0]=0xc0;config[1]=0xe3;latches[0]=outputs[0];latches[1]=outputs[1];waits=wait_timeouts=0;s_lock_sleep_touch=NULL;s_lock_io_pending=deep_pins=deep_rails=deep_touch=late_usb=false;hardware_error=0;}
+static void reset(void){wake_buttons=gpio_wake=0;ai_level=1;io_calls=io_fail_at=io_taken=delay_ms=irq_low=key_low=font_closed=sd_closed=sd_error=restored=hold_calls=lcd_deinit=wake_source=sleep_calls=0;paused=usb=transfer_busy=ble_failed=deep_success=false;config[0]=0xc0;config[1]=0xe3;latches[0]=outputs[0];latches[1]=outputs[1];waits=wait_timeouts=0;s_lock_sleep_touch=NULL;s_lock_io_pending=deep_pins=deep_rails=deep_touch=late_usb=false;hardware_error=0;}
 static void intact(void){assert(!font_closed&&!sd_closed&&!hold_calls&&!lcd_deinit&&!sleep_calls&&!paused&&!deep_pins&&!deep_rails&&!deep_touch&&!s_lock_io_pending);assert(config[0]==0xc0&&config[1]==0xe3&&latches[0]==0x20&&latches[1]==0x14);}
 int main(void){
  reset();assert(app_enter_host_sleep(99)==ESP_ERR_INVALID_ARG);intact();
  reset();online=true;assert(app_enter_host_sleep(APP_SLEEP_DEEP)==ESP_ERR_NOT_FINISHED);intact();online=false;
  reset();assert(app_enter_host_sleep(APP_SLEEP_OFF)==ESP_ERR_TIMEOUT);assert(off_calls==1&&resumes==1&&delay_ms==1000);intact();
- reset();assert(lock_prepare_key_wake());assert(paused&&wake_source&&config[0]==0&&config[1]==0x83&&latches[0]==0x20&&latches[1]==0x97);
+ reset();assert(lock_prepare_key_wake(false));assert(paused&&wake_source&&config[0]==0&&config[1]==0x83&&latches[0]==0x20&&latches[1]==0x97);
  lock_restore_key_wake();intact();
+ reset();assert(lock_prepare_key_wake(true)&&config[1]==0x83&&!gpio_wake);lock_restore_key_wake();intact();
+ reset();wake_buttons=APP_WAKE_BUTTON_VOLUME;assert(lock_prepare_key_wake(true)&&config[1]==0x83&&!gpio_wake);lock_restore_key_wake();intact();
+ reset();wake_buttons=APP_WAKE_BUTTON_AI;assert(lock_prepare_key_wake(true)&&config[1]==0x83&&gpio_wake);lock_restore_key_wake();assert(!gpio_wake);intact();
+ reset();wake_buttons=APP_WAKE_BUTTON_AI;ai_level=0;assert(!lock_prepare_key_wake(true)&&!gpio_wake);intact();
  // Every failed transfer in the reference mask restores normal directions before TF/font closure.
  // 掩码仍是7笔写，等待循环用一次自增读取代替两次单端口读取，故失败注入共8笔。
  // The mask still writes7 registers; the wait loop now reads both ports in one auto-increment

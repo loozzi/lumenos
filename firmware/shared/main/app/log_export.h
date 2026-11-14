@@ -23,6 +23,8 @@ extern "C" {
  * Safe to call multiple times (idempotent).
  */
 void log_export_init(void);
+/// Record free, minimum and largest internal/PSRAM blocks at resource boundaries.
+void log_export_heap_checkpoint(const char *phase);
 
 /**
  * Export complete system diagnostic report and logs to /sdcard/dpreader_log.txt.

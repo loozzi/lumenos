@@ -103,16 +103,16 @@ int main(void){
  assert(s_lock_key_serial==1&&read_pico_pmu_take_key_wakeup_single());
  sample(false,80);sample(false,110);assert(!read_pico_pmu_take_key_wakeup_single()&&s_lock_key_serial==1);
  read_pico_pmu_latch_power_wakeup();assert(s_lock_key_serial==2&&read_pico_pmu_take_key_wakeup_single());
- // Volume and AI events also wake in single-press mode.
- reset();queued_volume=1;assert(read_pico_pmu_take_key_wakeup_single()&&!read_pico_pmu_take_key_wakeup_single());
- reset();queued_ai=METALIO_AI_SHORT;assert(read_pico_pmu_take_key_wakeup_single()&&!read_pico_pmu_take_key_wakeup_single());
- // Valid physical P17/P11/P10 lows (including release within 30ms) qualify; other inputs and either I2C fault do not.
+ // Optional keys are owned by the lock policy, never by the power-only consumer.
+ reset();queued_volume=1;assert(!read_pico_pmu_take_key_wakeup_single()&&metalio_take_volume()==1);
+ reset();queued_ai=METALIO_AI_SHORT;assert(!read_pico_pmu_take_key_wakeup_single()&&metalio_take_ai()==METALIO_AI_SHORT);
+ // Only two low P17 samples confirm power; volume, early release and IO faults do not.
  for(unsigned k=0;k<3;k++){
   reset();inputs=(uint16_t)~(k==0?(1u<<15):k==1?(1u<<9):(1u<<8));
-  assert(metalio_confirm_power_key()&&input_reads==2&&clock_us==30000);
+  assert(metalio_confirm_power_key()==(k==0));
  }
  reset();inputs=0x7fff;release_read=2;
- assert(metalio_confirm_power_key()&&input_reads==2&&clock_us==30000);
+ assert(!metalio_confirm_power_key()&&input_reads==2&&clock_us==30000);
  for(unsigned i=0;i<3;i++){
   reset();inputs=0x7fff;
   if(i<2)fail_read=i+1;else inputs=0xfffe;

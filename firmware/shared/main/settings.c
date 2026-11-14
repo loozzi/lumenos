@@ -205,6 +205,7 @@ static bool s_staged_shutdown = true;
 static bool s_staged_shutdown;
 #endif
 static uint8_t s_wake_presses = 1;
+static uint8_t s_wake_buttons;
 #if DPREADER_BOARD_METALIO47 && !DPREADER_LOVE_BOOK
 static uint8_t s_pin_grace_code_v;
 static uint32_t s_pin_locked_at;
@@ -583,6 +584,8 @@ void app_settings_init(void) {
     raw = 1;
     if (nvs_get_u8(h, NVS_KEY_WAKE_PRESSES, &raw) != ESP_OK || (raw != 1 && raw != 2)) raw = 1;
     s_wake_presses = raw;
+    raw=0;
+    s_wake_buttons=nvs_get_u8(h,"wake_buttons",&raw)==ESP_OK && raw<=3?raw:0;
 #if DPREADER_BOARD_METALIO47 && !DPREADER_LOVE_BOOK
     s_pin_grace_code_v=0;raw=0;
     if(nvs_get_u8(h,NVS_KEY_PIN_GRACE,&raw)==ESP_OK && raw<=4)s_pin_grace_code_v=raw;
@@ -895,6 +898,18 @@ void app_settings_set_staged_shutdown(bool staged) {
     s_staged_shutdown = staged;
     nvs_put_u8(NVS_KEY_SHUTDOWN_MODE, staged ? 1 : 0);
 #endif
+}
+uint8_t app_settings_wake_buttons(void) { return s_wake_buttons; }
+esp_err_t app_settings_set_wake_buttons(uint8_t buttons) {
+    if(buttons>3)return ESP_ERR_INVALID_ARG;
+    nvs_handle_t h;
+    esp_err_t err=backup_nvs_open(NVS_NS,NVS_READWRITE,&h);
+    if(err!=ESP_OK)return err;
+    err=backup_nvs_set_u8(h,"wake_buttons",buttons);
+    if(err==ESP_OK)err=settings_backup_commit(h);
+    nvs_close(h);
+    if(err==ESP_OK)s_wake_buttons=buttons;
+    return err;
 }
 uint8_t app_settings_wake_presses(void) { return s_wake_presses; }
 void app_settings_set_wake_presses(uint8_t presses) {
@@ -2134,7 +2149,7 @@ static uint32_t preferences_u32(const uint8_t bytes[4]) {
 
 static bool preferences_valid(const settings_backup_preferences_t *p) {
     if (preferences_u32(p->checksum) != preferences_checksum(p) ||
-        p->sleep_off_hours > APP_SLEEP_OFF_HOURS_MAX || p->wake_presses < 1 || p->wake_presses > 2 ||
+        p->sleep_off_hours > APP_SLEEP_OFF_HOURS_MAX || (p->wake_presses & 3) < 1 || (p->wake_presses & 3) > 2 || p->wake_presses > 14 ||
         p->status_hidden > 1 || p->pin_grace > 4 || p->power_menu > 1 ||
         (p->ota_edition > 1 && p->ota_edition != 255) ||
         (p->wifi_timeout != 0 && p->wifi_timeout != 1 && p->wifi_timeout != 3 &&
@@ -2165,7 +2180,7 @@ static bool preferences_valid(const settings_backup_preferences_t *p) {
 
 static esp_err_t preferences_capture(settings_backup_preferences_t *p) {
     p->sleep_off_hours = s_sleep_off_hours;
-    p->wake_presses = s_wake_presses;
+    p->wake_presses = s_wake_presses | (s_wake_buttons << 2);
     p->wifi_timeout = s_wifi_timeout_minutes;
     p->ble_timeout = s_ble_timeout_minutes;
     p->ota_edition = s_ota_edition;
@@ -2206,7 +2221,8 @@ static esp_err_t preferences_stage(nvs_handle_t h, const settings_backup_prefere
 #if DPREADER_BOARD_METALIO47
     if (err == ESP_OK) err = backup_nvs_set_str(h, "sleep_fw", esp_app_get_description()->version);
 #endif
-    STAGE(NVS_KEY_WAKE_PRESSES, p->wake_presses);
+    STAGE(NVS_KEY_WAKE_PRESSES, p->wake_presses & 3);
+    STAGE("wake_buttons", p->wake_presses >> 2);
     STAGE(NVS_KEY_WIFI_TIMEOUT, p->wifi_timeout);
     STAGE(NVS_KEY_BLE_TIMEOUT, p->ble_timeout);
     STAGE("ota_edition", p->ota_edition);
@@ -2228,7 +2244,8 @@ static esp_err_t preferences_stage(nvs_handle_t h, const settings_backup_prefere
 
 static esp_err_t preferences_apply(const settings_backup_preferences_t *p) {
     s_sleep_off_hours = p->sleep_off_hours;
-    s_wake_presses = p->wake_presses;
+    s_wake_presses = p->wake_presses & 3;
+    s_wake_buttons = p->wake_presses >> 2;
     s_wifi_timeout_minutes = p->wifi_timeout;
     s_ble_timeout_minutes = p->ble_timeout;
     s_ota_edition = p->ota_edition;

@@ -24,3 +24,6 @@ void book_ticket_draw_paper(uint8_t *fb);
 
 /// 复用锁屏纸张阴影。/ Reuse the lock-screen paper shadow.
 void book_ticket_draw_shadow(uint8_t *fb);
+
+/// Paint the configured signature on image locks; empty signatures preserve the image.
+void book_lock_signature_draw(uint8_t *fb);

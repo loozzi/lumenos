@@ -88,3 +88,28 @@ Tệp `/sdcard/dpReader-settings.backup` chứa cấu hình Wi-Fi đã lưu, tà
 Dùng Sao lưu cấu hình và Khôi phục cấu hình trong Cập nhật & Khôi phục. Gói mới vẫn đọc các bản sao lưu cũ. Bản cũ chưa có tài khoản hoặc công tắc footer sẽ giữ các giá trị hiện tại của những mục đó. Tệp sao lưu có chứa thông tin đăng nhập Wi-Fi và OPDS cùng khóa KoSync ở dạng không mã hóa.
 
 Từ firmware 1.3.3, lần bấm Kiểm tra cập nhật OTA đầu tiên cho chọn Full hoặc Love Book. Máy lưu nhánh đã chọn và tự kiểm tra nhánh đó ở những lần sau. Nếu chọn khác firmware đang cài, hộp xác nhận nêu rõ việc chuyển nhánh trước khi tải và cài.
+
+
+### Nút đánh thức và khóa an toàn trên S31
+
+Trong **Hiển thị → Chế độ tắt nguồn / ngủ → Nút đánh thức từ Sleep**, chọn
+chỉ Nguồn, Nguồn + AI, Nguồn + Âm lượng hoặc cả ba. Mặc định chỉ Nguồn;
+thiết lập số lần nhấn Nguồn vẫn áp dụng riêng. AI/âm lượng đã chọn dùng một
+thao tác để đánh thức và tiếp tục qua PIN nếu đang bật. Lựa chọn này chỉ áp dụng
+cho Sleep; không thay đổi cách bật máy khi đã tắt nguồn hẳn. Lựa chọn được lưu
+trên máy và trong bản sao lưu cấu hình; khôi phục bản sao lưu v32 cũ dùng chỉ Nguồn.
+
+Màn khóa sau reboot có thể vào Light Sleep trong lúc chờ đánh thức/PIN.
+Chỉ Sleep không dùng timer bảo trì định kỳ. Khi có thời hạn ngủ hoặc hẹn tắt
+nguồn, timer chỉ phục vụ thời hạn đó. USB và tài nguyên đang bận có thể trì hoãn
+Sleep. Trước phản hồi/vẽ khóa, máy yêu cầu hủy tải nền, đợi chủ sở hữu tài nguyên
+nhả quyền và dừng Wi-Fi/Bluetooth. Nếu chưa dừng được, trang hiện tại được giữ;
+người dùng có thể khóa lại sau khi tác vụ kết thúc.
+
+### Chữ ký trên thẻ và ảnh khóa
+
+**Cá nhân hóa → Chữ ký trạng thái & màn khóa** dùng chung một chữ ký cho thanh
+trạng thái, chân Thẻ đọc sách và ảnh nền/khung PNG khóa. Chữ ký rỗng giữ câu mặc
+định trên Thẻ đọc sách và không thêm nhãn lên ảnh khóa. Full và Love Book dùng
+cùng bố cục Thẻ đọc sách với bìa lớn. Đổi chữ ký làm mất hiệu lực cache ảnh khóa
+cũ; không cần thay lại tệp ảnh.

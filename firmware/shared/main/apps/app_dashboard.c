@@ -1245,7 +1245,14 @@ static void on_media_lost(app_ctx_t *ctx) {
     s_avatar_ready=s_avatar_pending=false;
 #endif
 }
-static void on_media_ready(app_ctx_t *ctx) {(void)ctx;s_books_cache_valid=false;s_scan_pending=true;avatar_prepare_state();}
+static void on_media_ready(app_ctx_t *ctx) {
+    (void)ctx;
+    read_pico_sd_info_t info={0};
+    if(read_pico_sd_get_info(&info)==ESP_OK && s_books_cache_valid &&
+       s_cached_store_revision==book_store_revision() && s_cached_sd_present==info.present &&
+       s_cached_sd_mounted==info.mounted && !strcmp(s_cached_books_dir,app_settings_books_dir()))return;
+    s_books_cache_valid=false;s_scan_pending=true;avatar_prepare_state();
+}
 static app_redraw_t on_tick(app_ctx_t *ctx) {
     if(s_view==HOME_TIME||s_view==HOME_COMPONENT)clock_base_prepare();
     if(ctx->consumed||(ctx->touch&&ctx->touch->touched))return APP_REDRAW_NONE;

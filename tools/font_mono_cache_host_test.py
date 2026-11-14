@@ -14,6 +14,8 @@ unit=r'''
 #include <string.h>
 #include <math.h>
 #include "ttf_mono.h"
+#include "ui_hanzi_scale.h"
+#include <sys/stat.h>
 #include "ttf_stroke_filter.h"
 #include "ttf_aa_tone.h"
 #include "vn_diacritics.h"
@@ -41,7 +43,19 @@ static glyph_entry_t *cache_buckets[256];
 static size_t cache_bytes,s_cache_total,reads;
 static uint8_t *data;static size_t length;static ttf_mono_face_t *face;
 static bool read_font(void*ctx,uint32_t off,void*dst,size_t n){(void)ctx;++reads;if((size_t)off>length||n>length-off)return false;memcpy(dst,data+off,n);return true;}
-static bool mono_bitmap(uint32_t cp,float scale,ttf_mono_bitmap_t*b){return !force_fallback&&(s_antialias?ttf_gray_render_stroke(face,cp,scale,-1,s_stroke_adjust,b):ttf_mono_render_stroke(face,cp,scale,-1,s_stroke_adjust,b));}
+static bool cff_outline,gvar_ready;
+static int font_fd=-1;
+static const uint8_t *font_mem;static uint32_t font_mem_len;
+static struct {bool f_preview,f_mono_tried;unsigned f_synthetic_style;ttf_mono_face_t *f_mono;} current,*s_cur=&current;
+#define mono_read_original read_font
+#define ESP_LOGW(...) ((void)0)
+#define ESP_LOGI(...) ((void)0)
+bool ui_hanzi_get(uint32_t cp,uint8_t out[UI_HANZI_RECORD]){
+ if(cp!=0x4e01)return false;
+ memset(out,0,77);out[1]=(uint8_t)-16;out[2]=out[3]=16;out[4]=24;
+ for(unsigned y=0;y<16;++y)for(unsigned x=0;x<16;++x){unsigned bit=y*24+x;out[5+bit/8]|=1u<<(bit&7);}
+ return true;
+}
 static bool cache_reserve(size_t bytes){(void)bytes;return admit;}
 static void lru_touch(glyph_entry_t *entry){(void)entry;}
 static bool pack_glyph_tree(int glyph){(void)glyph;return true;}
@@ -49,6 +63,8 @@ static void *heap_caps_malloc(size_t n,int caps){(void)caps;return fail_alloc?NU
 static void *heap_caps_calloc(size_t n,size_t size,int caps){(void)caps;return fail_alloc?NULL:calloc(n,size);}
 static void heap_caps_free(void*p){free(p);}
 '''
+unit+=function('mono_bitmap',source).replace('static bool mono_bitmap(', 'static bool production_mono_bitmap(')+'\n'
+unit+='static bool mono_bitmap(uint32_t cp,float scale,ttf_mono_bitmap_t *b){return !force_fallback && production_mono_bitmap(cp,scale,b);}'+'\n'
 for name in ('glyph_alpha','cache_bucket','cache_lookup','rasterize_glyph','clamp_px','decode_utf8','get_glyph','ttf_measure_line_px','mix_ink','mix_glyph_ink'):
  unit+=function(name,source)+'\n'
 unit+=r'''
@@ -56,9 +72,17 @@ static void clean(void){for(int i=0;i<256;++i){glyph_entry_t *g=cache_buckets[i]
 static long ink(glyph_entry_t*g){long n=0;for(int y=0;y<g->height;++y)for(int x=0;x<g->width;++x)n+=glyph_alpha(g,x,y)==255;return n;}
 static void check_binary(glyph_entry_t*g){assert(g&&g->mono_mode&&g->packed_mono);for(int y=0;y<g->height;++y)for(int x=0;x<g->width;++x)assert(glyph_alpha(g,x,y)==0||glyph_alpha(g,x,y)==255);assert(g->bitmap_bytes==((g->width+7)/8)*(size_t)g->height);}
 int main(int argc,char**argv){assert(argc==2);FILE*f=fopen(argv[1],"rb");assert(f);fseek(f,0,SEEK_END);length=ftell(f);rewind(f);data=malloc(length);assert(fread(data,1,length,f)==length);fclose(f);
- assert(stbtt_InitFont(&font_info,data,stbtt_GetFontOffsetForIndex(data,0)));face=ttf_mono_open(read_font,NULL,length);assert(face);
+ assert(stbtt_InitFont(&font_info,data,stbtt_GetFontOffsetForIndex(data,0)));face=ttf_mono_open(read_font,NULL,length);assert(face);font_mem=data;font_mem_len=length;current.f_mono=face;current.f_mono_tried=true;
  glyph_entry_t *mono=rasterize_glyph('m',73);check_binary(mono);
  size_t before=reads,used=s_cache_total;assert(cache_lookup('m',73)==mono);assert(reads==before&&s_cache_total==used);
+ s_text_contrast=true;assert(!cache_lookup('m',73));
+ glyph_entry_t *thick=rasterize_glyph('m',73);check_binary(thick);
+ assert(thick!=mono&&thick->advance_x==mono->advance_x&&ink(thick)>=ink(mono));
+ s_text_contrast=false;assert(cache_lookup('m',73)==mono);
+ assert(!stbtt_FindGlyphIndex(&font_info,0x4e01));
+ glyph_entry_t *han=rasterize_glyph(0x4e01,73);check_binary(han);assert(han->advance_x==73&&ink(han)>0);
+ s_antialias=true;glyph_entry_t *han_gray=rasterize_glyph(0x4e01,73);
+ assert(han_gray&&han_gray->advance_x==han->advance_x&&!han_gray->packed_mono);
  s_antialias=true;assert(!cache_lookup('m',73));glyph_entry_t*gray=rasterize_glyph('m',73);assert(gray&&!gray->mono_mode&&!gray->packed_mono&&gray->advance_x==mono->advance_x);
  assert(gray->hinted_gray);
  for(int y=0;y<gray->height;++y)for(int x=0;x<gray->width;++x){uint8_t a=glyph_alpha(gray,x,y),v=mix_glyph_ink(gray,a,0,15);assert(v<=15);assert(v==(15u*(255u-a)+127u)/255u);assert(v+mix_glyph_ink(gray,a,15,0)==15);}

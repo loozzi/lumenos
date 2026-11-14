@@ -5,3 +5,5 @@
 #if DPREADER_BOARD_METALIO47
 bool app_sleep_media_ready(void);
 #endif
+
+bool app_lock_prepare_resources(void);
