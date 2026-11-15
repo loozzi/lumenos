@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.5.3",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.1",
+  "notes": "LumenOS 1.5.3: Sửa lật trang khi đọc ngang chỉ làm mới một phần màn hình; thanh công cụ vuốt lên dùng được khi đọc ngang, không còn xoay về dọc.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "ebc6f89c8048382f1faf01e28fd72465c010467d625f31dcca119c18f1bfb69d",
+      "md5": "3dcb8f53c60f1855764bfa30b0cebfe8"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "94e454d92127e5e6c7a64439ab833d5f6380bc338bcb146e0151d5a75be2cf26",
+      "md5": "ebcbfdc2f599ce389de42292e635111b"
+    }
+  },
+  "clean_image": {
+    "sha256": "0b071d8de8dc97e30a07d56f64ea4072abb9997e7b5b3e9756198831161915d9",
+    "md5": "69a5d0d6f6c51942fa8a8d71fe0152ad"
+  },
+  "size": 4956240,
+  "sha256": "9a049af0f9fa62b043a4a665f417c1f3558b481fdab51621f0e525293037a06f",
+  "md5": "f75e6b6a0890011eb656ecaae0d1c4c4"
+}

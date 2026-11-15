@@ -1,3 +1,11 @@
+## LumenOS 1.5.5 / 1.5.5-love · Phát hành chính thức · 2026-11-15
+
+- Khi đọc ngang, các bảng mở từ thanh công cụ giữ màn hình ngang: Cài đặt đọc, Phông chữ, Thống kê, Đánh dấu, Nhảy chương, Hình nền và các bảng con hiện ở cột bên phải dưới thanh trạng thái, trang sách vẫn ở bên trái; bảng cao vuốt lên/xuống để xem tiếp. Chạm vùng sách bên trái để đóng.
+- Mục lục khi đọc ngang hiện ở cột bên phải; danh sách chọn (như cỡ chữ) xếp theo khổ ngang.
+- Đổi cỡ chữ, lề hay giãn dòng khi đọc ngang dàn lại sách đúng khổ ngang.
+- Sửa chuyển trang danh sách Đánh dấu theo nửa trái/phải.
+- Phông chữ trực tuyến, khôi phục phông, ghi chú, hộp xác nhận và màn khóa vẫn hiển thị dọc.
+
 ## LumenOS 1.5.3 / 1.5.3-love · Phát hành chính thức · 2026-11-15
 
 - Sửa lật trang khi đọc ngang chỉ làm mới phần bên trái màn hình, để lại chữ của trang cũ ở phần còn lại.
