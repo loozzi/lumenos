@@ -284,7 +284,7 @@ static void draw_status(uint8_t *fb, bool compact) {
     read_pico_transfer_get_status(&network);
     const bool wifi_visible = network.state!=READ_PICO_TRANSFER_STOPPED||read_pico_transfer_network_background_busy();
     const bool bluetooth_visible = ble_pt_running();
-    char percent[8] = "--%";
+    char percent[16] = "--%";
     int gauge_percent = pmu_battery_percent(pmu);
     if (gauge_percent >= 0) snprintf(percent, sizeof(percent), "%u%%", (unsigned)gauge_percent);
     // 按实际百分比宽度排列网络图标，留 10 像素间隔；墨色与电池相同。
@@ -342,6 +342,13 @@ static void draw_status(uint8_t *fb, bool compact) {
     ui_text_fixed_vc(fb, 595, status_center_y, UI_STATUS_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, false);
     ui_status_mark_visible(fb);
     s_power_signature=(gauge_percent+1)*8+(charging?4:0)+(wifi_visible?2:0)+(bluetooth_visible?1:0);
+}
+
+// 快捷层保留当前状态栏位置及隐藏状态。/ Quick overlays retain the current status position and hidden state.
+void ui_nav_redraw_status(uint8_t *fb) {
+    if(!ui_status_visible(fb))return;
+    epd_fill_rect(ui_nav_status_area(),UI_GRAY_WHITE,fb);
+    draw_status(fb,s_status_compact);
 }
 
 void ui_nav_status(uint8_t *fb) { draw_status(fb, false); }

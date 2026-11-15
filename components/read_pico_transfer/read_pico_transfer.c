@@ -682,7 +682,7 @@ static void begin_saved_profile(int64_t now) {
 }
 
 static void saved_profile_lost(int64_t now) {
-    if (s_connection.online) begin_saved_profile(now);
+    if (s_connection.online) { s_profiles_tried=0; begin_saved_profile(now); }
     connection_lost(&s_connection, now);
 }
 
@@ -801,6 +801,52 @@ esp_err_t read_pico_transfer_import_wifi_backup(const read_pico_transfer_wifi_ba
 
 #if DPREADER_BOARD_METALIO47
 #include "transfer_wifi_profiles_backup.h"
+
+esp_err_t read_pico_transfer_list_wifi(char out[READ_PICO_TRANSFER_WIFI_PROFILES_MAX][33], size_t *count) {
+    if(!out || !count)return ESP_ERR_INVALID_ARG;
+    *count=0;memset(out,0,READ_PICO_TRANSFER_WIFI_PROFILES_MAX*33);
+    if(!claim_config())return ESP_ERR_INVALID_STATE;
+    transfer_credentials_t saved={0};unsigned total=0;
+    esp_err_t err=wifi_profile_read(0,&saved,&total);
+    for(unsigned i=0;err==ESP_OK && i<total;++i) {
+        unsigned actual=0;
+        err=wifi_profile_read(i,&saved,&actual);
+        if(err==ESP_OK && actual==total && saved.version==1)memcpy(out[i],saved.ssid,33);
+        else if(err==ESP_OK)err=ESP_ERR_INVALID_STATE;
+    }
+    clear_secret(&saved,sizeof(saved));
+    if(err==ESP_OK)*count=total;
+    else memset(out,0,READ_PICO_TRANSFER_WIFI_PROFILES_MAX*33);
+    release_config();return err;
+}
+
+static esp_err_t change_saved_wifi(const char *ssid,bool forget) {
+    if(!ssid || !ssid[0] || strnlen(ssid,33)>32)return ESP_ERR_INVALID_ARG;
+    TRANSFER_NETWORK_GUARD_OR_RETURN(ESP_ERR_INVALID_STATE);
+    if(!cancel_time_sync(true))return ESP_ERR_INVALID_STATE;
+    read_pico_transfer_status_t status;read_pico_transfer_get_status(&status);
+    if(status.state==READ_PICO_TRANSFER_UPLOADING ||
+       (status.mode==READ_PICO_TRANSFER_MODE_STA && (s_wifi||s_started||s_http||s_netif)))return ESP_ERR_INVALID_STATE;
+    if(!claim_config())return ESP_ERR_INVALID_STATE;
+    transfer_credentials_t saved={0};unsigned count=0;
+    esp_err_t err=wifi_profile_read(0,&saved,&count);
+    bool found=false;
+    for(unsigned i=0;err==ESP_OK && i<count;++i) {
+        unsigned actual;
+        err=wifi_profile_read(i,&saved,&actual);
+        if(err==ESP_OK && saved.version==1 && !strcmp(saved.ssid,ssid)){found=true;break;}
+    }
+    if(err==ESP_OK)err=!found?ESP_ERR_NOT_FOUND:forget?wifi_profile_forget(ssid):store_credentials(&saved);
+    clear_secret(&saved,sizeof(saved));
+    if(err==ESP_OK) {
+        err=load_credentials(&saved);
+        if(err==ESP_OK)publish_credentials(&saved);
+    }
+    clear_secret(&saved,sizeof(saved));release_config();return err;
+}
+esp_err_t read_pico_transfer_select_wifi(const char *ssid) { return change_saved_wifi(ssid,false); }
+esp_err_t read_pico_transfer_forget_wifi_ssid(const char *ssid) { return change_saved_wifi(ssid,true); }
+
 #endif
 
 esp_err_t read_pico_transfer_save_wifi(const char *ssid, const char *password) {

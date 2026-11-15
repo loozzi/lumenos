@@ -248,6 +248,21 @@ static size_t s_network_count, s_network_page;
 static bool s_scan_pending, s_network_connect_pending, s_saved_configured, s_password_visible, s_forget_confirm;
 static char s_saved_ssid[33], s_password[PASSWORD_MAX + 1], s_network_message[96], s_method_message[96];
 static ui_text_edit_t s_password_input;
+#if DPREADER_BOARD_METALIO47
+static bool s_saved_list;
+static char s_saved_networks[READ_PICO_TRANSFER_WIFI_PROFILES_MAX][33];
+static size_t s_saved_count;
+static void reload_saved_networks(void) {
+    esp_err_t err=read_pico_transfer_list_wifi(s_saved_networks,&s_saved_count);
+    if(err!=ESP_OK)snprintf(s_network_message,sizeof(s_network_message),"Không thể đọc mạng đã lưu, vui lòng thử lại");
+}
+#endif
+static size_t network_list_count(void) {
+#if DPREADER_BOARD_METALIO47
+    if(s_saved_list)return s_saved_count;
+#endif
+    return s_network_count;
+}
 
 static esp_err_t s_scan_error;
 
@@ -329,7 +344,10 @@ static EpdRect network_control_rect(int id) {
     if (id == 6) return (EpdRect){501, 244, 123, 56};
     if (id == 11) return s_forget_confirm ? ui_row_rect(0, 2, 600, UI_BTN_H) : (EpdRect){501, 315, 123, 52};
     if (id == 12) return ui_row_rect(1, 2, 600, UI_BTN_H);
-    bool paged = s_network_count > NETWORK_ROWS;
+#if DPREADER_BOARD_METALIO47
+    if (id == 13) return (EpdRect){320,400,328,56};
+#endif
+    bool paged = network_list_count() > NETWORK_ROWS;
     if (id == 7) return paged ? (EpdRect){36, transfer_footer_top()-103, 64, 66} : (EpdRect){0};
     if (id == 8) return paged ? (EpdRect){112, transfer_footer_top()-103, 460, 66} : (EpdRect){36, transfer_footer_top()-103, 612, 66};
     if (id == 9) return paged ? (EpdRect){584, transfer_footer_top()-103, 64, 66} : (EpdRect){0};
@@ -359,7 +377,7 @@ static void draw_networks(uint8_t* fb) {
     ui_clear_page(fb);
     ui_fill_rect_fast((EpdRect){0,0,UI_LOCK_WIDTH,transfer_content_end()},UI_GRAY_WHITE,fb);
     if (s_forget_confirm) {
-        transfer_header(fb, "Quên các mạng WiFi", "Xóa toàn bộ hồ sơ WiFi đã lưu");
+        transfer_header(fb, "Quên mạng WiFi", s_saved_ssid);
         ui_text(fb, UI_MARGIN, 450, UI_PX_CAPTION, s_network_message, EPD_DRAW_ALIGN_LEFT, false);
         provisioning_button(fb, network_control_rect(11), "Xác nhận quên", 11);
         provisioning_button(fb, network_control_rect(12), "Hủy", 12);
@@ -367,41 +385,48 @@ static void draw_networks(uint8_t* fb) {
         return;
     }
     transfer_header(fb, "Mạng WiFi", NULL);
-    ui_text(fb, 42, 182, 24, "Mạng hiện tại", EPD_DRAW_ALIGN_LEFT, false);
+    ui_text(fb, 42, 182, 24, "Mạng đã chọn", EPD_DRAW_ALIGN_LEFT, false);
     EpdRect current = {36, 224, 612, 154};
     ui_draw_soft_card(fb,current,22,false);
     if (s_saved_configured) {
         char saved[40];
-        const char *ssid = s_session_started && s_status.wifi_ssid[0] ? s_status.wifi_ssid : s_saved_ssid;
+        const char *ssid = s_saved_ssid;
         snprintf(saved, sizeof(saved), "%s", ssid);
         fit_label(saved, 29, 375);
         ui_nav_wifi_icon(fb, 74, 265, 28, UI_GRAY_BLACK);
         ui_text_box(fb,(EpdRect){104,238,375,48},29,saved,EPD_DRAW_ALIGN_LEFT,false);
-        const char *state = s_status.network_ready ? "Đã kết nối" :
-            s_network_connect_pending || s_status.state == READ_PICO_TRANSFER_STARTING ? "Đang kết nối…" : "Đã lưu · Chưa kết nối";
+        const bool selected_online=s_status.network_ready && !strcmp(s_status.wifi_ssid,s_saved_ssid);
+        const char *state = selected_online ? "Đã kết nối" :
+            (s_network_connect_pending || (s_status.state == READ_PICO_TRANSFER_STARTING && !strcmp(s_status.wifi_ssid,s_saved_ssid))) ? "Đang kết nối…" : "Đã lưu · Chưa kết nối";
         ui_text_box(fb,(EpdRect){64,294,419,34},23,state,EPD_DRAW_ALIGN_LEFT,false);
         char address[80];
         const char *url = !strncmp(s_status.url, "http://", 7) ? s_status.url + 7 : s_status.url;
-        snprintf(address, sizeof(address), "%.79s", s_status.network_ready ? url[0] ? url : "Đã kết nối, có thể truyền sách" : "Kết nối để truyền sách và đồng bộ giờ");
+        snprintf(address, sizeof(address), "%.79s", selected_online ? url[0] ? url : "Đã kết nối, có thể truyền sách" : "Kết nối để truyền sách và đồng bộ giờ");
         fit_label(address, 21, 419);
         ui_text_box(fb,(EpdRect){64,336,419,32},21,address,EPD_DRAW_ALIGN_LEFT,false);
-        network_button(fb, 6, s_status.network_ready ? "Ngắt" : "Kết nối", !s_status.network_ready);
+        network_button(fb, 6, selected_online ? "Ngắt" : "Kết nối", !selected_online);
         if (s_pressed == 11) ui_draw_pressed_round_rect(fb, network_control_rect(11), 14);
         ui_text_box(fb,(EpdRect){509,323,107,36},21,"Quên mạng",EPD_DRAW_ALIGN_CENTER,false);
     } else {
         ui_text(fb, 64, 253, 29, "Chưa lưu mạng WiFi", EPD_DRAW_ALIGN_LEFT, false);
         ui_text(fb, 64, 312, 23, "Chọn mạng WiFi 2.4 GHz từ danh sách dưới", EPD_DRAW_ALIGN_LEFT, false);
     }
+    const size_t list_count=network_list_count();
     char count[64];
-    snprintf(count, sizeof(count), "%u mạng · Trang %u/%u", (unsigned)s_network_count,
-             (unsigned)s_network_page + 1, (unsigned)(s_network_count ? (s_network_count + NETWORK_ROWS - 1) / NETWORK_ROWS : 1));
+    snprintf(count, sizeof(count), "%u mạng · Trang %u/%u", (unsigned)list_count,
+             (unsigned)s_network_page + 1, (unsigned)(list_count ? (list_count + NETWORK_ROWS - 1) / NETWORK_ROWS : 1));
+#if DPREADER_BOARD_METALIO47
+    network_button(fb,13,s_saved_list?"Xem lân cận":"Mạng đã lưu",false);
+    ui_text_box(fb,(EpdRect){42,410,260,44},24,s_saved_list?"Mạng đã lưu":"Mạng lân cận",EPD_DRAW_ALIGN_LEFT,false);
+#else
     ui_text_box(fb,(EpdRect){42,410,260,44},24,"Mạng lân cận",EPD_DRAW_ALIGN_LEFT,false);
-    ui_text_box(fb,(EpdRect){320,410,322,44},21,count,EPD_DRAW_ALIGN_RIGHT,false);
+#endif
+    ui_text_box(fb,(EpdRect){42,382,600,22},17,count,EPD_DRAW_ALIGN_RIGHT,false);
     EpdRect list = {36, 465, 612, 380};
     ui_fill_round_rect(fb, list, 22, UI_GRAY_WHITE);
     if (s_scan_pending) {
         ui_text_vc(fb, 342, 655, 25, "Đang quét WiFi 2.4 GHz…", EPD_DRAW_ALIGN_CENTER, false);
-    } else if (!s_network_count) {
+    } else if (!list_count) {
         ui_text_vc(fb, 342, 620, 27, s_scan_error == ESP_OK ? "Không tìm thấy mạng WiFi" : "Quét chưa hoàn tất",
                    EPD_DRAW_ALIGN_CENTER, false);
         ui_text_vc(fb, 342, 678, 22, s_scan_error == ESP_OK ? "Vui lòng đến gần router rồi quét lại" : "Nhấn nút bên dưới để thử lại",
@@ -409,8 +434,14 @@ static void draw_networks(uint8_t* fb) {
     }
     for (int row = 0; !s_scan_pending && row < NETWORK_ROWS; ++row) {
         size_t index = s_network_page * NETWORK_ROWS + row;
-        if (index >= s_network_count) break;
+        if (index >= list_count) break;
+        read_pico_transfer_network_t saved_network={0};
         const read_pico_transfer_network_t* network = &s_networks[index];
+#if DPREADER_BOARD_METALIO47
+        if(s_saved_list){snprintf(saved_network.ssid,sizeof(saved_network.ssid),"%s",s_saved_networks[index]);network=&saved_network;}
+#else
+        (void)saved_network;
+#endif
         EpdRect rect = network_control_rect(row);
         ui_draw_soft_card(fb,(EpdRect){rect.x,rect.y+4,rect.width,rect.height-8},18,s_pressed==row);
         char name[33], detail[64];
@@ -419,15 +450,18 @@ static void draw_networks(uint8_t* fb) {
         ui_text_box(fb,(EpdRect){64,rect.y+8,520,40},28,name,EPD_DRAW_ALIGN_LEFT,false);
         snprintf(detail, sizeof(detail), "%s · %s", network->rssi > -60 ? "Sóng mạnh" : network->rssi > -75 ? "Sóng tốt" : "Sóng vừa",
                  !network->supported ? "Chưa hỗ trợ" : network->requires_password ? "Có mật khẩu" : "Mạng mở");
+#if DPREADER_BOARD_METALIO47
+        if(s_saved_list)snprintf(detail,sizeof(detail),"%s",!strcmp(network->ssid,s_saved_ssid)?"Đang chọn · Kết nối hoặc quên ở trên":"Chọn để kết nối hoặc quên mạng");
+#endif
         ui_text_box(fb,(EpdRect){64,rect.y+54,520,34},21,detail,EPD_DRAW_ALIGN_LEFT,false);
         ui_text_vc(fb, 615, rect.y + 47, 27, "›", EPD_DRAW_ALIGN_CENTER, false);
     }
-    if (s_network_count > NETWORK_ROWS) {
+    if (list_count > NETWORK_ROWS) {
         network_button(fb, 7, "‹", false);
         network_button(fb, 9, "›", false);
     }
     network_button(fb, 8, s_scan_error == ESP_OK ? "Quét lại" : "Thử quét lại", false);
-    if (s_network_count <= NETWORK_ROWS) ui_draw_icon(fb, 597, 906, 32, UI_ICON_ROTATE_CW, UI_GRAY_BLACK);
+    if (list_count <= NETWORK_ROWS) ui_draw_icon(fb, 597, 906, 32, UI_ICON_ROTATE_CW, UI_GRAY_BLACK);
     ui_text(fb, 42, 976, 21, "Hỗ trợ WiFi 2.4 GHz (kênh 1–13)", EPD_DRAW_ALIGN_LEFT, false);
     char message[96];
     snprintf(message, sizeof(message), "%s", s_network_message[0] ? s_network_message :
@@ -488,6 +522,9 @@ static bool enter_networks(void) {
     s_forget_confirm = false;
     s_network_count = s_network_page = 0;
     s_scan_pending = true;
+#if DPREADER_BOARD_METALIO47
+    s_saved_list=false;reload_saved_networks();
+#endif
     s_scan_error = ESP_OK;
     s_network_message[0] = 0;
     s_saved_ssid[0] = 0;
@@ -554,8 +591,8 @@ static int provisioning_hit(uint16_t x, uint16_t y) {
     if (s_view == TRANSFER_PASSWORD) {
         for (int i = 44; i < 48; ++i) if (ui_rect_hit(password_control_rect(i), x, y)) return i;
     } else {
-        for (int i = 0; i < 12; ++i) {
-            if (i < NETWORK_ROWS && (s_scan_pending || s_network_page * NETWORK_ROWS + i >= s_network_count)) continue;
+        for (int i = 0; i < 14; ++i) {
+            if (i < NETWORK_ROWS && (s_scan_pending || s_network_page * NETWORK_ROWS + i >= network_list_count())) continue;
             if ((i == 6 || i == 11) && !s_saved_configured) continue;
             if (ui_rect_hit(network_control_rect(i), x, y)) return i;
         }
@@ -574,19 +611,32 @@ static app_redraw_t provisioning_action(int id) {
                 return APP_REDRAW_PAGE;
             }
             s_network_connect_pending = s_scan_pending = false;
-            esp_err_t err = read_pico_transfer_forget_wifi();
+            esp_err_t err =
+#if DPREADER_BOARD_METALIO47
+                read_pico_transfer_forget_wifi_ssid(s_saved_ssid);
+#else
+                read_pico_transfer_forget_wifi();
+#endif
             if (err == ESP_OK) {
                 read_pico_transfer_get_status(&s_status);
                 s_forget_confirm = false;
-                s_saved_configured = false;
-                s_saved_ssid[0] = 0;
-                snprintf(s_network_message, sizeof(s_network_message), "Đã quên các mạng WiFi");
+                read_pico_transfer_get_saved_wifi(s_saved_ssid,&s_saved_configured);
+#if DPREADER_BOARD_METALIO47
+                reload_saved_networks();s_network_page=0;
+#endif
+                snprintf(s_network_message, sizeof(s_network_message), "Đã quên mạng WiFi đã chọn");
             } else snprintf(s_network_message, sizeof(s_network_message), "Quên mạng thất bại, vui lòng thử lại hoặc hủy");
         }
         return APP_REDRAW_PAGE;
     }
     if (s_view == TRANSFER_NETWORKS) {
         if (id < NETWORK_ROWS) {
+#if DPREADER_BOARD_METALIO47
+            if(s_saved_list){
+                snprintf(s_saved_ssid,sizeof(s_saved_ssid),"%s",s_saved_networks[s_network_page*NETWORK_ROWS+id]);
+                s_saved_configured=true;return APP_REDRAW_PAGE;
+            }
+#endif
             s_selected = s_networks[s_network_page * NETWORK_ROWS + id];
             if (!s_selected.supported) {
                 snprintf(s_network_message, sizeof(s_network_message), "Chưa hỗ trợ kiểu xác thực mạng này, hãy chọn mạng khác");
@@ -606,7 +656,7 @@ static app_redraw_t provisioning_action(int id) {
             ui_keyboard_begin(&s_password_input, true);
             s_view = TRANSFER_PASSWORD;
         } else if (id == 6) {
-            if (s_status.network_ready) {
+            if (s_status.network_ready && !strcmp(s_status.wifi_ssid,s_saved_ssid)) {
                 if (!stop_upload_if_idle()) {
                     snprintf(s_network_message, sizeof(s_network_message), "Đang truyền, vui lòng đợi hoàn tất trước khi ngắt");
                     return APP_REDRAW_PAGE;
@@ -621,17 +671,27 @@ static app_redraw_t provisioning_action(int id) {
                     return APP_REDRAW_PAGE;
                 }
                 s_network_connect_pending = false;
+#if DPREADER_BOARD_METALIO47
+                esp_err_t selected=read_pico_transfer_select_wifi(s_saved_ssid);
+                if(selected!=ESP_OK){snprintf(s_network_message,sizeof(s_network_message),"Không thể chọn mạng, vui lòng thử lại");return APP_REDRAW_PAGE;}
+#endif
                 queue_network_start(READ_PICO_TRANSFER_MODE_STA);
             }
         }
         else if (id == 7 && s_network_page) --s_network_page;
         else if (id == 8) {
             if (s_session_started) stop_session();
+#if DPREADER_BOARD_METALIO47
+            if(s_saved_list){reload_saved_networks();s_network_page=0;return APP_REDRAW_PAGE;}
+#endif
             s_scan_pending = true; s_scan_error = ESP_OK; s_network_message[0] = 0;
         }
-        else if (id == 9 && (s_network_page + 1) * NETWORK_ROWS < s_network_count) ++s_network_page;
+        else if (id == 9 && (s_network_page + 1) * NETWORK_ROWS < network_list_count()) ++s_network_page;
         else if (id == 10) queue_network_start(s_mode);
         else if (id == 11) { s_forget_confirm = true; s_network_message[0] = 0; }
+#if DPREADER_BOARD_METALIO47
+        else if(id==13){s_saved_list=!s_saved_list;s_network_page=0;s_scan_pending=false;if(s_saved_list)reload_saved_networks();}
+#endif
         return APP_REDRAW_PAGE;
     }
     size_t len = strlen(s_password);
@@ -921,6 +981,9 @@ static void on_enter(app_ctx_t* ctx) {
     s_usb_capacity_bytes = 0;
     s_method_message[0] = 0;
     s_view = TRANSFER_METHODS;
+#if DPREADER_BOARD_METALIO47
+    s_saved_list=false;s_saved_count=0;
+#endif
     s_direct_entry = s_usb_requested || s_wifi_upload_requested || s_hotspot_requested;
     s_usb_entry = s_usb_requested;
     s_forget_confirm = false;

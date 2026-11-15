@@ -122,6 +122,13 @@ bool read_pico_transfer_wifi_backup_valid(const read_pico_transfer_wifi_backup_t
 /// Restore the single NVS record; an active WiFi session adopts it on its next connection.
 esp_err_t read_pico_transfer_import_wifi_backup(const read_pico_transfer_wifi_backup_t *backup);
 #define READ_PICO_TRANSFER_WIFI_PROFILES_MAX 6
+#if DPREADER_BOARD_METALIO47
+/// 只返回SSID，不向界面暴露密码。/ Return SSIDs without exposing passwords to UI.
+esp_err_t read_pico_transfer_list_wifi(char out[READ_PICO_TRANSFER_WIFI_PROFILES_MAX][33], size_t *count);
+/// 停止STA后选择或删除单个SSID。/ Select or forget one SSID after stopping STA.
+esp_err_t read_pico_transfer_select_wifi(const char *ssid);
+esp_err_t read_pico_transfer_forget_wifi_ssid(const char *ssid);
+#endif
 esp_err_t read_pico_transfer_export_wifi_profiles_backup(
     read_pico_transfer_wifi_backup_t out[READ_PICO_TRANSFER_WIFI_PROFILES_MAX]);
 bool read_pico_transfer_wifi_profiles_backup_valid(

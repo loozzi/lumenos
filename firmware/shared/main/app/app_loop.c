@@ -2204,7 +2204,7 @@ void app_loop_run(const app_loop_config_t* config) {
             !ui_click_feedback_active() && !ui_click_feedback_nav_pending() && !feedback.updates &&
             !ctx.consumed && !s_action_menu_requested && !idle_blocked && !ctx.request_app && !ctx.request_menu && !ctx.request_return &&
             !app_sd_recovery_busy() && !usb_storage_active() && !app_download_active() &&
-            !pico_online_busy() && !kosync_busy() && !app_settings_ble_turner() &&
+            !pico_online_busy() && !kosync_busy() && ble_pt_idle_ready() &&
             ctx.now_ms>=s_lock_ignore_until_ms;
         read_pico_transfer_status_t wait_network;
         read_pico_transfer_get_status(&wait_network);

@@ -14,6 +14,8 @@
 
 void ui_nav_draw(uint8_t *fb, int active);
 void ui_nav_status(uint8_t *fb);
+/// 保留位置与隐藏状态重绘。/ Redraw retaining position and visibility.
+void ui_nav_redraw_status(uint8_t *fb);
 EpdRect ui_nav_status_area(void);
 #define UI_NAV_READER_STATUS_HEIGHT 54
 void ui_nav_reader_status(uint8_t *fb);

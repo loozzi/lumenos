@@ -20,10 +20,10 @@ static const char *TAG = "crash";
 
 // Phiên bản mới giữ nội dung chi tiết thay cho địa chỉ chuỗi của firmware cũ.
 typedef struct {
-    uint32_t magic, addr, caller, exception, core;
+    uint32_t magic, addr, caller, exception, core, sp, cause, trap;
 } crash_note_header_t;
 
-#define CRASH_NOTE_MAGIC UINT32_C(0x434E4F32)
+#define CRASH_NOTE_MAGIC UINT32_C(0x434E4F33)
 RTC_NOINIT_ATTR static crash_note_header_t s_note;
 RTC_NOINIT_ATTR static char s_detail[CRASH_NOTE_DETAIL_SIZE];
 
@@ -34,9 +34,14 @@ void __wrap_esp_panic_handler(panic_info_t *info) {
         s_note.magic = 0;
         s_note.addr = (uint32_t)(uintptr_t)info->addr;
         s_note.caller = 0;
+        s_note.sp=s_note.cause=s_note.trap=0;
 #if defined(__riscv)
         if (info->frame != NULL) {
-            s_note.caller = (uint32_t)((const RvExcFrame *)info->frame)->ra;
+            const RvExcFrame *frame=(const RvExcFrame *)info->frame;
+            s_note.caller = (uint32_t)frame->ra;
+            s_note.sp=(uint32_t)frame->sp;
+            s_note.cause=(uint32_t)frame->mcause;
+            s_note.trap=(uint32_t)frame->mtval;
         }
 #endif
         s_note.exception = g_panic_abort ? PANIC_EXCEPTION_ABORT : info->exception;
@@ -61,11 +66,12 @@ void __wrap_esp_panic_handler(panic_info_t *info) {
 bool crash_note_valid(void) { return s_note.magic == CRASH_NOTE_MAGIC; }
 
 const char *crash_note_text(void) {
-    static char line[112];
+    static char line[192];
     if (!crash_note_valid()) return NULL;
-    snprintf(line, sizeof(line), "panic pc=0x%08lx exc=%lu core=%lu ra=0x%08lx",
+    snprintf(line, sizeof(line), "panic pc=0x%08lx exc=%lu core=%lu ra=0x%08lx sp=0x%08lx mcause=0x%08lx mtval=0x%08lx",
              (unsigned long)s_note.addr, (unsigned long)s_note.exception,
-             (unsigned long)s_note.core, (unsigned long)s_note.caller);
+             (unsigned long)s_note.core, (unsigned long)s_note.caller,
+             (unsigned long)s_note.sp,(unsigned long)s_note.cause,(unsigned long)s_note.trap);
     return line;
 }
 

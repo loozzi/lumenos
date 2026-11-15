@@ -10,6 +10,7 @@
 #include <assert.h>
 #include "../components/read_pico_transfer/transfer_signature.h"
 int metalio_haptic_click(void){return ESP_OK;}
+void log_export_heap_checkpoint(const char *phase){assert(phase);}
 bool read_pico_transfer_network_begin(void) {
     if (test_foreign_network_owner) return false;
     ++test_network_depth;
@@ -234,6 +235,26 @@ static void password_caret_regression(app_ctx_t *ctx) {
     assert(on_tick(ctx)==APP_REDRAW_NONE&&!strcmp(s_password,"abcde"));ctx->touch=NULL;ctx->now_ms=0;
     clear_password();ui_keyboard_begin(&s_password_input,true);
 }
+static void saved_profiles_regression(app_ctx_t *ctx) {
+    test_status=(read_pico_transfer_status_t){0};test_configured=true;test_busy=false;
+    test_wifi_running=false;test_forget_error=ESP_OK;
+    s_wifi_settings_only=true;s_view=TRANSFER_NETWORKS;s_session_started=false;
+    s_forget_confirm=false;s_scan_pending=false;s_saved_list=false;s_network_page=0;
+    test_profile_count=6;
+    for(unsigned i=0;i<6;++i)snprintf(test_profile_names[i],33,"saved%u",i);
+    tap(ctx,network_control_rect(13));assert(s_saved_list&&s_saved_count==6);
+    tap(ctx,network_control_rect(9));assert(s_network_page==1);
+    tap(ctx,network_control_rect(1));assert(!strcmp(s_saved_ssid,"saved5"));
+    tap(ctx,network_control_rect(6));assert(!strcmp(test_selected_wifi,"saved5")&&s_network_connect_pending);
+    s_network_connect_pending=false;
+    tap(ctx,network_control_rect(11));assert(s_forget_confirm&&!strcmp(s_saved_ssid,"saved5"));
+    tap(ctx,network_control_rect(12));assert(!s_forget_confirm);
+    tap(ctx,network_control_rect(0));assert(!strcmp(s_saved_ssid,"saved4"));
+    tap(ctx,network_control_rect(11));tap(ctx,network_control_rect(11));
+    assert(!strcmp(test_forgotten_wifi,"saved4")&&!s_forget_confirm);
+    test_profile_count=0;s_saved_list=false;s_wifi_settings_only=false;
+}
+
 int main(void) {
     assert(transfer_signature_valid("",0)&&transfer_signature_valid("中文🙂",10));
     assert(!transfer_signature_valid("a\0b",3)&&!transfer_signature_valid("\xed\xa0\x80",3));
@@ -308,6 +329,8 @@ int main(void) {
     // 断开保留凭据，上传期间拒绝断开，之后仍可重连。
     // Disconnect keeps credentials, refuses an active upload and allows reconnecting.
     test_status.network_ready = s_status.network_ready = true;
+    snprintf(test_status.wifi_ssid,33,"%s",s_saved_ssid);
+    snprintf(s_status.wifi_ssid,33,"%s",s_saved_ssid);
     s_session_started = true;
     test_busy = true;
     int stops = test_stop_count;
@@ -339,7 +362,8 @@ int main(void) {
     assert(!s_password[0]);
     // 容量及保存失败时保留密码。/ Capacity and preservation after failed saving.
     tap(&ctx,(EpdRect){24,1010,30,30});
-    for(int i=0;i<70;i++)tap(&ctx,(EpdRect){24,740,30,30});assert(strlen(s_password)==64);
+    for(int i=0;i<70;i++){tap(&ctx,(EpdRect){24,740,30,30});}
+    assert(strlen(s_password)==64);
     tap(&ctx,(EpdRect){600,896,30,30});assert(strlen(s_password)==63);
     tap(&ctx, password_control_rect(45));
     assert(s_password_visible);
@@ -466,5 +490,6 @@ int main(void) {
     test_scan_count = 8; test_scan_error = ESP_OK;
     network_ui_tick(&ctx);
     wifi_recovery_regression(&ctx);
+    saved_profiles_regression(&ctx);
     puts("transfer_ui_host_test: PASS");
 }

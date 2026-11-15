@@ -14,6 +14,14 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+#include "read_pico_transfer.h"
+#if DPREADER_BOARD_METALIO47
+#include "metalio_cpu.h"
+#include "metalio_sleep.h"
+#include "esp_clk_tree.h"
+#endif
 
 #include "esp_log.h"
 #include "esp_heap_caps.h"
@@ -168,6 +176,8 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     }
 
     const char *target = "/sdcard/dpreader_log.txt";
+    const char *temporary = "/sdcard/dpreader_log.tmp";
+    const char *previous = "/sdcard/dpreader_log.old";
     if (out_path && out_path_size) {
         snprintf(out_path, out_path_size, "%s", target);
     }
@@ -182,7 +192,15 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     }
     log_export_heap_checkpoint("log_export.snapshot");
     size_t snapshot_size=log_snapshot(snapshot);
-    FILE *f = fopen(target, "w");
+    // 上次发布中断时先恢复旧日志；新文件写完前不触碰现有日志。
+    // Recover an interrupted publish first; leave existing bytes untouched until the new write completes.
+    struct stat old_info;
+    if(stat(target,&old_info)!=0 && errno==ENOENT && stat(previous,&old_info)==0 && rename(previous,target)!=0) {
+        heap_caps_free(snapshot);
+        if(err_msg&&err_msg_size)snprintf(err_msg,err_msg_size,"Không thể khôi phục log cũ");
+        return ESP_FAIL;
+    }
+    FILE *f = fopen(temporary, "w");
     if (!f) {
         heap_caps_free(snapshot);
         if (err_msg && err_msg_size) {
@@ -227,6 +245,15 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     } else {
         fprintf(f, "Battery: No PMU snapshot\n");
     }
+#if DPREADER_BOARD_METALIO47
+    metalio_cpu_stats_t cpu=metalio_cpu_stats();
+    uint32_t hz=0;
+    esp_err_t clock_err=esp_clk_tree_src_get_freq_hz(SOC_MOD_CLK_CPU,ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED,&hz);
+    fprintf(f,"CPU: MHz=%lu clock_result=%d DFS=%u pinned=%u unsafe=%u idle=%lu rejected=%lu wakes=%lu leases=%lu faults=%lu last_error=%d\n",
+        (unsigned long)(hz/1000000),clock_err,cpu.enabled,cpu.ui_pinned,cpu.unsafe,
+        (unsigned long)cpu.idle_windows,(unsigned long)cpu.rejected,(unsigned long)cpu.wakes,
+        (unsigned long)cpu.leases,(unsigned long)cpu.faults,cpu.last_error);
+#endif
     fprintf(f, "\n");
 
     // 3. Storage
@@ -242,6 +269,8 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     fprintf(f, "Enabled in settings: %s\n", app_settings_ble_turner() ? "YES" : "NO");
     fprintf(f, "BLE Stack Running: %s\n", ble_pt_running() ? "YES" : "NO");
     fprintf(f, "BLE Connected: %s\n", ble_pt_connected() ? "YES" : "NO");
+    fprintf(f, "BLE Connecting: %u Scanning: %u Idle ready: %u Reconnect interval: %lu ms\n",
+        ble_pt_connecting(),ble_pt_scanning(),ble_pt_idle_ready(),(unsigned long)ble_pt_reconnect_wait_ms());
     if (ble_pt_connected()) {
         fprintf(f, "Connected Device: %s\n", ble_pt_connected_name());
     }
@@ -254,6 +283,12 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
     }
     fprintf(f, "\n");
 
+    read_pico_transfer_status_t wifi={0};
+    read_pico_transfer_get_status(&wifi);
+    fprintf(f,"[WIFI] state=%u mode=%u ready=%u configured=%u stations=%u received=%u last_error=%d\n\n",
+        (unsigned)wifi.state,(unsigned)wifi.mode,wifi.network_ready,wifi.wifi_configured,
+        wifi.sta_count,(unsigned)wifi.cur_bytes,wifi.last_error);
+
     // 5. Crash & Panic Records
     fprintf(f, "[4. CRASH & PANIC NOTES]\n");
     if (crash_note_valid()) {
@@ -265,6 +300,11 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
         fprintf(f, "Last Panic: None (System clean)\n");
     }
 
+    fprintf(f,"Reset reason: %d\n",(int)esp_reset_reason());
+#if DPREADER_BOARD_METALIO47
+    char sleep_summary[320];metalio_sleep_previous_summary(sleep_summary,sizeof(sleep_summary));
+    fprintf(f,"%s\n",sleep_summary);
+#endif
     uint8_t crash_count = rp_crash_log_count();
     fprintf(f, "RTC Crash/Boot Trail (%u lines):\n", crash_count);
     for (uint8_t i = 0; i < crash_count; ++i) {
@@ -286,13 +326,32 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
 
     bool failed=payload_failed || ferror(f)!=0;
     if(fflush(f)!=0 || ferror(f))failed=true;
+    if(!failed && fsync(fileno(f))!=0)failed=true;
     if(fclose(f)!=0)failed=true;
     heap_caps_free(snapshot);
     if(failed){
+        (void)remove(temporary);
         if(err_msg&&err_msg_size)snprintf(err_msg,err_msg_size,"Không thể ghi đầy đủ log lên thẻ nhớ");
         return ESP_FAIL;
     }
 
+    // FAT不覆盖重命名；保留可恢复的旧文件直到新文件已发布。
+    // FAT rename cannot replace a file; retain a recoverable old file until publication succeeds.
+    bool moved_old=false;
+    if(stat(target,&old_info)==0) {
+        if((remove(previous)!=0 && errno!=ENOENT) || rename(target,previous)!=0)failed=true;
+        else moved_old=true;
+    } else if(errno!=ENOENT)failed=true;
+    if(!failed && rename(temporary,target)!=0) {
+        failed=true;
+        if(moved_old)(void)rename(previous,target);
+    }
+    if(failed) {
+        (void)remove(temporary);
+        if(err_msg&&err_msg_size)snprintf(err_msg,err_msg_size,"Không thể lưu log mới; log cũ được giữ lại");
+        return ESP_FAIL;
+    }
+    if(moved_old)(void)remove(previous);
     log_export_heap_checkpoint("log_export.end");
     ESP_LOGI("log_export", "System logs exported successfully to %s", target);
     return ESP_OK;

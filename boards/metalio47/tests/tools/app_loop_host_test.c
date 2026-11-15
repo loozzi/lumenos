@@ -987,6 +987,7 @@ void book_lock_collage_invalidate(void) {}
 void metalio_cover_cache_clear(void) {}
 
 bool ble_pt_connected(void) { return false; }
+bool ble_pt_idle_ready(void) { return true; }
 bool ble_pt_scanning(void){return false;}
 
 static uint8_t af_store=5;

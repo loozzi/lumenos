@@ -1,3 +1,11 @@
+## LumenOS 1.5.1 / 1.5.1-love · Đang phát triển
+
+- Chọn kết nối hoặc xác nhận quên riêng từng mạng Wi-Fi đã lưu; thử các mạng còn lại sau khi mất kết nối.
+- Cho phép CPU chờ đọc ở 80 MHz với remote Bluetooth ổn định; giãn tự kết nối lại tối đa 5 phút khi remote vắng lâu.
+- Giữ bộ đệm LCD qua Light Sleep và thử lại chính sách hạ xung khi thức dậy, vẫn bảo vệ các lần khởi động sau panic/WDT/brownout.
+- Xuất log qua tệp tạm, giữ log cũ nếu lưu thất bại; thêm thống kê CPU, Bluetooth, Wi-Fi, nguyên nhân reset và thanh ghi panic.
+- Menu nhanh giữ vị trí và trạng thái ẩn của thanh trạng thái; mở rộng vùng quét khi lật trang Đen trắng nhanh để xóa dấu chữ dòng đầu.
+
 ## LumenOS 1.5.0 / 1.5.0-love · Build cục bộ · 2026-11-14
 
 - Làm mới bốn trang chính theo mẫu thẻ xám phẳng: ngày trên Trang chủ, lối tắt riêng, danh sách tệp thoáng và nhóm Cài đặt bo góc; thanh điều hướng nền trắng chỉ tô mục đang chọn.

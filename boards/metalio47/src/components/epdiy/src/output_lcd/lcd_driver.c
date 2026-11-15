@@ -969,13 +969,19 @@ static void deinit_lcd_peripheral() {
 /**
  * Configure the LCD driver for epdiy.
  */
+static bool lcd_buffers_retained;
+
 void epd_lcd_init(const LcdEpdConfig_t* config, int display_width, int display_height) {
     esp_err_t ret = ESP_OK;
+    if(lcd_buffers_retained)assert(lcd.line_bytes==display_width/4 && lcd.native_height==display_height && lcd.config.bus_width==config->bus_width);
     assign_lcd_parameters_from_config(config, display_width, display_height);
 
     check_cache_configuration();
 
-    ret = allocate_lcd_buffers();
+    if (lcd_buffers_retained) {
+        // 睡眠保留缓冲区只允许相同的硬件配置。/ Retained sleep buffers require the same hardware configuration.
+        lcd_buffers_retained = false;
+    } else ret = allocate_lcd_buffers();
     ESP_GOTO_ON_ERROR(ret, err, TAG, "lcd buffer allocation failed");
 
     ret = init_lcd_peripheral();
@@ -1003,17 +1009,22 @@ err:
 /**
  * Deinitializue the LCD driver, i.e., free resources and peripherals.
  */
-void epd_lcd_deinit() {
+static void lcd_stop(bool retain_buffers) {
     epd_lcd_line_source_cb(NULL, NULL);
 
     deinit_bus_gpio();
     deinit_lcd_peripheral();
     deinit_dma_trans_link();
-    free_lcd_buffers();
+    if (!retain_buffers) free_lcd_buffers();
+    lcd_buffers_retained = retain_buffers;
     deinit_ckv_rmt();
 
     ESP_LOGI(TAG, "LCD deinitialized.");
 }
+
+// 浅睡只释放硬件，保留DMA与显示帧缓冲。/ Light sleep releases hardware while retaining DMA and display buffers.
+void epd_lcd_suspend(void) { lcd_stop(true); }
+void epd_lcd_deinit(void) { lcd_stop(false); }
 
 void epd_lcd_set_pixel_clock_MHz(int frequency) {
     const int requested_hz = frequency * 1000 * 1000;
