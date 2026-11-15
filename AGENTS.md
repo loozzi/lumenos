@@ -290,3 +290,22 @@ Maintain common/Full-specific/Love-specific code in `firmware/shared`, `firmware
 
 用户2026-11-06修订：首次OTA检查允许用户明确选择Full/Love Book并保存，后续检查沿所选分支。跨版必须明确确认后下载，保留型号/分区/版本/SHA验证；TF更新仍只接受当前分支。此项取代上文OTA一律禁止跨版的限制。
 User revision2026-11-06: the first OTA check lets the user explicitly choose Full/Love Book and persists that choice for later OTA checks. Cross-edition installation requires confirmation before download and retains chip/project/partition/version/SHA validation. TF updates remain limited to the installed edition. This supersedes the unconditional OTA cross-edition prohibition above.
+
+
+## CI theo yêu cầu người dùng (2026-11-15)
+
+Người dùng yêu cầu bỏ qua toàn bộ CI cho các lần sau. Không tự bật hoặc chạy lại
+GitHub Actions CI khi commit, push, mở/cập nhật PR hoặc merge. Các workflow kiểm
+thử `build.yml` và `koreader-render-test.yml` chỉ giữ `workflow_dispatch` và được
+tắt trên GitHub; chỉ bật/chạy thủ công khi người dùng yêu cầu rõ ràng. Thêm
+`[skip ci]` vào thông điệp các commit sau để giữ chủ ý này. Quy tắc này thay
+các yêu cầu trước đây về tự chạy/đợi CI; vẫn kiểm tra cục bộ phù hợp và báo
+đúng mức xác minh. Phát hành firmware/website tiếp tục theo quyền phát hành riêng.
+
+User decision 2026-11-15: skip all future automated CI. Do not enable or rerun
+GitHub Actions CI on commits, pushes, PR creation/updates or merges. Keep
+`build.yml` and `koreader-render-test.yml` manual-only and disabled on GitHub;
+only enable/dispatch them upon an explicit user request. Include `[skip ci]`
+in future commit messages. This supersedes earlier automatic CI/run-wait
+requirements; continue appropriate local validation and report its limits.
+Firmware/website publication retains its separate authorization rules.
