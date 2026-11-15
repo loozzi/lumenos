@@ -1,1 +1,1 @@
-LumenOS 1.5.1: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.
+LumenOS 1.5.3: Sửa lật trang khi đọc ngang chỉ làm mới một phần màn hình; thanh công cụ vuốt lên dùng được khi đọc ngang, không còn xoay về dọc.

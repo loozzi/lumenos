@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.5.1",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.4.5-vn",
+  "notes": "LumenOS 1.5.1: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "e731b765acfad1a757c90a47a6d75f0990bca47bc8edcd1237a4419a1ca2d0da",
+      "md5": "aa47c7ff0ede32734c548550263a34b5"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "25d8274875485bd3e3c17303c39962f26f8e5b0770c7bd00c2e49de1f68badfe",
+      "md5": "0c83837557d8722bc7ae4c4084d8c04f"
+    }
+  },
+  "clean_image": {
+    "sha256": "b23736bd02ecd995a8440120efb6b2da387b07b21cbdbd727b5f3008b7e3c027",
+    "md5": "1d0beeaeff7681b37e1a80ce5dda2506"
+  },
+  "size": 4956176,
+  "sha256": "26002433fa27335a902ad7c57a309b30cee8da3ef328867e63f042faf63a59ca",
+  "md5": "66699cdca43f27563fda30ac4bad2994"
+}

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "love-book",
-  "version": "1.5.1-love",
+  "version": "1.5.3-love",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,13 +9,13 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.4.5-love-vn",
-  "notes": "LumenOS 1.5.1 Love Book: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.",
+  "previous_version": "1.5.1-love",
+  "notes": "LumenOS 1.5.3 Love Book: Sửa lật trang khi đọc ngang chỉ làm mới một phần màn hình; thanh công cụ vuốt lên dùng được khi đọc ngang, không còn xoay về dọc.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
-      "sha256": "fac9001eda9efafa0bafa0af0d53b8bdafad68d28b73bab7b631cb149a65c97d",
-      "md5": "15575f8494b5f4e6ce2e2f33be253614"
+      "sha256": "a6ed4ca1b8984ddc67a37c9d6409a9efdcbcc979082a9c566087c5b318417bdb",
+      "md5": "645db75f78366419ec5d0fcaf312f546"
     },
     "partitions.bin": {
       "size": 3072,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "45286c3c0983637742c66676b177bb12eb8e04ea6c1418c1f7fc6e670ff0356c",
-      "md5": "1bac81d857ac7ad692c602684f5fb188"
+      "sha256": "74678c1edf87fc4b3778cb5495cff680fd30f8558372a5862aff9bb7ba673520",
+      "md5": "1d26504697234e5341840c1433128cf0"
     }
   },
   "clean_image": {
-    "sha256": "722e23408051f39185c5cd7bfef6710ef8bf30e400f6403ae6d077e055c9aef4",
-    "md5": "36fc984cf3095cf2d1d2cd9fb0fc2d76"
+    "sha256": "27094892006b5013b0bdad3122f2ec18db4263b5483fd52ed8a4f587cc7cdbf0",
+    "md5": "c822265958e228e4e39e933564d6cb01"
   },
-  "size": 4889440,
-  "sha256": "6af376955dd0d1cd5104c36d3f876a440713045d890ed05ff2f2a174e40c3783",
-  "md5": "55da28b7a7112d8adcff4f57e8c8adec"
+  "size": 4889504,
+  "sha256": "8ae06d449c7954c97381cd5e7115ec887b49f9ce88e768b5b472b21bc1cca112",
+  "md5": "4c6e3f1f330ea721379bdc42b1dbe8ac"
 }

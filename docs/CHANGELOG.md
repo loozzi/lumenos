@@ -1,3 +1,9 @@
+## LumenOS 1.5.3 / 1.5.3-love · Phát hành chính thức · 2026-11-15
+
+- Sửa lật trang khi đọc ngang chỉ làm mới phần bên trái màn hình, để lại chữ của trang cũ ở phần còn lại.
+- Thanh công cụ vuốt lên từ đáy dùng được khi đọc ngang, nằm ở đáy màn hình ngang và không còn xoay máy về dọc. Các bảng mở từ thanh công cụ vẫn hiển thị dọc; đóng lại thì sách trở về ngang.
+- Vuốt từ mép để quay lại nhận được trên toàn bộ chiều ngang khi đọc ngang.
+
 ## LumenOS 1.5.1 / 1.5.1-love · Phát hành chính thức · 2026-11-15
 
 - Chuyển kênh phát hành chính thức (Release, OTA, Web Flash) sang `loozzi/lumenos`. Máy đang chạy dpReader hoặc LumenOS 1.5.0 cần cài 1.5.1 qua USB một lần; từ 1.5.1 cập nhật qua Wi-Fi từ kênh mới.
