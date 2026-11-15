@@ -18,6 +18,10 @@
 
 #include "kosync_client.h"
 #include "sleep.h"
+#include "metalio_cpu.h"
+
+// S31专用保留缓冲的LCD停机。/ S31 LCD parking retains buffers.
+void epd_lcd_suspend(void);
 #include "ui_avatar.h"
 #include "book_cover_jobs.h"
 #include "metalio_hw.h"
@@ -563,7 +567,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
         metalio_frontlight(0,50);
         epd_poweroff();
         vTaskDelay(pdMS_TO_TICKS(120));
-        epd_lcd_deinit(); lcd_stopped=true;
+        epd_lcd_suspend(); lcd_stopped=true;
         pins_prepared=true;
         err=metalio_prepare_light_sleep_pins();
         if(err==ESP_OK && acc) err=sc7a20h_shared_irq_idle(acc);
@@ -590,6 +594,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
             if(wake_by && esp_timer_get_time()>=wake_by) break;
             err=metalio_light_sleep_start();
             if(err!=ESP_OK) break;
+            (void)metalio_cpu_after_sleep();
             crash_report_poll(false);
             uint32_t causes=esp_sleep_get_wakeup_causes();
             key_irq=(causes & ((1u<<ESP_SLEEP_WAKEUP_EXT1)|(1u<<ESP_SLEEP_WAKEUP_GPIO)))!=0;

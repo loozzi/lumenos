@@ -472,3 +472,46 @@ LumenOS từ phiên bản 1.5.0 dùng số phiên bản độc lập cho mỗi b
 (tiếp theo 1.5.1); Love Book thêm `-love`. Build cục bộ bằng
 `tools/build_firmware.py --board metalio47 --edition all --local-build`,
 xuất hai gói vào `Test Build/<version>/`, không stage hoặc phát hành online.
+
+## Wi-Fi đã lưu, chờ đọc và log chẩn đoán
+
+Trong Cài đặt Wi-Fi, nút **Mạng đã lưu** mở danh sách tối đa sáu SSID.
+Chọn một dòng rồi dùng **Kết nối** hoặc **Quên mạng** ở thẻ trên cùng; quên cần
+xác nhận và chỉ xóa mạng đang chọn. Chuyển về **Xem lân cận** để thêm mạng.
+Nếu mất kết nối đang dùng, thiết bị thử lại mạng đó rồi lần lượt các hồ sơ còn
+lại; khi hết lượt thử, trang báo lỗi để người dùng thử lại. Không thay đổi mật
+khẩu hoặc xóa hồ sơ chỉ vì router tạm vắng. Thẻ nhớ phải sẵn sàng để đọc/ghi hồ sơ.
+
+CPU có thể giảm xuống 80 MHz trong cửa sổ chờ của trang đọc đã chuẩn bị xong.
+Kết nối Bluetooth đã hoàn tất thiết lập không chặn cửa sổ này; ghép đôi, quét,
+chuyển thiết bị, truyền dữ liệu và tác vụ phần cứng vẫn giữ điều kiện hoạt động.
+Khóa PM của SDK có thể giữ xung thực tế cao hơn. Tự kết nối lại remote dùng các
+khoảng 4/8/16/32/64/128/256 giây rồi tối đa 300 giây; kết nối thành công hoặc
+người dùng chủ động yêu cầu kết nối sẽ đặt lại khoảng chờ. Light Sleep giữ bộ
+đệm DMA của LCD trong RAM và chỉ dừng tài nguyên phần cứng; thức dậy cấu hình
+lại chính sách CPU nếu đủ điều kiện. Khởi động sau panic/WDT/brownout vẫn giữ
+xung cao để bảo vệ phục hồi. Đây là chính sách phần mềm, chưa phải số đo pin.
+
+Xuất log ghi và đồng bộ tệp tạm trước khi thay `dpreader_log.txt`. Khi ghi,
+đóng hoặc đổi tên thất bại, log cũ giữ tại tên gốc hoặc `dpreader_log.old` để
+phục hồi ở lần xuất tiếp theo. Không tháo thẻ khi đang xuất. Log bổ sung trạng
+thái/chỉ số CPU, kết nối và khoảng thử lại Bluetooth, trạng thái Wi-Fi, nguyên
+nhân reset, dấu vết Sleep và PC/RA/SP/mcause/mtval khi panic trên RISC-V.
+Các thanh ghi chỉ có khi panic wrapper đã chạy và RAM RTC còn được giữ;
+đây không phải core dump đầy đủ. Log không xuất mật khẩu Wi-Fi.
+
+Menu nhanh vẽ lại thanh trạng thái theo vị trí hiện tại của trang đọc hoặc
+trang hệ thống, và không bật lại thanh đã ẩn. Lật trang chữ, gồm Đen trắng
+nhanh, quét từ mép trên để bao gồm dấu chữ vượt biên vùng nội dung; không đổi
+waveform, VCOM hoặc thứ tự cấp nguồn.
+
+Kiểm thử host tái lập trong view S31:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/idle-host
+cd build/idle-host
+bash tools/run_wifi_idle_diagnostics_tests.sh
+```
+
+Các kiểm thử này không thay thế nghiệm thu Wi-Fi/remote, dòng điện, dấu chữ
+và chu kỳ ngủ/thức trên thiết bị.

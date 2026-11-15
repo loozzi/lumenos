@@ -4687,7 +4687,7 @@ static bool present(app_ctx_t* ctx, app_redraw_t redraw) {
         // 所有文字水波纹均合并页脚，包含完整波形及本次开机的降级路径，不在最后一带后追加刷新。
         // Fuse the footer for all text ripple paths, including full-waveform/boot-local fallback, without a scan after the last band.
         const bool fused_footer=s_reader_turn_pending||s_water_turn_pending;
-        if (s_water_turn_pending) {
+        if (s_water_turn_pending || s_reader_turn_pending) {
             // 顶部字形可越过正文边界；与正文一起扫描。/ Include glyph ink above the body boundary in the same scan.
             turn_area.height += turn_area.y;
             turn_area.y = 0;

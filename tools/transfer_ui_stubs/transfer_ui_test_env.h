@@ -157,6 +157,7 @@ static bool test_configured = true;
 static int test_scan_error, test_save_count;
 static size_t test_scan_count = 8;
 static char test_saved_ssid[33];
+static char test_priority_ssid[33]="saved";
 static int test_stop_count;
 static bool test_wifi_running;
 static bool test_foreign_network_owner;
@@ -171,7 +172,7 @@ static inline bool read_pico_transfer_try_stop_if_idle(void) {
 static inline void read_pico_transfer_prepare_network(void) {}
 static inline bool read_pico_transfer_sleep_blocked(void) { return test_sleep_blocked; }
 static inline void read_pico_transfer_get_status(read_pico_transfer_status_t* s) {*s=test_status;}
-static inline int read_pico_transfer_get_saved_wifi(char* s,bool* c) {strcpy(s,test_configured?"saved":"");*c=test_configured;return 0;}
+static inline int read_pico_transfer_get_saved_wifi(char* s,bool* c) {strcpy(s,test_configured?test_priority_ssid:"");*c=test_configured;return 0;}
 static inline int read_pico_transfer_start(const read_pico_transfer_cfg_t* c) {
     if (test_wifi_running) return ESP_FAIL;
     if (!c->network_only) {
@@ -182,6 +183,13 @@ static inline int read_pico_transfer_start(const read_pico_transfer_cfg_t* c) {
     return ESP_OK;
 }
 static inline void read_pico_transfer_service_poll(void) {}
+#define READ_PICO_TRANSFER_WIFI_PROFILES_MAX 6
+static char test_selected_wifi[33],test_forgotten_wifi[33];
+static char test_profile_names[6][33];
+static size_t test_profile_count;
+static inline int read_pico_transfer_list_wifi(char out[6][33],size_t *count){*count=test_profile_count;memcpy(out,test_profile_names,sizeof(test_profile_names));return ESP_OK;}
+static inline int read_pico_transfer_select_wifi(const char *ssid){snprintf(test_selected_wifi,33,"%s",ssid);snprintf(test_priority_ssid,33,"%s",ssid);return ESP_OK;}
+static inline int read_pico_transfer_forget_wifi_ssid(const char *ssid){snprintf(test_forgotten_wifi,33,"%s",ssid);++test_forget_count;if(test_wifi_running)return ESP_FAIL;if(!test_forget_error)test_configured=false;return test_forget_error;}
 static inline int read_pico_transfer_save_wifi(const char* s,const char* p) {(void)p;test_save_count++;snprintf(test_saved_ssid,33,"%s",s);return test_save_error;}
 static inline int read_pico_transfer_scan_wifi(read_pico_transfer_network_t* out,size_t* count) {*count=test_scan_error?0:test_scan_count;for(size_t i=0;i<*count;i++){out[i]=(read_pico_transfer_network_t){.supported=true,.requires_password=true};snprintf(out[i].ssid,33,"network%u",(unsigned)i);}if(*count)snprintf(out[0].ssid,33,"中文家庭网络");return test_scan_error;}
 static int test_qr_encodes;
@@ -206,3 +214,9 @@ static char test_signature[96];
 static bool test_signature_fail;
 static inline const char *app_settings_status_signature(void){return test_signature;}
 static inline void app_settings_set_status_signature(const char *text){if(!test_signature_fail)snprintf(test_signature,sizeof(test_signature),"%s",text);}
+
+static inline void ui_draw_soft_card(uint8_t *fb,EpdRect r,int radius,bool selected){(void)fb;(void)r;(void)radius;(void)selected;}
+static inline void epd_draw_pixel(int x,int y,uint8_t color,uint8_t *fb){(void)x;(void)y;(void)color;(void)fb;}
+static inline uint8_t ui_read_pixel(const uint8_t *fb,int x,int y){(void)fb;(void)x;(void)y;return 0xf0;}
+static inline bool app_settings_main_fast_refresh(void){return false;}
+static inline int update_display_gray_transition(void *hl,EpdRect area){(void)hl;(void)area;return 0;}

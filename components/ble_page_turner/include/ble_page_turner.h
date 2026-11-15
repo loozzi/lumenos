@@ -195,6 +195,10 @@ void ble_pt_reconnect_recent(void);
 void ble_pt_cancel_recent(void);
 void ble_pt_disconnect(void);
 bool ble_pt_connected(void);
+/// 稳定连接或退避等待可低频。/ A stable link or reconnect backoff may idle.
+bool ble_pt_idle_ready(void);
+/// 当前自动重连间隔。/ Current automatic reconnect interval.
+uint32_t ble_pt_reconnect_wait_ms(void);
 bool ble_pt_connecting(void);
 const char *ble_pt_connected_name(void);
 

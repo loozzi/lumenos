@@ -37,6 +37,9 @@ jobs:
           echo "$RUNNER_TEMP/dpreader-host-cc" >> "$GITHUB_PATH"
       - name: Materialize S31 production sources
         run: python3 tools/board_source_view.py --board metalio47 --tests --output build/sleep-host
+      - name: Saved Wi-Fi, idle CPU, retained LCD and diagnostic regressions
+        working-directory: build/sleep-host
+        run: bash tools/run_wifi_idle_diagnostics_tests.sh
       - name: Sleep, wake, lock, media recovery and power policy
         working-directory: build/sleep-host
         run: |

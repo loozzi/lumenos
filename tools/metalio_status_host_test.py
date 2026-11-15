@@ -72,7 +72,7 @@ static bool ui_font_has_text(const char *text){(void)text;return true;}
 static int ui_font_text_width_px(int px,const char *text){return ui_text_fixed_width_px(px,text);}
 '''
 unit+=nav[nav.index('static bool s_status_reading;'):nav.index('static const char *const labels[]')]
-for name,path in [('ui_status_mark_visible' ,'main/ui/ui_kit.c'),('ui_status_visible','main/ui/ui_kit.c'),('ui_clear_page','main/ui/ui_kit.c'),('power_signature','main/ui/ui_nav.c'),('ui_nav_status_area','main/ui/ui_nav.c'),('ui_nav_refresh_power','main/ui/ui_nav.c'),('status_time','main/ui/ui_nav.c'),('clock_text','main/ui/ui_nav.c'),('draw_status','main/ui/ui_nav.c'),('ui_nav_status','main/ui/ui_nav.c'),('ui_nav_reader_status','main/ui/ui_nav.c')]:
+for name,path in [('ui_status_mark_visible' ,'main/ui/ui_kit.c'),('ui_status_visible','main/ui/ui_kit.c'),('ui_clear_page','main/ui/ui_kit.c'),('power_signature','main/ui/ui_nav.c'),('ui_nav_status_area','main/ui/ui_nav.c'),('ui_nav_refresh_power','main/ui/ui_nav.c'),('status_time','main/ui/ui_nav.c'),('clock_text','main/ui/ui_nav.c'),('draw_status','main/ui/ui_nav.c'),('ui_nav_status','main/ui/ui_nav.c'),('ui_nav_reader_status','main/ui/ui_nav.c'),('ui_nav_redraw_status','main/ui/ui_nav.c')]:
  unit+=function(name,root/path)+'\n'
 unit+=r'''
 int main(void){
@@ -98,6 +98,10 @@ int main(void){
  assert(ui_nav_status_area().y==0&&ui_nav_status_area().height==54);
  charging=true;assert(ui_nav_refresh_power(fb));
  for(unsigned i=54*342;i<sizeof(fb);i++)assert(fb[i]==0xa5);
+ unsigned clear_before=header_clears;
+ ui_nav_redraw_status(fb);assert(header_clears==clear_before+1&&s_status_compact&&ui_status_visible(fb));
+ ui_clear_page(fb);clear_before=header_clears;
+ ui_nav_redraw_status(fb);assert(header_clears==clear_before&&!ui_status_visible(fb));
  expected_center=40;ui_nav_status(fb);
  assert(ui_nav_status_area().y==12&&ui_nav_status_area().height==56);
  puts("PASS: actual charge insertion/removal/SOC-change detection, zero repeated redraw, standard and compact reader header-only crops, low-SOC black well/white bolt outline, immersive/fullscreen suppression, offscreen preview isolation");

@@ -209,9 +209,9 @@ static char s_start_failure[160];
 // switching it off is not immediately undone by the retry.
 static char s_reconnect_addr[18];
 static uint32_t s_reconnect_at;
-static unsigned s_reconnect_failures;
+static atomic_uint s_reconnect_failures;
 static uint32_t reconnect_delay_ms(unsigned failures) {
-    return failures>=4?60000u:(4000u<<failures);
+    return failures>=7?300000u:(4000u<<failures);
 }
 // 快捷按钮只排队；在既有生命周期/网络内存闸门放行后，由poll发起一次异步连接。
 // Quick input only queues; poll starts one asynchronous connect after existing lifecycle/network memory gates allow it.
@@ -1772,6 +1772,15 @@ void ble_pt_disconnect(void) {
 // succeeded. This used to report "subscription usable", and since a subscription can fail while
 // the remote keeps notifying, the page sat on "connecting" forever.
 bool ble_pt_connected(void) { return s_link_up&&atomic_load(&s_host_ready)&&!atomic_load(&s_stop_active); }
+// 建链/配对阶段保持活跃时钟；稳定链路或等待退避可以低频。
+// Keep active clocks during bring-up; stable links or reconnect backoff may idle.
+bool ble_pt_idle_ready(void) {
+    return !s_running || (atomic_load(&s_host_ready) && !atomic_load(&s_stop_active) &&
+        !s_connecting && !s_scanning && !s_pending_addr[0] &&
+        !atomic_load(&s_recent_requested) && (!s_link_up || (s_connected && s_step==STEP_READY)));
+}
+uint32_t ble_pt_reconnect_wait_ms(void) { return reconnect_delay_ms(atomic_load(&s_reconnect_failures)); }
+
 bool ble_pt_connecting(void) { return s_connecting && !s_link_up && atomic_load(&s_host_ready)&&!atomic_load(&s_stop_active); }
 const char *ble_pt_connected_name(void) { return s_conn_name; }
 
@@ -2231,7 +2240,7 @@ static void poll_locked(void) {
         const uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
         if (now - s_reconnect_at >= reconnect_delay_ms(s_reconnect_failures)) {
             s_reconnect_at = now;
-            if(s_reconnect_failures<4)++s_reconnect_failures;
+            if(s_reconnect_failures<7)++s_reconnect_failures;
             char addr[18];
             snprintf(addr, sizeof(addr), "%s", s_reconnect_addr);
             if (ble_pt_connect(addr) == ESP_OK)

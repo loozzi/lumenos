@@ -13,6 +13,9 @@ unit=r'''
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
 #define LOG_BUF_SIZE (32*1024)
 #define ESP_OK 0
 #define ESP_FAIL -1
@@ -37,15 +40,22 @@ static vprintf_like_t s_prev_vprintf;
 static void emit(const char *fmt,...);
 static char saved[70000];
 static FILE *checked_open(const char *name,const char *mode){
- (void)name;(void)mode;assert(!depth);if(failure==4)return NULL;
+ assert(!depth);if(failure==4)return NULL;
  if(inject){emit("DURING_SD\n");}
- return tmpfile();
+ return fopen(name,!strcmp(mode,"w")?"w+":mode);
 }
 static int checked_print(FILE *f,const char *fmt,...){assert(!depth);va_list a;va_start(a,fmt);int n=vfprintf(f,fmt,a);va_end(a);return n;}
 static size_t checked_write(const void *p,size_t size,size_t n,FILE *f){assert(!depth);if(failure==1)return n?fwrite(p,size,n-1,f):0;return fwrite(p,size,n,f);}
 static int checked_flush(FILE *f){assert(!depth);return failure==2?EOF:fflush(f);}
 static int checked_error(FILE *f){assert(!depth);return failure==5?1:ferror(f);}
 static int checked_close(FILE *f){assert(!depth);rewind(f);size_t n=fread(saved,1,sizeof(saved)-1,f);saved[n]=0;int r=fclose(f);return failure==3?EOF:r;}
+static int checked_sync(int fd){assert(!depth);return failure==6?-1:fsync(fd);}
+static int checked_rename(const char *from,const char *to){assert(!depth);
+ if((failure==7&&strstr(from,".tmp"))||(failure==8&&strstr(to,".old"))){errno=EIO;return -1;}
+ return rename(from,to);
+}
+#define fsync checked_sync
+#define rename checked_rename
 #define fopen checked_open
 #define fprintf checked_print
 #define fwrite checked_write
@@ -81,9 +91,24 @@ static const char *crash_note_text(void){return "";}
 static const char *crash_note_detail(void){return NULL;}
 static unsigned rp_crash_log_count(void){return 0;}
 static const char *rp_crash_log_line(unsigned i){(void)i;return NULL;}
+typedef struct {int state,mode,last_error;bool network_ready,wifi_configured;unsigned sta_count,cur_bytes;}read_pico_transfer_status_t;
+static void read_pico_transfer_get_status(read_pico_transfer_status_t *s){memset(s,0,sizeof(*s));}
+static bool ble_pt_connecting(void){return false;}
+static bool ble_pt_scanning(void){return false;}
+static bool ble_pt_idle_ready(void){return true;}
+static uint32_t ble_pt_reconnect_wait_ms(void){return 300000;}
+static int esp_reset_reason(void){return 1;}
+#if DPREADER_BOARD_METALIO47
+typedef struct {bool enabled,ui_pinned,unsafe;unsigned idle_windows,rejected,wakes,leases,faults;int last_error;}metalio_cpu_stats_t;
+static metalio_cpu_stats_t metalio_cpu_stats(void){return (metalio_cpu_stats_t){.enabled=true,.idle_windows=42};}
+static int esp_clk_tree_src_get_freq_hz(int src,int precision,uint32_t *hz){(void)src;(void)precision;*hz=80000000;return 0;}
+#define SOC_MOD_CLK_CPU 1
+#define ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED 1
+static void metalio_sleep_previous_summary(char *out,size_t n){snprintf(out,n,"sleep_previous test");}
+#endif
 '''
 for name in ('log_export_vprintf','log_export_clear','log_snapshot','log_export_to_sd'):
- unit+=function(name,source)+'\n'
+ unit+=function(name,source).replace('/sdcard/','')+'\n'
 unit+=r'''
 static int sink(const char *fmt,va_list a){(void)fmt;(void)a;return 0;}
 static void emit(const char *fmt,...){va_list a;va_start(a,fmt);log_export_vprintf(fmt,a);va_end(a);}
@@ -103,9 +128,15 @@ int main(void){
  const char *payload=strstr(saved,"--------------------------------------------------------\n");
  assert(payload);payload+=strlen("--------------------------------------------------------\n");
  assert(!memcmp(payload,expected,LOG_BUF_SIZE));
- for(failure=1;failure<=5;++failure){
+ char previous_bytes[sizeof(saved)];strcpy(previous_bytes,saved);
+ for(failure=1;failure<=8;++failure){
   error[0]=0;assert(log_export_to_sd(path,sizeof(path),error,sizeof(error))==ESP_FAIL);
   assert(error[0]&&!depth&&allocated==freed);
+  FILE *old=checked_open("dpreader_log.txt","r");
+  // Open failure is injected only on the export path.
+  if(!old){int original=failure;failure=0;old=checked_open("dpreader_log.txt","r");failure=original;}
+  assert(old);char actual[sizeof(saved)];size_t n=fread(actual,1,sizeof(actual)-1,old);actual[n]=0;
+  assert(!strcmp(previous_bytes,actual));checked_close(old);
  }
  failure=0;allocation_fail=true;
  assert(log_export_to_sd(path,sizeof(path),error,sizeof(error))==ESP_ERR_NO_MEM);
@@ -117,5 +148,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(unit);binary=p.with_suffix('')
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
- subprocess.run([str(binary)],check=True)
+ subprocess.run(['cc','-DDPREADER_BOARD_METALIO47=1','-std=c11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
+ subprocess.run([str(binary)],cwd=tmp,check=True)

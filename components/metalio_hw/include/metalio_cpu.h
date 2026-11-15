@@ -10,9 +10,11 @@ typedef struct {
     uint32_t idle_windows, rejected, wakes, leases, faults;
     esp_err_t last_error;
 } metalio_cpu_stats_t;
-/* Task context only. No automatic light sleep; active max320, eligible idle min160. */
+/* Task context only. No automatic light sleep; active max320, eligible idle min80. */
 esp_err_t metalio_cpu_init(void);
 esp_err_t metalio_cpu_wake(void);
+/// 浅睡后重试DFS，保留异常启动保护。/ Retry DFS after light sleep, retaining recovery-boot protection.
+esp_err_t metalio_cpu_after_sleep(void);
 bool metalio_cpu_idle_begin(bool eligible, uint32_t wait_ms);
 metalio_cpu_guard_t metalio_cpu_guard_begin(void);
 void metalio_cpu_guard_end(metalio_cpu_guard_t *scope);

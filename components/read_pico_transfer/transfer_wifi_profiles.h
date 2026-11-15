@@ -126,3 +126,33 @@ static esp_err_t store_credentials(const transfer_credentials_t *next) {
     if (err != ESP_OK) (void)remove(WIFI_PROFILES_FILE ".tmp");
     return err;
 }
+
+// 按SSID删除一个记录，临时文件完整落盘后才发布；其余顺序不变。
+// Remove one SSID only after a complete temporary write; preserve remaining order.
+static esp_err_t wifi_profile_forget(const char *ssid) {
+    transfer_credentials_t current={0};
+    unsigned count=0;
+    esp_err_t err=wifi_profile_read(0,&current,&count);
+    clear_secret(&current,sizeof(current));
+    if(err!=ESP_OK)return err;
+    if(mkdir(TRANSFER_WIFI_DIRECTORY,0700) && errno!=EEXIST)return ESP_FAIL;
+    FILE *file=fopen(WIFI_PROFILES_FILE ".tmp","wb");
+    if(!file)return ESP_FAIL;
+    setvbuf(file,NULL,_IONBF,0);
+    bool ok=fwrite("WFL1",1,4,file)==4,found=false;
+    for(unsigned i=0;ok && i<count;++i) {
+        unsigned actual=0;
+        err=wifi_profile_read(i,&current,&actual);
+        if(err!=ESP_OK || actual!=count || current.version!=1){ok=false;break;}
+        if(!strcmp(current.ssid,ssid))found=true;
+        else ok=fwrite(&current,sizeof(current),1,file)==1;
+        clear_secret(&current,sizeof(current));
+    }
+    clear_secret(&current,sizeof(current));
+    if(ok)ok=fflush(file)==0 && fsync(fileno(file))==0;
+    if(fclose(file))ok=false;
+    if(ok && found)err=wifi_profiles_publish();
+    else err=ok?ESP_ERR_NOT_FOUND:ESP_FAIL;
+    if(err!=ESP_OK)(void)remove(WIFI_PROFILES_FILE ".tmp");
+    return err;
+}

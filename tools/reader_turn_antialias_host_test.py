@@ -52,3 +52,33 @@ with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)
  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
+
+# Execute the actual production crop planner, including both ripple and Fast BW turns.
+book=(root/'main/apps/app_book.c').read_text()
+start=book.index('        EpdRect turn_area=s_area;')
+end=book.index('        if(fused_footer && app_settings_book_footer_enabled())',start)
+crop=book[start:end]
+program=r"""
+#include <assert.h>
+#include <stdbool.h>
+#define DPREADER_BOARD_METALIO47 1
+typedef struct{int x,y,width,height;}EpdRect;
+static bool s_reader_turn_pending,s_water_turn_pending;
+static EpdRect s_area;
+static EpdRect plan(void){
+"""+crop+r"""
+ (void)fused_footer;return turn_area;
+}
+int main(void){
+ s_area=(EpdRect){0,58,684,1100};
+ EpdRect a=plan();assert(a.y==58&&a.height==1100);
+ s_reader_turn_pending=true;a=plan();assert(a.y==0&&a.height==1158&&a.width==684);
+ s_reader_turn_pending=false;s_water_turn_pending=true;a=plan();assert(a.y==0&&a.height==1158);
+ s_area=(EpdRect){0,0,684,1158};a=plan();assert(a.y==0&&a.height==1158);
+}
+"""
+with tempfile.TemporaryDirectory() as d:
+ p=Path(d);(p/'crop.c').write_text(program)
+ subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p/'crop.c'),'-o',str(p/'crop')],check=True)
+ subprocess.run([str(p/'crop')],check=True)
+print('PASS actual reader crop:ordinary/Fast BW/ripple include ink above the first text line')

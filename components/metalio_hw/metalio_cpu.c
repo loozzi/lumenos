@@ -16,6 +16,7 @@ static SemaphoreHandle_t mutex;
 static atomic_bool initialized;
 static esp_pm_lock_handle_t max_lock;
 static metalio_cpu_stats_t state;
+static bool recovery_boot;
 
 static esp_err_t freeze_locked(esp_err_t reason) {
     ++state.faults;state.last_error=reason;
@@ -37,13 +38,13 @@ esp_err_t metalio_cpu_init(void) {
     esp_reset_reason_t reset=esp_reset_reason();
     if(reset==ESP_RST_PANIC || reset==ESP_RST_INT_WDT || reset==ESP_RST_TASK_WDT ||
        reset==ESP_RST_WDT || reset==ESP_RST_BROWNOUT) {
-        state.last_error=ESP_ERR_INVALID_STATE;xSemaphoreGive(mutex);return state.last_error;
+        recovery_boot=true;state.last_error=ESP_ERR_INVALID_STATE;xSemaphoreGive(mutex);return state.last_error;
     }
     esp_err_t err=esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX,0,"reader_cpu",&max_lock);
     if(err==ESP_OK)err=esp_pm_lock_acquire(max_lock);
     if(err==ESP_OK) {
         state.ui_pinned=true;
-        const esp_pm_config_t config={.max_freq_mhz=320,.min_freq_mhz=160,.light_sleep_enable=false};
+        const esp_pm_config_t config={.max_freq_mhz=320,.min_freq_mhz=80,.light_sleep_enable=false};
         err=esp_pm_configure(&config);
         if(err==ESP_OK)state.enabled=true;
         // Initial max lock remains held if configuration fails.
@@ -98,4 +99,25 @@ void metalio_cpu_guard_end(metalio_cpu_guard_t *scope) {
 metalio_cpu_stats_t metalio_cpu_stats(void) {
     if(!atomic_load_explicit(&initialized,memory_order_acquire))return (metalio_cpu_stats_t){0};
     xSemaphoreTake(mutex,portMAX_DELAY);metalio_cpu_stats_t snapshot=state;xSemaphoreGive(mutex);return snapshot;
+}
+
+// 浅睡恢复后重试被暂停的DFS；异常启动仍保持最高频率。
+// Retry a suspended DFS policy after light wake; recovery boots stay at max.
+esp_err_t metalio_cpu_after_sleep(void) {
+    if(!atomic_load_explicit(&initialized,memory_order_acquire))return ESP_OK;
+    xSemaphoreTake(mutex,portMAX_DELAY);
+    esp_err_t err=ESP_OK;
+    if(!recovery_boot && max_lock && !state.leases) {
+        if(!state.ui_pinned) {
+            err=esp_pm_lock_acquire(max_lock);
+            if(err==ESP_OK)state.ui_pinned=true;
+        }
+        if(err==ESP_OK) {
+            const esp_pm_config_t config={.max_freq_mhz=320,.min_freq_mhz=80,.light_sleep_enable=false};
+            err=esp_pm_configure(&config);
+        }
+        if(err==ESP_OK){state.enabled=true;state.unsafe=false;state.last_error=ESP_OK;}
+        else (void)freeze_locked(err);
+    }
+    xSemaphoreGive(mutex);return err;
 }

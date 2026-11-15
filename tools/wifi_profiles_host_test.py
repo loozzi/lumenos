@@ -48,7 +48,7 @@ for name in ('connection_begin', 'connection_lost', 'connection_poll'):
 unit += r'''
 enum {WIFI_AUTH_WPA_PSK, WIFI_AUTH_OPEN, WIFI_ALL_CHANNEL_SCAN, WIFI_CONNECT_AP_BY_SIGNAL,
       WPA3_SAE_PWE_BOTH, WIFI_IF_STA};
-enum {READ_PICO_TRANSFER_MODE_STA, READ_PICO_TRANSFER_STARTING, READ_PICO_TRANSFER_ERROR};
+enum {READ_PICO_TRANSFER_MODE_STA, READ_PICO_TRANSFER_STARTING, READ_PICO_TRANSFER_ERROR,READ_PICO_TRANSFER_UPLOADING};
 typedef struct {
     struct {
         char ssid[32], password[64];
@@ -61,7 +61,8 @@ static bool s_started=true, s_stopping, s_shutdown_only, s_upload_active, networ
 static unsigned s_profile_count, s_profile_index, s_profiles_tried;
 static transfer_connection_t s_connection;
 static struct {int mode;} s_cfg;
-static struct {bool network_ready; char url[64]; int state, last_error;} s_status;
+typedef struct {bool network_ready;char url[64];int state,last_error,mode;}read_pico_transfer_status_t;
+static read_pico_transfer_status_t s_status;
 static int64_t now;
 static unsigned connects, disconnects, changes;
 static char configured_ssid[33], published_ssid[33];
@@ -88,13 +89,16 @@ end = backup_header.index('} read_pico_transfer_wifi_backup_t;') + len('} read_p
 unit += backup_header[start:end] + '\n'
 unit += function('read_pico_transfer_wifi_backup_valid', source) + '\n'
 unit += r'''
-static bool s_wifi;
+static bool s_wifi,s_http,s_netif;
+static bool cancel_time_sync(bool cancel){assert(cancel);return true;}
+static void read_pico_transfer_get_status(read_pico_transfer_status_t *out){*out=s_status;}
 static bool claim_config(void) { return true; }
 static void release_config(void) {}
 #include "transfer_wifi_profiles_backup.h"
 '''
 for name in ('wifi_sta_config', 'begin_saved_profile', 'saved_profile_lost',
-             'advance_saved_profile', 'read_pico_transfer_service_poll', 'sd_relative_valid'):
+             'advance_saved_profile', 'read_pico_transfer_service_poll', 'sd_relative_valid',
+             'read_pico_transfer_list_wifi','change_saved_wifi','read_pico_transfer_select_wifi','read_pico_transfer_forget_wifi_ssid'):
     unit += function(name, source) + '\n'
 unit += r'''
 static void save(const char *name, const char *password) {
@@ -148,10 +152,11 @@ int main(void) {
 
     // Sau khi mạng thứ hai đã online, mất mạng sẽ thử lại mạng đó trước khi chuyển tiếp.
     s_profile_index=1;
-    s_profiles_tried=0;
+    s_profiles_tried=2;
     begin_saved_profile(now);
     s_connection.online=true;
     saved_profile_lost(now);
+    assert(s_profiles_tried==0);
     unsigned previous_connects=connects;
     read_pico_transfer_service_poll();
     assert(connects==previous_connects);
@@ -184,6 +189,33 @@ int main(void) {
     assert(read_pico_transfer_import_wifi_profiles_backup(archive)==ESP_OK);
     assert(read_pico_transfer_export_wifi_profiles_backup(check)==ESP_OK);
     assert(!memcmp(check,archive,sizeof(check))&&!strcmp(published_ssid,"e"));
+    char names[READ_PICO_TRANSFER_WIFI_PROFILES_MAX][33];size_t listed=0;
+    assert(read_pico_transfer_list_wifi(names,&listed)==ESP_OK&&listed==6&&!strcmp(names[5],"legacy"));
+    s_started=false;
+    assert(read_pico_transfer_select_wifi("legacy")==ESP_OK);
+    assert(load_credentials(&out)==ESP_OK&&!strcmp(out.ssid,"legacy")&&!strcmp(out.password,"abcdefgh"));
+    assert(read_pico_transfer_select_wifi("missing")==ESP_ERR_NOT_FOUND);
+    s_status.mode=READ_PICO_TRANSFER_MODE_STA;s_started=true;
+    assert(read_pico_transfer_forget_wifi_ssid("c")==ESP_ERR_INVALID_STATE);
+    s_started=false;s_status.state=READ_PICO_TRANSFER_UPLOADING;
+    assert(read_pico_transfer_forget_wifi_ssid("c")==ESP_ERR_INVALID_STATE);
+    s_status.state=READ_PICO_TRANSFER_STARTING;
+    assert(read_pico_transfer_forget_wifi_ssid("c")==ESP_OK);
+    assert(read_pico_transfer_list_wifi(names,&listed)==ESP_OK&&listed==5);
+    assert(read_pico_transfer_import_wifi_profiles_backup(archive)==ESP_OK);
+    assert(wifi_profile_forget("missing")==ESP_ERR_NOT_FOUND);
+    assert(wifi_profile_forget("c")==ESP_OK);
+    assert(wifi_profile_read(0,&out,&count)==ESP_OK && count==5 && !strcmp(out.ssid,"e"));
+    assert(wifi_profile_read(1,&out,&count)==ESP_OK && !strcmp(out.ssid,"d"));
+    assert(wifi_profile_read(2,&out,&count)==ESP_OK && !strcmp(out.ssid,"home"));
+    assert(mkdir(WIFI_PROFILES_FILE ".tmp",0700)==0);
+    assert(wifi_profile_forget("e")!=ESP_OK);
+    assert(rmdir(WIFI_PROFILES_FILE ".tmp")==0);
+    assert(wifi_profile_read(0,&out,&count)==ESP_OK && count==5 && !strcmp(out.ssid,"e"));
+    assert(wifi_profile_forget("e")==ESP_OK);
+    assert(wifi_profile_read(0,&out,&count)==ESP_OK && count==4 && !strcmp(out.ssid,"d"));
+    assert(wifi_profile_forget("legacy")==ESP_OK);
+    assert(wifi_profile_read(0,&out,&count)==ESP_OK && count==3);
     memset(check,0,sizeof(check));
     assert(read_pico_transfer_import_wifi_profiles_backup(check)==ESP_OK);
     assert(wifi_profile_read(0,&out,&count)==ESP_OK&&count==0);
