@@ -1,1 +1,1 @@
-LumenOS 1.5.3: Sửa lật trang khi đọc ngang chỉ làm mới một phần màn hình; thanh công cụ vuốt lên dùng được khi đọc ngang, không còn xoay về dọc.
+LumenOS 1.5.5: Khi đọc ngang, Cài đặt đọc, Phông chữ, Thống kê, Đánh dấu, Mục lục và các bảng con giữ màn hình ngang, hiện ở cột bên phải; danh sách chọn xếp theo khổ ngang.

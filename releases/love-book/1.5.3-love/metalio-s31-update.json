@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.3-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.1-love",
+  "notes": "LumenOS 1.5.3 Love Book: Sửa lật trang khi đọc ngang chỉ làm mới một phần màn hình; thanh công cụ vuốt lên dùng được khi đọc ngang, không còn xoay về dọc.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "a6ed4ca1b8984ddc67a37c9d6409a9efdcbcc979082a9c566087c5b318417bdb",
+      "md5": "645db75f78366419ec5d0fcaf312f546"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "74678c1edf87fc4b3778cb5495cff680fd30f8558372a5862aff9bb7ba673520",
+      "md5": "1d26504697234e5341840c1433128cf0"
+    }
+  },
+  "clean_image": {
+    "sha256": "27094892006b5013b0bdad3122f2ec18db4263b5483fd52ed8a4f587cc7cdbf0",
+    "md5": "c822265958e228e4e39e933564d6cb01"
+  },
+  "size": 4889504,
+  "sha256": "8ae06d449c7954c97381cd5e7115ec887b49f9ce88e768b5b472b21bc1cca112",
+  "md5": "4c6e3f1f330ea721379bdc42b1dbe8ac"
+}
