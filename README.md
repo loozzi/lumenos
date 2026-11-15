@@ -7,7 +7,7 @@
 **Firmware đọc sách tiếng Việt cho Metalio E-ink 4 Plus 4.7 inch, ESP32-S31.**
 LumenOS là nhánh cá nhân phát triển từ dpReader, dùng logo PNG trắng đen do người dùng cung cấp và tiếp tục duy trì mã nguồn cùng các giấy phép của dự án gốc.
 
-Bản hiện tại: **Full `1.5.1`** và **Love Book `1.5.1-love`** — bản phát hành chính thức đầu tiên trên kênh `loozzi/dpReader31` ([Releases](https://github.com/loozzi/dpReader31/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
+Bản hiện tại: **Full `1.5.1`** và **Love Book `1.5.1-love`** — bản phát hành chính thức đầu tiên trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
 Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Love Book thêm hậu tố `-love`.
 
 [Cài đặt và sử dụng](docs/CAI_DAT.md) · [Thay đổi theo phiên bản](docs/CHANGELOG.md) · [Hai bản firmware](docs/FIRMWARE_EDITIONS.md) · [Build cho S31](docs/BOARDS.md)
@@ -89,7 +89,7 @@ Tên ứng dụng **`dpReader_metalio47_firmware.bin`** được giữ để tư
 
 ### Web Flash và cập nhật qua mạng
 
-Từ **1.5.1**, LumenOS phát hành chính thức trên [GitHub Releases của `loozzi/dpReader31`](https://github.com/loozzi/dpReader31/releases) và [Web Flash LumenOS](https://loozzi.github.io/dpReader31/). Firmware 1.5.1 kiểm tra OTA ở `raw.githubusercontent.com/loozzi/dpReader31` (ưu tiên) và GitHub Pages của repo này (dự phòng); không nhận bản dpReader từ repo gốc.
+Từ **1.5.1**, LumenOS phát hành chính thức trên [GitHub Releases của `loozzi/lumenos`](https://github.com/loozzi/lumenos/releases) và [Web Flash LumenOS](https://loozzi.github.io/lumenos/). Firmware 1.5.1 kiểm tra OTA ở `raw.githubusercontent.com/loozzi/lumenos` (ưu tiên) và GitHub Pages của repo này (dự phòng); không nhận bản dpReader từ repo gốc.
 
 Máy đang chạy dpReader (kênh `dephia31`) hoặc LumenOS 1.5.0 không thấy bản mới qua OTA: cài 1.5.1 qua USB một lần bằng gói `dpReader-metalio47-1.5.1-USB.zip` trên Releases hoặc Web Flash. Việc build cục bộ không tự đăng Release, cập nhật website hoặc triển khai OTA.
 

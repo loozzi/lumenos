@@ -22,9 +22,9 @@ int main(void) {
  assert(pico_version_compare("1.0.1-vn.1","1.0.1-vn")>0);
  assert(pico_release_url_valid("https://kiikoread.com/Pico-update-0.3.3-rc90.bin"));
 #if DPREADER_BOARD_METALIO47
- assert(pico_release_url_valid("https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/dpReader_metalio47_firmware.bin"));
- assert(pico_release_url_valid("https://loozzi.github.io/dpReader31/dpReader_metalio47_firmware.bin"));
- assert(!pico_release_url_valid("https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/../a.bin"));
+ assert(pico_release_url_valid("https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin"));
+ assert(pico_release_url_valid("https://loozzi.github.io/lumenos/dpReader_metalio47_firmware.bin"));
+ assert(!pico_release_url_valid("https://raw.githubusercontent.com/loozzi/lumenos/main/releases/../a.bin"));
 #endif
  assert(!pico_release_url_valid("https://raw.githubusercontent.com/other/dpReader31/main/releases/a.bin"));
  assert(!pico_release_url_valid("https://kiikoread.com.evil/a.bin"));

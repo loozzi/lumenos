@@ -3,17 +3,17 @@
 English: Single source of truth for the LumenOS official release channel: repository,
 OTA/web origins and version formats.
 
-用户2026-11-15决定把正式发布渠道从 dephia31/dpReader31 移到 loozzi/dpReader31。
+用户2026-11-15决定把正式发布渠道从 dephia31/dpReader31 移到 loozzi/lumenos。
 新正式版使用 LumenOS 版本号（Full `X.Y.Z`，Love Book `X.Y.Z-love`）；旧 dpReader
 `-vn` 版本只作为已归档的历史版本被接受。
 On 2026-11-15 the user moved official publication from dephia31/dpReader31 to
-loozzi/dpReader31. New releases use LumenOS versions (Full `X.Y.Z`, Love Book
+loozzi/lumenos. New releases use LumenOS versions (Full `X.Y.Z`, Love Book
 `X.Y.Z-love`); legacy dpReader `-vn` versions are accepted only as archived history.
 """
 import os
 import re
 
-REPO = os.environ.get('LUMENOS_RELEASE_REPO') or 'loozzi/dpReader31'
+REPO = os.environ.get('LUMENOS_RELEASE_REPO') or 'loozzi/lumenos'
 # raw.githubusercontent 不重定向，Pages 未启用时也可用；Pages 为网页刷机与备用 OTA。
 # raw.githubusercontent does not redirect and works before Pages is enabled; Pages hosts
 # the web flasher and the fallback OTA origin.

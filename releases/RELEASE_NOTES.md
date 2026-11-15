@@ -1,6 +1,6 @@
 ## LumenOS 1.5.1 cho Metalio E‑Ink 4 Plus (ESP32-S31)
 
-Bản phát hành chính thức đầu tiên của LumenOS trên kênh `loozzi/dpReader31`.
+Bản phát hành chính thức đầu tiên của LumenOS trên kênh `loozzi/lumenos`.
 
 - **Quick Settings mới** (vuốt xuống): bảng trắng gọn với tám nút có nhãn — Wi-Fi, Bluetooth, Đồng bộ, Làm mới, Khoá, Đèn, Xoay, Tối — và hai thanh trượt ngang cho độ sáng, nhiệt độ màu. Khi đọc ngang, bảng thu thành một hàng.
 - **Xoay**: chạm để đọc sách ngang hoặc dọc, không dùng cảm biến. Thanh công cụ, bảng cài đặt, ghi chú và màn khóa vẫn hiển thị dọc.
@@ -15,4 +15,4 @@ Có hai bản **Full** (`1.5.1`) và **Love Book** (`1.5.1-love`). Chọn đúng
 
 Bản này chưa được nghiệm thu đầy đủ trên thiết bị; hãy sao lưu cấu hình ra thẻ SD trước khi cài.
 
-[Web Flash](https://loozzi.github.io/dpReader31/) · [Thay đổi theo phiên bản](https://github.com/loozzi/dpReader31/blob/main/docs/CHANGELOG.md)
+[Web Flash](https://loozzi.github.io/lumenos/) · [Thay đổi theo phiên bản](https://github.com/loozzi/lumenos/blob/main/docs/CHANGELOG.md)
