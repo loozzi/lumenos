@@ -1,7 +1,5 @@
 name: Font and AA display regressions
 on:
-  push:
-    branches: [main, codex/Test-koreader-render]
   workflow_dispatch:
 permissions:
   contents: read
