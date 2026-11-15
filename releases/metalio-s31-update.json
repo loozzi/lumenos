@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.3",
-  "notes": "LumenOS 1.5.5: Khi đọc ngang, Cài đặt đọc, Phông chữ, Thống kê, Đánh dấu, Mục lục và các bảng con giữ màn hình ngang, hiện ở cột bên phải; danh sách chọn xếp theo khổ ngang.",
+  "previous_version": "1.5.5",
+  "notes": "LumenOS 1.5.6: Trang chủ có lịch đọc trong tháng; Tủ sách lưới 3×3 kèm tiến độ, lọc Đang đọc/Chưa đọc/Đã xong/Yêu thích, nút Tìm kiếm và Sắp xếp; Tệp tin hiện 6 mục, sắp xếp theo tên hoặc cỡ.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "3b89f7ac921eb99e42383b87b990c1963cd17ee3b78d511ca79c4b1cb6c91b30",
-      "md5": "7a4ee79f28c75c1a7e1ea50fb6786b18"
+      "sha256": "e4fe865919722edc9314896ec78ed5f4545616d5bf7470b0b0289106feb127cb",
+      "md5": "f8adc8ba2eb88c42dbc3f97e5589e825"
     }
   },
   "clean_image": {
-    "sha256": "a4407f875d7d59e35456cd354dfd6423b8eef83917688959494163fb84c2974d",
-    "md5": "760ee1ee74d039f5defffcdb09dd98d3"
+    "sha256": "69adcf4098b26bc1c5d604fff9f2d75ecd2dca992513140de05c474eb42a1a69",
+    "md5": "fd2cad9409e648380270c99849ac5512"
   },
-  "size": 4958384,
-  "sha256": "577c181002ef6a522a523ef214fa599159c81543b676214963c733241182515f",
-  "md5": "98bab6c7ee587f432c76d50dc03ac873"
+  "size": 4968240,
+  "sha256": "89ed79e729a8b9aaaf2f30d7d72b45348a22cc6a6345d55234b5f2f8b4e08594",
+  "md5": "40072d4deb121db4a10197f4ac324d78"
 }
