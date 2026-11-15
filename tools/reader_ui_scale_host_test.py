@@ -113,7 +113,7 @@ static void draw_reading_font_name(uint8_t *fb,EpdRect box,const char *text){
  actual_reading_font_name(fb,box,text);assert(selected_slot==old_slot&&antialias==old_aa);
 }
 '''
-unit+=function('draw_sheet',book)+'\n'
+unit+='static int s_viewport_sheet_top=-1;\n'+function('draw_sheet',book)+'\n'
 for name in ('reader_ui_extra','reader_font_top','reader_font_card','reader_slider_rect',
              'draw_pill_slider','draw_font_pair','reading_setting_rect','reading_settings_top',
              'reading_toggle_rect','draw_reading_switch','draw_reading_card','draw_reading_toggle'):

@@ -460,12 +460,16 @@ bool app_book_reader_body_visible(void) {
 }
 #if DPREADER_BOARD_METALIO47
 static bool reader_choice_visible(void);
-// 正文及底部工具条可横屏；其他面板、对话框或笔记层都要求竖屏。
-// The body and its bottom tool strip may be landscape; other panels, dialogs and notes require portrait.
+static bool reader_panel_viewport_allowed(reader_panel_t panel);
+// 正文、底部工具条、目录、选择列表及已支持视窗的面板可横屏；其余面板、对话框或笔记层要求竖屏。
+// The body, tool strip, TOC, choice lists and viewport-capable panels may be landscape; other panels,
+// dialogs and notes require portrait.
 bool app_book_landscape_ready(void) {
-    return s_view == READING && s_text &&
-        (s_reader_panel == READER_PANEL_NONE || s_reader_panel == READER_PANEL_TOOLS) &&
-        !s_clear_confirm && !book_notes_active() && !reader_choice_visible();
+    if (!s_text || s_clear_confirm || book_notes_active()) return false;
+    if (s_view == TOC) return true;
+    return s_view == READING &&
+        (s_reader_panel == READER_PANEL_NONE || s_reader_panel == READER_PANEL_TOOLS ||
+         reader_choice_visible() || reader_panel_viewport_allowed(s_reader_panel));
 }
 static bool reader_landscape_active(void) { return epd_rotated_display_width() > epd_rotated_display_height(); }
 #endif
@@ -2418,7 +2422,14 @@ static void reader_panel_text(uint8_t *fb,int x,int y,int px,const char *text,
     reader_panel_text_vc(fb,x,y+height/2,px,text,align,inverted);
 }
 
+#if DPREADER_BOARD_METALIO47
+// 横屏视窗绘制期间记录最高的面板顶边，其上方保留正文。/ Highest sheet top during a landscape viewport draw; the body stays above it.
+static int s_viewport_sheet_top = -1;
+#endif
 static void draw_sheet(uint8_t* fb, int top, const char* title) {
+#if DPREADER_BOARD_METALIO47
+    if (s_viewport_sheet_top < 0 || top < s_viewport_sheet_top) s_viewport_sheet_top = top;
+#endif
     EpdRect sheet = {0, top, UI_LOCK_WIDTH, UI_LOCK_HEIGHT - top + 28};
     ui_fill_round_rect(fb, sheet, 28, UI_GRAY_WHITE);
     ui_fill_rect_fast((EpdRect){0, top + 28, UI_LOCK_WIDTH, UI_LOCK_HEIGHT - top - 28}, UI_GRAY_WHITE, fb);
@@ -4039,6 +4050,134 @@ static void draw_reader_footer(uint8_t *fb, size_t page) {
         }
     }
 }
+#if DPREADER_BOARD_METALIO47
+/* ---- 横屏面板视窗 / Landscape panel viewport ---- */
+// 用户2026-11-15：阅读横屏时，工具条打开的面板保持横屏。面板仍按684×1216竖屏坐标绘制到暂存帧，
+// 再搬到横屏右侧684列的视窗；正文留在左侧。高于684的面板在视窗内上下滑动查看。
+// 输入只换算回竖屏坐标，旋转保持横屏；推屏一律整帧合成。
+// User 2026-11-15: panels opened from the tool strip stay landscape while reading landscape. Panels still
+// draw in 684×1216 portrait coordinates into a scratch frame, then move into a 684-column viewport on the
+// right of the landscape screen, with the body on the left. Sheets taller than 684 scroll vertically.
+// Input converts only coordinates back to portrait, keeping landscape rotation; presenting always composes
+// the whole frame.
+#define READER_VIEWPORT_W 684
+#define READER_VIEWPORT_PORTRAIT_H 1216
+#define READER_VIEWPORT_SCROLL_STEP 320
+static uint8_t *s_viewport_fb;
+static int s_viewport_depth, s_viewport_ox, s_viewport_win, s_viewport_top, s_viewport_scroll, s_viewport_header;
+static enum EpdRotation s_viewport_saved_rotation;
+static int s_viewport_panel;
+static bool s_viewport_input;
+static int s_viewport_leaf;
+
+// 阅读设置、字体、统计、书签、章节跳转、阅读背景及其子面板；在线字体与字体修复仍为竖屏整页。
+// Reading settings, fonts, statistics, bookmarks, chapter jump, reading backgrounds and their sub-panels;
+// online fonts and font recovery remain portrait full pages.
+static bool reader_panel_viewport_allowed(reader_panel_t panel) {
+    switch (panel) {
+        case READER_PANEL_FONT_SETTINGS: case READER_PANEL_WEIGHT_SETTINGS: case READER_PANEL_FONT_PICKER:
+        case READER_PANEL_REFRESH_SETTINGS: case READER_PANEL_TURN_SETTINGS: case READER_PANEL_KEY_SETTINGS:
+        case READER_PANEL_KEY_PICKER: case READER_PANEL_LAYOUT_SETTINGS: case READER_PANEL_CUSTOM_SETTINGS:
+        case READER_PANEL_STATUS_FOOTER: case READER_PANEL_FOOTER_SETTINGS: case READER_PANEL_RULE_SETTINGS:
+        case READER_PANEL_STATS: case READER_PANEL_STATS_RECENT: case READER_PANEL_BOOKMARKS:
+        case READER_PANEL_CHAPTER_JUMP: case READER_PANEL_BACKGROUND: case READER_PANEL_BACKGROUND_PREVIEW:
+            return true;
+        default:
+            return false;
+    }
+}
+// 选择列表按旋转后屏幕原生布局，不经视窗。/ Choice lists lay out natively on the rotated screen, not through the viewport.
+static bool reader_viewport_active(void) {
+    if (!(s_viewport_depth > 0 || epd_get_rotation() == EPD_ROT_LANDSCAPE)) return false;
+    if (!s_text || s_clear_confirm || s_reader_choice.open) return false;
+    if (s_view == TOC) return true;
+    return s_view == READING && reader_panel_viewport_allowed(s_reader_panel);
+}
+// 嵌套安全：只有最外层切换旋转。/ Nesting-safe: only the outermost level switches rotation.
+static void reader_viewport_enter(void) {
+    if (s_viewport_depth++ == 0) {
+        s_viewport_saved_rotation = epd_get_rotation();
+        epd_set_rotation(EPD_ROT_INVERTED_PORTRAIT);
+    }
+}
+static void reader_viewport_leave(void) {
+    if (s_viewport_depth > 0 && --s_viewport_depth == 0) epd_set_rotation(s_viewport_saved_rotation);
+}
+// 竖屏坐标下视窗顶边：面板顶边放在横屏状态栏下方；短面板贴底，长面板可滚到底。
+// Viewport top in portrait coordinates: the sheet top sits below the landscape status bar; short sheets sit
+// at the bottom and tall ones scroll to their end.
+static int reader_viewport_window(int top, int header) {
+    const int limit = READER_VIEWPORT_PORTRAIT_H - READER_VIEWPORT_W;
+    int first = top - header;
+    if (first < 0) first = 0;
+    if (first >= limit) { s_viewport_scroll = 0; return limit; }
+    if (s_viewport_scroll > limit - first) s_viewport_scroll = limit - first;
+    if (s_viewport_scroll < 0) s_viewport_scroll = 0;
+    return first + s_viewport_scroll;
+}
+static size_t current_toc_position(void);
+// 视窗内容：目录整页或阅读面板。/ Viewport content: the TOC page or a reader panel.
+static void reader_viewport_paint(uint8_t *fb) {
+    if (s_view == TOC) {
+        book_toc_render(fb, s_book_title[0] ? s_book_title : s_title,
+                        book_navigation_count(), current_toc_position(), s_viewport_leaf, s_message);
+        if (s_toc_jump_open) book_toc_render_jump(fb, book_navigation_count(), s_toc_jump_percent);
+        return;
+    }
+    draw_reader_panel(fb);
+}
+// 竖屏暂存帧（倒置竖屏物理布局）搬到横屏帧：竖屏(x,y)位于物理(y,ph-1-x)，横屏(X,Y)即物理(X,Y)。
+// Move the portrait scratch (inverted-portrait physical layout) into the landscape frame: portrait (x,y)
+// lives at physical (y,ph-1-x); landscape (X,Y) is physical (X,Y).
+static void reader_viewport_blit(uint8_t *fb, int top, int win) {
+    const int pw = epd_width(), ph = epd_height(), stride = pw / 2;
+    for (int x = 0; x < READER_VIEWPORT_W && x < ph; ++x) {
+        const uint8_t *src = s_viewport_fb + (size_t)(ph - 1 - x) * stride;
+        const int X = s_viewport_ox + x, shift = (X & 1) * 4;
+        uint8_t *column = fb + X / 2;
+        for (int Y = 0; Y < ph; ++Y) {
+            const int y = win + Y;
+            if (y < top || y >= pw) continue;
+            const unsigned value = (src[y / 2] >> ((y & 1) * 4)) & 15;
+            uint8_t *dst = column + (size_t)Y * stride;
+            *dst = (uint8_t)((*dst & ~(15u << shift)) | (value << shift));
+        }
+    }
+}
+static void reader_viewport_draw(uint8_t *fb) {
+    const size_t bytes = fb_bytes();
+    if (!s_viewport_fb) s_viewport_fb = heap_caps_aligned_alloc(16, bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!s_viewport_fb) { ESP_LOGW(TAG, "landscape panel viewport unavailable"); return; }
+    const int content = s_view == TOC ? -1 : (int)s_reader_panel;
+    if (s_viewport_panel != content) { s_viewport_panel = content; s_viewport_scroll = 0; }
+    memset(s_viewport_fb, 0xff, bytes);
+    s_viewport_sheet_top = -1;
+    s_viewport_ox = epd_rotated_display_width() - READER_VIEWPORT_W;
+    s_viewport_header = reader_content_top();
+    reader_viewport_enter();
+    reader_viewport_paint(s_viewport_fb);
+    reader_viewport_leave();
+    s_viewport_top = s_viewport_sheet_top < 0 ? 0 : s_viewport_sheet_top;
+    s_viewport_win = reader_viewport_window(s_viewport_top, s_viewport_header);
+    reader_viewport_blit(fb, s_viewport_top, s_viewport_win);
+}
+static void reader_viewport_release(void) {
+    if (s_viewport_fb) heap_caps_free(s_viewport_fb);
+    s_viewport_fb = NULL;
+    s_viewport_scroll = 0;
+}
+// 起点在视窗左侧视为面板外（竖屏顶部），拖动点则夹到视窗左缘；屏下按键区原样保留。
+// An origin left of the viewport counts as outside the sheet (portrait top); drag points clamp to its left
+// edge; the under-screen key area stays raw.
+static void reader_viewport_point(uint16_t *x, uint16_t *y, bool origin) {
+    if (*y >= READER_VIEWPORT_PORTRAIT_H) return;
+    if (*x < s_viewport_ox) {
+        if (origin) { *x = 0; *y = 0; return; }
+        *x = 0;
+    } else *x = (uint16_t)(*x - s_viewport_ox);
+    *y = (uint16_t)(*y + s_viewport_win);
+}
+#endif
 static void draw_reader_outer(uint8_t *fb,size_t page) {
     ui_text_set_system_scale(false);
     if (app_settings_book_status_enabled()) ui_nav_reader_status(fb);
@@ -4061,6 +4200,9 @@ static void draw_reader_outer(uint8_t *fb,size_t page) {
         ui_draw_soft_card(fb,back,20,true);
         ui_text_box(fb,back,21,"Về trang trước đó",EPD_DRAW_ALIGN_CENTER,false);
     }
+#if DPREADER_BOARD_METALIO47
+    if (s_viewport_depth == 0 && reader_viewport_active()) { reader_viewport_draw(fb); return; }
+#endif
     draw_reader_panel(fb);
 }
 static void draw_reader(uint8_t *fb,size_t page) {
@@ -4297,6 +4439,15 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
         ui_text_vc(fb, 342, 107, 34, "Chi tiết sách", EPD_DRAW_ALIGN_CENTER, false);
         ui_hairline(fb, 176, 36, 612, 0x70);
         draw_manage(fb);
+        unlock_draw();
+        return;
+    }
+#endif
+#if DPREADER_BOARD_METALIO47
+    // 横屏目录：左侧保留当前正文页，目录经右侧视窗显示。/ Landscape TOC: keep the current body page left and show the TOC in the right viewport.
+    if (s_view == TOC && s_viewport_depth == 0 && reader_viewport_active()) {
+        s_viewport_leaf = ctx->leaf;
+        draw_reader(fb, s_page);
         unlock_draw();
         return;
     }
@@ -6965,8 +7116,8 @@ static app_redraw_t reader_panel_action(app_ctx_t* ctx, uint16_t x, uint16_t y) 
                         s_bookmark_selected |= UINT32_C(1) << (marks.count - 1 - (first + row));
                 } else if (s_bookmark_selected) s_bookmark_delete_confirm = true;
             } else if (y >= top + (s_bookmark_edit ? 590 : 570)) {
-                if (x < UI_LOCK_WIDTH / 2 && s_bookmark_page > 0) --s_bookmark_page;
-                else if (x >= UI_LOCK_WIDTH / 2 && s_bookmark_page + 1 < pages) ++s_bookmark_page;
+                if (x < 342 && s_bookmark_page > 0) --s_bookmark_page;
+                else if (x >= 342 && s_bookmark_page + 1 < pages) ++s_bookmark_page;
             } else if (valid && y >= top + 96) {
                 int row = ((int)y - (top + 96)) / bookmark_row_step();
                 int position = s_bookmark_page * bookmark_rows() + row;
@@ -9085,6 +9236,8 @@ static bool reader_choice_visible(void) { return s_reader_choice.open; }
 // Called by the loop after a rotation change: re-lay the chapter for the new screen size at the same
 // text offset and drop prepared pages. Must not draw or present.
 void app_book_orientation_changed(void) {
+    // 回到竖屏时释放横屏面板视窗暂存帧。/ Free the landscape panel viewport scratch when returning to portrait.
+    if (epd_get_rotation() != EPD_ROT_LANDSCAPE) reader_viewport_release();
     book_layout_set_image_bleed_width(UI_LOCK_WIDTH);
     reader_zoom_reset();
     if(s_view!=READING || !s_text) { invalidate_prep(); return; }
@@ -9410,18 +9563,99 @@ static bool main_page_visible(app_ctx_t* ctx) {
 #include "firmware/full/library/app_book_library.inc"
 #endif
 
+#if DPREADER_BOARD_METALIO47
+/* ---- 横屏面板视窗输入 / Landscape panel viewport input ---- */
+// 视窗面板的输入只换算为竖屏坐标（含触摸快照），旋转保持横屏：面板命中用固定竖屏坐标，
+// 而改字号、边距等操作的正文排版必须仍按横屏尺寸进行。
+// Viewport panel input converts only coordinates (including the touch snapshot) and keeps landscape
+// rotation: panel hit tests use fixed portrait coordinates, while body re-layout from font, margin and
+// spacing changes must still use the landscape size.
+typedef struct { const cst836u_touch_t *saved; cst836u_touch_t local; bool active; } reader_viewport_scope_t;
+// 换算后的触摸快照存放在调用方的scope中，处理期间有效。/ The converted touch snapshot lives in the caller's scope for the call.
+static void reader_viewport_begin(app_ctx_t *ctx, reader_viewport_scope_t *scope) {
+    *scope = (reader_viewport_scope_t){0};
+    if (!reader_viewport_active() || !s_viewport_fb) return;
+    scope->active = true;
+    scope->saved = ctx->touch;
+    if (ctx->touch) {
+        scope->local = *ctx->touch;
+        reader_viewport_point(&scope->local.x, &scope->local.y, false);
+        for (unsigned i = 0; i < CST836U_MAX_POINTS; ++i)
+            if (scope->local.points[i].active)
+                reader_viewport_point(&scope->local.points[i].x, &scope->local.points[i].y, false);
+        ctx->touch = &scope->local;
+    }
+}
+static app_redraw_t reader_viewport_end(app_ctx_t *ctx, reader_viewport_scope_t *scope, app_redraw_t redraw) {
+    if (!scope->active) return redraw;
+    ctx->touch = scope->saved;
+    if (redraw != APP_REDRAW_NONE) s_viewport_input = true;
+    return redraw;
+}
+// 高面板：视窗内上下滑动先移动视窗，到尽头后交给面板自身。
+// Tall sheets: vertical swipes inside the viewport move it first, then reach the panel at either end.
+static bool reader_viewport_scroll(const ui_gesture_event_t *ev) {
+    if (ev->type != UI_GESTURE_SWIPE_U && ev->type != UI_GESTURE_SWIPE_D) return false;
+    if (ev->x0 < s_viewport_ox || ev->y0 >= READER_VIEWPORT_PORTRAIT_H) return false;
+    const int before = s_viewport_scroll;
+    s_viewport_scroll += ev->type == UI_GESTURE_SWIPE_U ? READER_VIEWPORT_SCROLL_STEP : -READER_VIEWPORT_SCROLL_STEP;
+    (void)reader_viewport_window(s_viewport_top, s_viewport_header);
+    return s_viewport_scroll != before;
+}
+static app_redraw_t book_gesture(app_ctx_t* ctx, const ui_gesture_event_t* ev) {
+    if (!reader_viewport_active() || !s_viewport_fb) return gesture_event(ctx, ev);
+    if (reader_viewport_scroll(ev)) return APP_REDRAW_PAGE;
+    ui_gesture_event_t local = *ev;
+    reader_viewport_point(&local.x0, &local.y0, true);
+    reader_viewport_point(&local.x, &local.y, false);
+    reader_viewport_scope_t scope;
+    reader_viewport_begin(ctx, &scope);
+    return reader_viewport_end(ctx, &scope, gesture_event(ctx, &local));
+}
+static app_redraw_t book_key(app_ctx_t* ctx, int key) {
+    reader_viewport_scope_t scope;
+    reader_viewport_begin(ctx, &scope);
+    return reader_viewport_end(ctx, &scope, on_key(ctx, key));
+}
+static app_redraw_t book_key_long(app_ctx_t* ctx, int key) {
+    reader_viewport_scope_t scope;
+    reader_viewport_begin(ctx, &scope);
+    return reader_viewport_end(ctx, &scope, on_key_long(ctx, key));
+}
+static app_redraw_t book_tick(app_ctx_t* ctx) {
+    reader_viewport_scope_t scope;
+    reader_viewport_begin(ctx, &scope);
+    return reader_viewport_end(ctx, &scope, on_tick(ctx));
+}
+// 视窗内的局部绘制和快速面板路径按竖屏坐标进行，一律整帧合成。
+// Viewport-local paints and fast panel paths use portrait coordinates, so always compose the whole frame.
+static bool book_present(app_ctx_t* ctx, app_redraw_t redraw) {
+    if (s_viewport_input || reader_viewport_active()) {
+        if (redraw == APP_REDRAW_AREA) redraw = APP_REDRAW_PAGE;
+        s_reader_panel_frame.valid = false;
+    }
+    s_viewport_input = false;
+    return present(ctx, redraw);
+}
+#else
+#define book_gesture gesture_event
+#define book_key on_key
+#define book_key_long on_key_long
+#define book_tick on_tick
+#define book_present present
+#endif
 const app_desc_t app_book = {
     .title = "Tủ sách Books", .detail = "Đọc sách TXT / EPUB & OPDS / KOSync", .enter_full = false, .owns_keys = true,
     .defer_middle_short = true,
     .menu_handle_enabled = menu_handle_enabled,
     .main_page_visible = main_page_visible,
-    .render = render, .present = present, .on_enter = on_enter, .on_exit = book_on_exit,
+    .render = render, .present = book_present, .on_enter = on_enter, .on_exit = book_on_exit,
     .on_media_lost = book_on_media_lost, .on_media_ready = book_on_media_ready,
     .on_before_lock = before_lock, .on_main_key = shelf_main_key,
-    .on_gesture = gesture_event, .on_key = on_key, .on_key_long = on_key_long,
+    .on_gesture = book_gesture, .on_key = book_key, .on_key_long = book_key_long,
     .wants_pinch = wants_pinch, .on_pinch = on_pinch,
     .on_power_short = on_power_short,
-    .on_tick = on_tick, .area_hint = area_hint,
+    .on_tick = book_tick, .area_hint = area_hint,
 #if DPREADER_BOARD_METALIO47
     .next_tick_ms = reader_next_tick_ms,
 #endif
