@@ -151,6 +151,53 @@ static unsigned s_quick_slider_dirty;
 static unsigned s_quick_slider_drawn[2],s_quick_slider_level[2];
 #else
 #endif
+// 电源弹窗是否打开；文件级以便横竖屏判断。/ Whether the power dialog is open; file scope for orientation decisions.
+static bool power_dialog_open;
+#if DPREADER_BOARD_METALIO47
+/* ---- 阅读横屏 / Reader landscape ---- */
+// 用户2026-11-15：快捷设置“Xoay”只切换阅读正文横竖屏，不读重力传感器。纯正文可见时横屏，
+// 面板、对话框、锁屏和其他页面一律竖屏；切换后整页重排并全刷。
+// User 2026-11-15: the Quick Settings rotate tile switches the reader body only, never from the
+// accelerometer. Landscape applies while the bare body is visible; panels, dialogs, lock and other
+// pages stay portrait. Every switch re-lays out the page and refreshes fully.
+#define ORIENTATION_PORTRAIT EPD_ROT_INVERTED_PORTRAIT
+#define ORIENTATION_LANDSCAPE EPD_ROT_LANDSCAPE
+static bool orientation_landscape_wanted(const app_desc_t *current) {
+    return app_settings_reader_landscape() && current == &app_book && app_book_landscape_ready() &&
+        !power_dialog_open;
+}
+// 返回true表示旋转已改变，调用方必须整页重绘。/ True means the rotation changed and the caller must repaint fully.
+static bool orientation_apply(bool landscape) {
+    const enum EpdRotation want = landscape ? ORIENTATION_LANDSCAPE : ORIENTATION_PORTRAIT;
+    if (epd_get_rotation() == want) return false;
+    // 覆盖层缓存按旧旋转保存，先丢弃再改变逻辑坐标。/ Overlay caches follow the old rotation; drop them first.
+    ui_quick_menu_reset(&s_quick); ui_quick_menu_end();
+    ui_click_feedback_reset();
+    display_main_transition_cancel();
+    epd_set_rotation(want);
+    app_book_orientation_changed();
+    display_request_full_refresh();
+    ESP_LOGI(TAG, "reader orientation %s", landscape ? "landscape" : "portrait");
+    return true;
+}
+static bool orientation_sync(const app_desc_t *current) {
+    return orientation_apply(orientation_landscape_wanted(current));
+}
+// FT6336按竖屏逻辑坐标上报；横屏时换算到当前逻辑坐标，屏下三键区保持原值。
+// FT6336 reports portrait logical coordinates; convert them in landscape, leaving the under-screen keys raw.
+static void touch_point_to_logical(uint16_t *x, uint16_t *y) {
+    if (epd_get_rotation() != ORIENTATION_LANDSCAPE || *y >= UI_LOCK_HEIGHT) return;
+    const uint16_t px = *x, py = *y;
+    *x = py;
+    *y = (uint16_t)(px < UI_LOCK_WIDTH ? UI_LOCK_WIDTH - 1 - px : 0);
+}
+static void touch_to_logical(cst836u_touch_t *touch) {
+    if (epd_get_rotation() != ORIENTATION_LANDSCAPE) return;
+    touch_point_to_logical(&touch->x, &touch->y);
+    for (unsigned i = 0; i < CST836U_MAX_POINTS; ++i)
+        if (touch->points[i].active) touch_point_to_logical(&touch->points[i].x, &touch->points[i].y);
+}
+#endif
 static void quick_reset(void) {
     s_lock_requested=false;
 #if DPREADER_BOARD_METALIO47
@@ -177,6 +224,9 @@ static bool s_nav_contact_down,s_nav_polled;
 static void main_lock_boundary(void) {
 #if DPREADER_BOARD_METALIO47
     metalio_frontlight_commit();
+    // 锁屏、电源弹窗按竖屏绘制；回到正文时app_present再转回横屏。
+    // Lock and the power dialog draw in portrait; app_present returns the body to landscape.
+    (void)orientation_apply(false);
 #else
 #endif
     ui_click_feedback_reset();
@@ -190,12 +240,24 @@ static unsigned quick_status(void) {
     read_pico_transfer_get_status(&status);
     bool wifi = status.mode == READ_PICO_TRANSFER_MODE_STA && status.state != READ_PICO_TRANSFER_STOPPED;
 #if DPREADER_BOARD_METALIO47
-    return (wifi ? 1u : 0u) | (app_settings_ble_turner() ? 2u : 0u) | (status.network_ready ? 4u : 0u) | (metalio_frontlight_enabled()?8u:0u) | (app_settings_screen_inverted()?16u:0u);
+    return (wifi ? 1u : 0u) | (app_settings_ble_turner() ? 2u : 0u) | (status.network_ready ? 4u : 0u) | (metalio_frontlight_enabled()?8u:0u) | (app_settings_screen_inverted()?16u:0u) |
+        (app_settings_reader_landscape()?32u:0u);
 #else
     return (wifi ? 1u : 0u) | (app_settings_ble_turner() ? 2u : 0u) | (status.network_ready ? 4u : 0u);
 #endif
 }
 
+#if DPREADER_BOARD_METALIO47
+// 按键顺序：Wi-Fi、蓝牙、同步、全刷、锁屏、灯、旋转、深色。/ Tile order: Wi-Fi, Bluetooth, sync, full, lock, light, rotate, dark.
+static unsigned quick_active_mask(unsigned status) {
+    return ((status&1u)?1u:0u) | ((status&2u)?2u:0u) | ((status&8u)?32u:0u) |
+        ((status&32u)?64u:0u) | ((status&16u)?128u:0u);
+}
+// 只在阅读正文里可旋转。/ Rotation is offered only over the reader body.
+static bool quick_rotate_allowed(const app_desc_t *current) {
+    return current == &app_book && app_book_landscape_ready();
+}
+#endif
 // 同步输出完再接收下一条触摸，不安排旧层回放；错误时关闭层并可靠全刷当前页。
 // Complete presentation before accepting another contact, with no stale replay; close and full-refresh the current page on error.
 static void quick_present(app_ctx_t *ctx, const app_desc_t *current, bool full) {
@@ -208,7 +270,7 @@ static void quick_present(app_ctx_t *ctx, const app_desc_t *current, bool full) 
     if(full&&s_quick.open){
         // 复用合成帧，只还原按压键；不重排底页或重算玻璃。/ Reuse the composed frame, restoring pressed keys without re-rendering or reblurring.
 #if DPREADER_BOARD_METALIO47
-        static const unsigned bits[]={1u,2u,0u,0u,8u,16u};
+        static const unsigned bits[]={1u,2u,0u,0u,0u,8u,32u,16u};
 #else
         static const unsigned bits[]={1u,2u,0u,0u};
 #endif
@@ -227,8 +289,8 @@ static void quick_present(app_ctx_t *ctx, const app_desc_t *current, bool full) 
             s_quick_slider_level[1]=metalio_frontlight_position(true);
             s_quick_slider_drawn[0]=ui_quick_brightness_position(s_quick_slider_level[0]);
             s_quick_slider_drawn[1]=metalio_frontlight_position(true);
-            ui_quick_menu_draw(ctx->fb,status&1u,status&2u,status&8u,status&16u,metalio_frontlight_position(false),s_quick_slider_drawn[1],
-                current==&app_book&&app_book_reader_body_visible());
+            ui_quick_menu_draw(ctx->fb,quick_active_mask(status),quick_rotate_allowed(current),
+                metalio_frontlight_position(false),s_quick_slider_drawn[1]);
         }else{
             bool restored=ui_quick_menu_restore(ctx->fb);ui_quick_menu_end();
             if(!restored&&current->render)current->render(ctx,ctx->fb);
@@ -309,7 +371,9 @@ static void quick_notice_begin(int kind,esp_err_t error) {
 static EpdRect quick_notice_poll(uint8_t *fb) {
     if(!s_quick_notice_kind)return (EpdRect){0};
     const char *text;
-    if(s_quick_notice_kind==3)text="Đảo màu: không lưu được cài đặt";
+    if(s_quick_notice_kind==3)text="Chế độ tối: không lưu được cài đặt";
+    else if(s_quick_notice_kind==4)text="Xoay màn hình: không lưu được cài đặt";
+    else if(s_quick_notice_kind==5)text="Chỉ xoay được khi đang đọc sách";
     else if(s_quick_notice_error!=ESP_OK) {
         text=s_quick_notice_kind==2?"Không thể bật/tắt Bluetooth":
             s_quick_notice_error==ESP_ERR_NOT_FOUND?"Chưa lưu mạng Wi-Fi":
@@ -337,9 +401,9 @@ static void quick_buttons_present(app_ctx_t *ctx,const app_desc_t *current) {
 #endif
     if(!s_quick.open)return;
 #if DPREADER_BOARD_METALIO47
-    unsigned status=quick_status(),changed=(status^s_quick_status)&27u;
+    unsigned status=quick_status(),changed=(status^s_quick_status)&59u;
     int pressed=ui_quick_menu_pressed(&s_quick);EpdRect dirty=quick_notice_poll(ctx->fb);
-    static const unsigned bits[]={1u,2u,0u,0u,8u,16u};
+    static const unsigned bits[]={1u,2u,0u,0u,0u,8u,32u,16u};
     for(unsigned i=0;i<UI_QUICK_BUTTON_COUNT;++i)if((changed&bits[i])||((pressed==(int)i)!=(s_quick_pressed==(int)i))) {
         EpdRect r;if(ui_quick_menu_draw_button(ctx->fb,i,(status&bits[i])!=0,pressed==(int)i,&r))dirty=quick_join(dirty,r);
 #else
@@ -390,7 +454,7 @@ static void quick_buttons_present(app_ctx_t *ctx,const app_desc_t *current) {
         // 状态栏与Pico一样单独走灰阶，不让它把滑块局刷扩展到整个玻璃层。
         // Like Pico, refresh status separately in grayscale without expanding slider feedback over the glass layer.
         ui_quick_menu_draw_status(ctx->fb);
-        error=update_display_area_diff_with(ctx->hl,&E0470_WAVEFORM,MODE_GL16,(EpdRect){0,0,UI_LOCK_WIDTH,76});
+        error=update_display_area_diff_with(ctx->hl,&E0470_WAVEFORM,MODE_GL16,(EpdRect){0,0,epd_rotated_display_width(),76});
         guard_draw_result(ctx->hl,error);
     }
     if(error!=EPD_DRAW_SUCCESS){quick_reset();app_present(ctx,current,APP_REDRAW_FULL);return;}
@@ -613,6 +677,10 @@ static void app_present_impl(app_ctx_t* ctx, const app_desc_t* app, app_redraw_t
 // Scope system policy to presentation so quick-menu glass, lock and reader do not inherit it.
 void app_present(app_ctx_t* ctx,const app_desc_t* app,app_redraw_t redraw) {
 #if DPREADER_BOARD_METALIO47
+    // 进入/离开纯正文时先定方向；方向变了就整页重绘，局部帧已按旧坐标画过。
+    // Settle orientation on entering/leaving the bare body; a change forces a full repaint because
+    // partial frames were painted in the old coordinates.
+    if (redraw != APP_REDRAW_NONE && orientation_sync(app)) redraw = APP_REDRAW_FULL;
     bool prior_erase=display_main_switch_erase_set(redraw==APP_REDRAW_PAGE &&
         s_presented_root && s_presented_root!=app && main_page_ready(ctx,app));
     bool prior_home_erase=display_main_shelf_home_erase_set(redraw==APP_REDRAW_PAGE &&
@@ -1199,9 +1267,9 @@ void app_loop_run(const app_loop_config_t* config) {
     bool pinching = false, pinch_input_owned = false, pinch_drain = false;
     ui_power_dialog_t power_dialog = {0};
 #if DPREADER_BOARD_METALIO47
-    bool power_dialog_open = false; ui_power_dialog_end();
+    power_dialog_open = false; ui_power_dialog_end();
 #else
-    bool power_dialog_open = false;
+    power_dialog_open = false;
 #endif
     int menu_pressed = UI_MENU_HIT_NONE;
     menu_feedback_t feedback = {0};
@@ -1270,6 +1338,9 @@ void app_loop_run(const app_loop_config_t* config) {
             ESP_LOGE(TAG, "CST836U read failed: %s", esp_err_to_name(err));
             memset(&touch, 0, sizeof(touch));
         }
+#if DPREADER_BOARD_METALIO47
+        else touch_to_logical(&touch);
+#endif
 
         if(err!=ESP_OK||!touch.touched)s_nav_contact_down=s_nav_polled=false;
         const bool pressed = touch.touched && !was_touched;
@@ -1498,6 +1569,22 @@ void app_loop_run(const app_loop_config_t* config) {
                 else if(action==UI_QUICK_INVERT) {
                     if(display_toggle_inverted())quick_present(&ctx,current,true);
                     else quick_notice_begin(3,ESP_FAIL);
+                }
+                else if(action==UI_QUICK_LOCK) {
+                    // 与Pico相同：交给电源短按的锁屏路径，它会先收起快捷层。
+                    // As on Pico, hand over to the short-power lock path, which dismisses the layer first.
+                    quick_lock_requested = true;
+                }
+                else if(action==UI_QUICK_ROTATE) {
+                    if(!quick_rotate_allowed(current))quick_notice_begin(5,ESP_FAIL);
+                    else if(!app_settings_set_reader_landscape(!app_settings_reader_landscape()))quick_notice_begin(4,ESP_FAIL);
+                    else {
+                        // 收起快捷层后按新方向重排并全刷；底图属于旧方向，不还原。
+                        // Close the layer, then re-lay out and fully refresh; the old-rotation underlay is not restored.
+                        metalio_frontlight_commit();
+                        quick_reset();
+                        app_present(&ctx,current,APP_REDRAW_FULL);
+                    }
                 }
                 else if(action==UI_QUICK_FRONTLIGHT) {
                     metalio_frontlight_toggle();

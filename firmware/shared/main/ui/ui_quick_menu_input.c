@@ -13,7 +13,11 @@
 static int center_x(int button) { return (button * 2 + 1) * UI_LOCK_WIDTH / 8; }
 
 #endif
+#if DPREADER_BOARD_METALIO47
+EpdRect ui_quick_menu_rect(void) { return (EpdRect){0, 0, epd_rotated_display_width(), UI_QUICK_HEIGHT}; }
+#else
 EpdRect ui_quick_menu_rect(void) { return (EpdRect){0, 0, UI_LOCK_WIDTH, UI_QUICK_HEIGHT}; }
+#endif
 
 void ui_quick_menu_reset(ui_quick_menu_t *menu) { memset(menu, 0, sizeof(*menu)); }
 
@@ -37,29 +41,43 @@ static void dismiss(ui_quick_menu_t *menu, ui_quick_action_t *action) {
 
 static int hit_test(int x, int y) {
 #if DPREADER_BOARD_METALIO47
+    // 方键命中区含下方文字；滑杆命中区上下各放宽，便于手指拖动。
+    // Tile hits include the label below; slider hits are padded vertically for finger drags.
     for (int i=0;i<2;i++) {
-        int sx=UI_QUICK_SLIDER_X(i!=0);
-        if(x>=sx && x<sx+UI_QUICK_SLIDER_WIDTH && y>=UI_QUICK_SLIDER_Y0 && y<=UI_QUICK_SLIDER_Y1)
+        const int x0=ui_quick_slider_x0(i!=0),cy=ui_quick_slider_y(i!=0);
+        if(x>=x0-24 && x<=x0+UI_QUICK_SLIDER_LENGTH+24 && y>=cy-30 && y<=cy+30)
             return UI_QUICK_BUTTON_COUNT+i;
     }
-#else
-#endif
     for (int i = 0; i < UI_QUICK_BUTTON_COUNT; ++i) {
-#if DPREADER_BOARD_METALIO47
-        const int dx = x - UI_QUICK_CENTER_X(i), dy = y - UI_QUICK_CENTER_Y(i);
+        const int cx=UI_QUICK_CENTER_X(i),cy=UI_QUICK_CENTER_Y(i);
+        if (x>=cx-70 && x<=cx+70 && y>=cy-UI_QUICK_RADIUS-8 && y<=cy+UI_QUICK_RADIUS+UI_QUICK_LABEL_GAP+16) return i;
+    }
+    return -1;
+}
+static int slider_position(int x, bool warmth) {
+    const int x0=ui_quick_slider_x0(warmth);
+    int position=(x-x0+1)/2;
+    if(position<0) position=0;
+    if(position>UI_QUICK_SLIDER_RANGE) position=UI_QUICK_SLIDER_RANGE;
+    return position;
+}
 #else
+    for (int i = 0; i < UI_QUICK_BUTTON_COUNT; ++i) {
         const int dx = x - center_x(i), dy = y - UI_QUICK_CIRCLE_Y;
-#endif
         if (dx * dx + dy * dy <= UI_QUICK_HIT_RADIUS * UI_QUICK_HIT_RADIUS) return i;
     }
     return -1;
-#if DPREADER_BOARD_METALIO47
 }
-static int slider_position(int y) {
-    if(y<UI_QUICK_SLIDER_Y0) y=UI_QUICK_SLIDER_Y0;
-    if(y>UI_QUICK_SLIDER_Y1) y=UI_QUICK_SLIDER_Y1;
-    return UI_QUICK_SLIDER_Y1-y;
+#endif
+
+static bool outside_layer(int x, int y) {
+#if DPREADER_BOARD_METALIO47
+    // 面板外任意处点按即收起（含横屏两侧与提示胶囊）。/ Any tap outside the panel dismisses, including the notice pill.
+    const EpdRect p = ui_quick_panel_rect();
+    return y >= p.y + p.height || x < p.x || x >= p.x + p.width;
 #else
+    (void)x;
+    return y >= UI_QUICK_HEIGHT;
 #endif
 }
 
@@ -95,7 +113,7 @@ bool ui_quick_menu_feed(ui_quick_menu_t *menu, const app_ctx_t *ctx, bool allowe
         menu->hit = hit_test(x, y);
 #if DPREADER_BOARD_METALIO47
         if(menu->open && menu->hit>=UI_QUICK_BUTTON_COUNT) {
-            menu->slider_position=slider_position(y);
+            menu->slider_position=slider_position(x,menu->hit!=UI_QUICK_BUTTON_COUNT);
             menu->slider_value=((menu->hit==UI_QUICK_BUTTON_COUNT?ui_quick_brightness_value(menu->slider_position):(unsigned)menu->slider_position)*100+UI_QUICK_SLIDER_RANGE/2)/UI_QUICK_SLIDER_RANGE;
             *action=menu->hit==UI_QUICK_BUTTON_COUNT?UI_QUICK_BRIGHTNESS:UI_QUICK_WARMTH;
             return true;
@@ -112,7 +130,7 @@ bool ui_quick_menu_feed(ui_quick_menu_t *menu, const app_ctx_t *ctx, bool allowe
             menu->tracking=false;
             *action=UI_QUICK_LIGHT_COMMIT;
         } else if(ctx->touch->touched) {
-            int position=slider_position(y);
+            int position=slider_position(x,menu->hit!=UI_QUICK_BUTTON_COUNT);
             if(position!=menu->slider_position) {
                 menu->slider_position=position;
                 menu->slider_value=((menu->hit==UI_QUICK_BUTTON_COUNT?ui_quick_brightness_value(position):(unsigned)position)*100+UI_QUICK_SLIDER_RANGE/2)/UI_QUICK_SLIDER_RANGE;
@@ -143,13 +161,14 @@ bool ui_quick_menu_feed(ui_quick_menu_t *menu, const app_ctx_t *ctx, bool allowe
             if (menu->hit >= 0 && hit_test(x, y) == menu->hit) {
                 static const ui_quick_action_t actions[] = {
 #if DPREADER_BOARD_METALIO47
-                    UI_QUICK_WIFI, UI_QUICK_BLUETOOTH, UI_QUICK_KOSYNC, UI_QUICK_FULL, UI_QUICK_FRONTLIGHT, UI_QUICK_INVERT,
+                    UI_QUICK_WIFI, UI_QUICK_BLUETOOTH, UI_QUICK_KOSYNC, UI_QUICK_FULL,
+                    UI_QUICK_LOCK, UI_QUICK_FRONTLIGHT, UI_QUICK_ROTATE, UI_QUICK_INVERT,
 #else
                     UI_QUICK_WIFI, UI_QUICK_BLUETOOTH, UI_QUICK_FULL, UI_QUICK_LOCK,
 #endif
                 };
                 *action = actions[menu->hit];
-            } else if (menu->y0 >= UI_QUICK_HEIGHT && y >= UI_QUICK_HEIGHT) {
+            } else if (outside_layer(menu->x0, menu->y0) && outside_layer(x, y)) {
                 dismiss(menu, action);
                 menu->swallow = false;
             }

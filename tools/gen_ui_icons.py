@@ -104,12 +104,20 @@ COMMON_ICONS = (
     "arrow-left",        # Shared back without a surrounding circle
 )
 
+# 仅S31快捷设置使用，追加在末尾以保留已有枚举值。/ S31 Quick Settings only; appended to keep existing enum values.
+METALIO_TAIL_ICONS = (
+    "moon",              # 快捷设置·深色 / quick settings, dark mode
+    "rotate-ccw-square", # 快捷设置·横竖屏 / quick settings, orientation
+    "sparkles",          # 快捷设置·全屏刷新 / quick settings, full refresh
+)
+
 def icons_for_board(board):
     if board not in ('pico', 'metalio47'):
         raise ValueError('Unknown board: ' + board)
     split = COMMON_ICONS.index('pager-chevron-first')
     extra = ('sun', 'thermometer', 'lightbulb') if board == 'metalio47' else ()
-    return COMMON_ICONS[:split] + extra + COMMON_ICONS[split:]
+    tail = METALIO_TAIL_ICONS if board == 'metalio47' else ()
+    return COMMON_ICONS[:split] + extra + COMMON_ICONS[split:] + tail
 
 ICONS = icons_for_board(DEFAULT_BOARD)
 

@@ -75,21 +75,23 @@ static void ui_draw_round_rect(uint8_t *fb,EpdRect r,int radius,uint8_t gray){(v
 static uint8_t ui_contrast_gray(uint8_t v){return v;}
 enum {EPD_DRAW_ALIGN_LEFT,EPD_DRAW_ALIGN_RIGHT,EPD_DRAW_ALIGN_CENTER};
 static int texts;
-static void ui_text_box(uint8_t *fb,EpdRect r,int px,const char *text,int align,bool bold){(void)text;(void)align;(void)bold;++texts;assert(px==22&&r.y+r.height<=382);epd_fill_rect((EpdRect){r.x+8,r.y+8,80,4},0,fb);}
+static void ui_text_box(uint8_t *fb,EpdRect r,int px,const char *text,int align,bool bold){(void)text;(void)align;(void)bold;++texts;assert(px==22&&r.y+r.height<=600);epd_fill_rect((EpdRect){r.x+8,r.y+8,80,4},0,fb);}
+static void ui_text_fixed_ink_vc(uint8_t *fb,int x,int cy,int px,const char *text,int align,uint8_t gray){(void)text;(void)align;++texts;assert(px==22);epd_fill_rect((EpdRect){x-20,cy-2,40,4},gray,fb);}
+static void ui_nav_redraw_status(uint8_t *fb){(void)fb;}
 
 static __attribute__((unused)) void ui_text_fixed(uint8_t *fb,int x,int y,int size,const char *text,int align,bool bold){++texts;(void)bold;int width=(int)strlen(text)*size/3;if(align==EPD_DRAW_ALIGN_RIGHT)x-=width;epd_fill_rect((EpdRect){x,y-size,width,size},0,fb);}
 static void ui_nav_status(uint8_t *fb){epd_fill_rect((EpdRect){36,29,52,16},0,fb);}
 static bool simple;static bool app_settings_simple_ui(void){return simple;}
 static bool app_settings_main_fast_refresh(void){return fast;}
-static void *heap_caps_malloc(size_t n,unsigned caps){assert(caps==3&&n<=300000);++allocs;if((int)n>max_bytes)max_bytes=(int)n;if(oom||fail_after==0)return NULL;if(fail_after>0)--fail_after;++live;size_t *p=malloc(n+sizeof(size_t));assert(p);*p=n;live_bytes+=n;if(live_bytes>peak_bytes)peak_bytes=live_bytes;return p+1;}
+static void *heap_caps_malloc(size_t n,unsigned caps){assert(caps==3&&n<=400000);++allocs;if((int)n>max_bytes)max_bytes=(int)n;if(oom||fail_after==0)return NULL;if(fail_after>0)--fail_after;++live;size_t *p=malloc(n+sizeof(size_t));assert(p);*p=n;live_bytes+=n;if(live_bytes>peak_bytes)peak_bytes=live_bytes;return p+1;}
 static void heap_caps_free(void *p){if(p){--live;size_t *base=(size_t*)p-1;live_bytes-=*base;free(base);}assert(live>=0);}
 '''
 code+='static void ui_fill_rect_fast(EpdRect r,uint8_t gray,uint8_t *fb){epd_fill_rect(r,gray,fb);}\n'
 header=(root/'main/ui/ui_quick_menu.h').read_text()
 code+='\n'.join(re.findall(r'^#define UI_QUICK[^\n]*',header,re.M))+'\n'
-for name in ['ui_quick_center_x','ui_quick_center_y']:code+=function('main/ui/ui_quick_menu.h',name)
+for name in ['ui_quick_wide','ui_quick_panel_rect','ui_quick_height','ui_quick_center_x','ui_quick_center_y','ui_quick_slider_x0','ui_quick_slider_y','ui_quick_slider_icon_x']:code+=function('main/ui/ui_quick_menu.h',name)
 
-for name in ('ui_read_pixel','ui_image_bw_rect','icon_nibble','ui_draw_icon'):
+for name in ('ui_read_pixel','ui_image_bw_rect','icon_nibble','ui_draw_icon','ui_draw_icon_normalized'):
     code+=function('main/ui/ui_kit.c',name)
 for name in ('epd_draw_circle',):code+=function('components/epdiy/src/epdiy.c',name)
 code+=function('main/ui/ui_kit.c','ui_inset_rect')+function('main/ui/ui_kit.c','ui_draw_control_frame')
@@ -118,76 +120,69 @@ int main(void){
   if(x<100||x>=300||y<300||y>=350)assert(pixel(frame,x,y)==pixel(saved,x,y));
 
  for(rotation=0;rotation<4;++rotation){
-  for(int policy=0;policy<3;++policy){
-   patterned();texts=0;ui_quick_menu_draw(frame,true,false,true,false,30,50,false);
-   if(!(rotation&1)){assert(!live&&!memcmp(frame,saved,BYTES));continue;}
-   assert(live==2&&texts==0&&live_bytes==UI_LOCK_WIDTH*UI_QUICK_HEIGHT/2+UI_QUICK_BUTTON_COUNT*KEY_BYTES);int grays=0;
-   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<epd_rotated_display_width();++x){
-    uint8_t p=pixel(frame,x,y);if(y>=UI_QUICK_HEIGHT)assert(p==pixel(saved,x,y));else grays+=p!=0&&p!=255;
-   }
-   assert(grays>1000);int retained_allocs=allocs;memcpy(again,frame,BYTES);
-   // 启用和关闭只改变Pico式小圆点，不能遮盖玻璃、反白图标或影响其他控件。
-   // Activation may change only the Pico-style badge, never tint glass, invert the icon or touch other controls.
+  const int sw=epd_rotated_display_width();const EpdRect panel=ui_quick_panel_rect();
+  assert(panel.x==18&&panel.width==sw-36&&UI_QUICK_HEIGHT==panel.y+panel.height+UI_QUICK_NOTICE_SPACE);
+  // 横屏面板更矮。/ The landscape panel is shorter.
+  assert(ui_quick_wide()?panel.height<260:panel.height<450);
+  for(int policy=0;policy<2;++policy){
+   // 用户2026-11-15：白色面板八个方键，竖屏与阅读横屏都可绘制；只缓存顶部底图。
+   // User 2026-11-15: eight tiles on a white panel, drawable in portrait and reader landscape; cache only the top underlay.
+   const unsigned active=1u|32u;
+   patterned();texts=0;ui_quick_menu_draw(frame,active,policy==0,30,50);
+   assert(live==1&&live_bytes==(size_t)sw*UI_QUICK_HEIGHT/2&&texts==UI_QUICK_BUTTON_COUNT);
+   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<sw;++x)
+    if(y>=panel.y+panel.height||(y>=76&&(x<panel.x||x>=panel.x+panel.width)))assert(pixel(frame,x,y)==pixel(saved,x,y));
+   for(int warm=0;warm<2;++warm){EpdRect a=ui_quick_slider_rect(warm);assert(a.x>panel.x&&a.x+a.width<panel.x+panel.width&&a.y+a.height<panel.y+panel.height);}
    for(unsigned button=0;button<UI_QUICK_BUTTON_COUNT;++button){
-    EpdRect dirty;int cx=UI_QUICK_CENTER_X(button),cy=UI_QUICK_CENTER_Y(button);
-    assert(ui_quick_menu_draw_button(frame,button,false,false,&dirty));memcpy(saved,frame,BYTES);
-    assert(ui_quick_menu_draw_button(frame,button,true,false,&dirty));
-    for(int y=0;y<1216;++y)for(int x=0;x<684;++x){
-     int dx=x-cx-22,dy=y-cy+22;
-     if(dx < -5 || dx > 5 || dy < -5 || dy > 5)assert(pixel(frame,x,y)==pixel(saved,x,y));
-    }
-    assert(ui_quick_menu_draw_button(frame,button,button==0||button==4,false,&dirty));
+    int cx=UI_QUICK_CENTER_X(button),cy=UI_QUICK_CENTER_Y(button);
+    assert(cx-UI_QUICK_RADIUS>panel.x&&cx+UI_QUICK_RADIUS<panel.x+panel.width&&cy+UI_QUICK_RADIUS+UI_QUICK_LABEL_GAP+12<panel.y+panel.height);
+    bool on=(active>>button)&1u;
+    // 启用为实心黑底；未启用为白底。/ Active tiles are solid black, inactive tiles white.
+    assert(pixel(frame,cx-30,cy-38)==(on?0:255));
    }
-   assert(allocs==retained_allocs&&!memcmp(frame,again,BYTES));
-   for(size_t b=0;b<BYTES;++b)saved[b]=(uint8_t)(b*13u+7u);
-   for(unsigned button=0;button<UI_QUICK_BUTTON_COUNT;button++){EpdRect dirty;
-    assert(ui_quick_menu_draw_button(frame,button,true,true,&dirty));
-    assert(allocs==retained_allocs&&live==2);
-    for(int y=0;y<1216;y++)for(int x=0;x<684;x++)if(x<dirty.x||x>=dirty.x+dirty.width||y<dirty.y||y>=dirty.y+dirty.height)assert(pixel(frame,x,y)==pixel(again,x,y));
-    assert(ui_quick_menu_draw_button(frame,button,button==0||button==4,false,&dirty));
+   int retained_allocs=allocs;memcpy(again,frame,BYTES);
+   for(unsigned button=0;button<UI_QUICK_BUTTON_COUNT;++button){
+    EpdRect dirty;const bool on=(active>>button)&1u;
+    assert(ui_quick_menu_draw_button(frame,button,!on,false,&dirty));
+    assert(dirty.width==UI_QUICK_TILE&&dirty.height==UI_QUICK_TILE);
+    for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<sw;++x)
+     if(x<dirty.x||x>=dirty.x+dirty.width||y<dirty.y||y>=dirty.y+dirty.height)assert(pixel(frame,x,y)==pixel(again,x,y));
+    assert(ui_quick_menu_draw_button(frame,button,on,true,&dirty));
+    assert(ui_quick_menu_draw_button(frame,button,on,false,&dirty));
     assert(!memcmp(frame,again,BYTES));
    }
-   memcpy(again,frame,BYTES);int notice_allocs=allocs;
+   assert(allocs==retained_allocs&&live==1);
+   int notice_allocs=allocs;
    EpdRect notice=ui_quick_menu_draw_notice(frame,"Bluetooth đã kết nối");
-   assert(allocs==notice_allocs&&notice.y+notice.height<=UI_QUICK_HEIGHT&&pixel(frame,342,348)==0);
-   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<epd_rotated_display_width();++x)
+   assert(allocs==notice_allocs&&notice.y>=panel.y+panel.height&&notice.y+notice.height<=UI_QUICK_HEIGHT&&notice.x>=panel.x&&notice.x+notice.width<=panel.x+panel.width);
+   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<sw;++x)
     if(x<notice.x||x>=notice.x+notice.width||y<notice.y||y>=notice.y+notice.height)assert(pixel(frame,x,y)==pixel(again,x,y));
    assert(ui_quick_menu_restore(frame)&&!memcmp(frame,saved,BYTES));ui_quick_menu_end();assert(!live);
-   for(int fail=0;fail<8;++fail){fail_after=fail;ui_quick_menu_draw(frame,true,false,true,false,120,120,false);int after_open=allocs;
-    for(int n=0;n<40;n++){EpdRect dirty;assert(ui_quick_menu_draw_button(frame,n%4,n&1,n&2,&dirty));}assert(allocs==after_open);
-    ui_quick_menu_end();assert(!live);fail_after=-1;memcpy(frame,saved,BYTES);
+   for(int fail=0;fail<2;++fail){fail_after=fail;patterned();ui_quick_menu_draw(frame,active,true,120,120);int after_open=allocs;
+    for(int n=0;n<40;n++){EpdRect dirty;assert(ui_quick_menu_draw_button(frame,n%UI_QUICK_BUTTON_COUNT,n&1,n&2,&dirty));}assert(allocs==after_open);
+    assert(ui_quick_menu_restore(frame)==(fail!=0));
+    ui_quick_menu_end();assert(!live);fail_after=-1;
    }
-   oom=true;ui_quick_menu_draw(frame,true,false,false,false,30,50,false);assert(!live&&!ui_quick_menu_restore(frame));
+   oom=true;patterned();ui_quick_menu_draw(frame,active,false,30,50);assert(!live&&!ui_quick_menu_restore(frame));
    for(unsigned button=0;button<UI_QUICK_BUTTON_COUNT;button++){EpdRect d;assert(ui_quick_menu_draw_button(frame,button,true,true,&d));}ui_quick_menu_end();oom=false;
   }
   for(int warm=0;warm<2;++warm)for(unsigned v=0;v<=240;v+=120){
    patterned();ui_quick_menu_draw_slider(frame,warm,v);EpdRect a=ui_quick_slider_rect(warm);
-   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<epd_rotated_display_width();++x){
-    unsigned p=pixel(frame,x,y);
-    if(x<a.x||x>=a.x+a.width||y<a.y||y>=a.y+a.height)assert(p==pixel(saved,x,y));
-
-   }
+   for(int y=0;y<epd_rotated_display_height();++y)for(int x=0;x<sw;++x)
+    if(x<a.x||x>=a.x+a.width||y<a.y||y>=a.y+a.height)assert(pixel(frame,x,y)==pixel(saved,x,y));
+   const int x0=ui_quick_slider_x0(warm),cy=ui_quick_slider_y(warm),knob=x0+2*(int)v;
+   assert(pixel(frame,knob,cy)==255);
+   if(v>=24)assert(pixel(frame,knob-UI_QUICK_SLIDER_KNOB-8,cy)==(UI_QUICK_FILL_DARK>>4)*17u);
+   if(v<=216)assert(pixel(frame,knob+UI_QUICK_SLIDER_KNOB+8,cy)==(0xC0>>4)*17u);
   }
-  for(int warm=0;warm<2;++warm){
-   int cx=UI_QUICK_SLIDER_X(warm)+UI_QUICK_SLIDER_WIDTH/2;
-   ui_quick_menu_draw_slider(frame,warm,0);assert(pixel(frame,cx,224)==UI_QUICK_FILL_DARK);
-   ui_quick_menu_draw_slider(frame,warm,240);assert(pixel(frame,cx,224)==255);
-  }
-  // 变化区覆盖实际像素差，保留胶囊边框与未变化内容；回到原值无需刷新。
-  // Changed bands contain all actual pixel differences; same values request no refresh.
+  // 变化区覆盖实际像素差；同值不刷新。/ Changed bands contain all pixel differences; equal values request nothing.
   const unsigned pairs[][2]={{0,1},{119,120},{120,121},{239,240},{0,240},{192,48},{48,192},{144,144}};
   for(int warm=0;warm<2;warm++)for(unsigned i=0;i<sizeof(pairs)/sizeof(pairs[0]);i++){
    patterned();ui_quick_menu_draw_slider(frame,warm,pairs[i][0]);memcpy(saved,frame,BYTES);
    ui_quick_menu_draw_slider(frame,warm,pairs[i][1]);
    EpdRect r=ui_quick_slider_change_rect(warm,pairs[i][0],pairs[i][1]);
-   assert(r.x==UI_QUICK_SLIDER_X(warm)+2&&r.width==112&&r.y>=106&&r.y+r.height<=342);
-   for(int y=0;y<epd_rotated_display_height();y++)for(int x=0;x<epd_rotated_display_width();x++){
-    unsigned a=pixel(saved,x,y),b=pixel(frame,x,y);
-    if(x<r.x||x>=r.x+r.width||y<r.y||y>=r.y+r.height)assert(a==b);
-    if(a!=b)assert((a==UI_QUICK_FILL_DARK&&b==255)||(a==255&&b==UI_QUICK_FILL_DARK));
-    int dx=x-(UI_QUICK_SLIDER_X(warm)+UI_QUICK_SLIDER_WIDTH/2),dy=y-(UI_QUICK_SLIDER_Y1-54);
-    if(dx*dx+dy*dy<=32*32)assert(a==b);
-   }
+   for(int y=0;y<epd_rotated_display_height();y++)for(int x=0;x<sw;x++)
+    if(x<r.x||x>=r.x+r.width||y<r.y||y>=r.y+r.height)assert(pixel(saved,x,y)==pixel(frame,x,y));
    if(pairs[i][0]==pairs[i][1])assert(r.height==0&&!memcmp(frame,saved,BYTES));
   }
   max_bytes=0;
@@ -215,7 +210,7 @@ int main(void){
    if(fast)break;
   }
  }
- assert(!live_bytes&&peak_bytes<=320000);printf("S31 quick glass: bounded top/key cache, peak%zuB; all caches freed on close\n",peak_bytes);
+ assert(!live_bytes&&peak_bytes<=400000);printf("S31 quick layer: bounded top cache, peak%zuB; all caches freed on close\n",peak_bytes);
  rotation=3;patterned();ui_click_feedback_begin(frame);
  ui_click_feedback_register(frame,(EpdRect){55,1111,60,60},UI_CLICK_NAV,UI_ICON_HOUSE);
  EpdRect r;assert(ui_click_feedback_press(frame,85,1188,&r));
@@ -341,12 +336,12 @@ int main(void){
  assert(intermediate>100);
  memset(han+5,0,sizeof(han)-5);for(int y=0;y<72;++y)for(int x=0;x<72;++x)assert(!ui_hanzi_coverage(han,72,72,x,y));
  memset(han+5,255,sizeof(han)-5);assert(ui_hanzi_coverage(han,39,39,19,19)==255);
- for(rotation=1;rotation<4;rotation+=2){
-  patterned();ui_quick_menu_draw(frame,true,false,true,false,30,50,true);
+ for(rotation=0;rotation<4;rotation+=1){
+  patterned();ui_quick_menu_draw(frame,1u,true,30,50);
   assert(ui_quick_menu_restore(frame)&&!memcmp(frame,saved,BYTES));
   ui_quick_menu_end();assert(!live);
  }
- puts("PASS: S31 quick glass has bounded top/key caches and zero input allocation; exact button restore and solid gray/white sliders; slider icons/outlines stay fixed and all changes stay inside bands/circles across four rotations; navigation cache/restoration and Han scaling passed");
+ puts("PASS: S31 quick layer: eight labelled tiles and horizontal sliders in all four rotations (one compact row in landscape); bounded top cache, zero input allocation, exact tile/notice/restore bounds, slider change bands; navigation cache/restoration and Han scaling passed");
  return 0;
 }
 '''

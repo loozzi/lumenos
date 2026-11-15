@@ -126,16 +126,16 @@ enum EpdDrawError update_display_area_diff_with(EpdiyHighlevelState*h,const void
     if(a.y==12) {assert(a.x==0&&a.width==684&&a.height==56&&w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU);++power_header_draws;}
     if (a.height==UI_QUICK_HEIGHT) {assert(!"glass must not use a short differential");}
     if (a.y==1120) assert(w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU&&a.height==48&&a.width==50);
-    if(a.x==UI_QUICK_SLIDER_X(false)+2||a.x==UI_QUICK_SLIDER_X(true)+2) {
-        assert(w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU&&a.width==UI_QUICK_SLIDER_WIDTH-4&&
-               a.height>0&&a.height<=236&&a.y>=106&&a.y+a.height<=342);
+    const EpdRect bright=ui_quick_slider_rect(false),warm=ui_quick_slider_rect(true);
+    if((a.y==bright.y||a.y==warm.y)&&a.height==bright.height) {
+        assert(w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU&&a.width>0&&a.x>=bright.x&&a.x+a.width<=bright.x+bright.width);
         ++slider_partial_draws;
     }
-    if(a.width!=UI_QUICK_SLIDER_WIDTH-4&&a.y>=76&&a.y<344&&a.x<=UI_QUICK_SLIDER_X(false)+2&&a.x+a.width>=UI_QUICK_SLIDER_X(false)+UI_QUICK_SLIDER_WIDTH-2&&m==MODE_DU)++slider_partial_draws;
-    if(a.width!=96&&a.y>=76&&a.y<344&&a.x<348&&m==MODE_DU)++button_partial_draws;
-    if(a.width==96) {
-        assert(w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU&&a.height==96);
-        bool match=false;for(unsigned i=0;i<UI_QUICK_BUTTON_COUNT;++i)if(a.x==UI_QUICK_CENTER_X(i)-48&&a.y==UI_QUICK_CENTER_Y(i)-48)match=true;assert(match);
+    if(a.height!=bright.height&&a.y<bright.y&&a.y+a.height>=bright.y+bright.height&&m==MODE_DU)++slider_partial_draws;
+    if(a.height!=UI_QUICK_TILE&&a.y>=76&&a.y<bright.y&&m==MODE_DU)++button_partial_draws;
+    if(a.width==UI_QUICK_TILE&&a.height==UI_QUICK_TILE) {
+        assert(w==&E0470_FOLLOW_WAVEFORM&&m==MODE_DU);
+        bool match=false;for(unsigned i=0;i<UI_QUICK_BUTTON_COUNT;++i)if(a.x==UI_QUICK_CENTER_X(i)-UI_QUICK_RADIUS&&a.y==UI_QUICK_CENTER_Y(i)-UI_QUICK_RADIUS)match=true;assert(match);
         ++button_partial_draws;
     }
     return update_display_area_with(h,w,m,a);
@@ -146,8 +146,8 @@ enum EpdDrawError update_display_click_feedback(EpdiyHighlevelState* hl,EpdRect 
  nav_armed=owner;return result;
 }
 enum EpdDrawError update_display_area_full_with(EpdiyHighlevelState*h,const void*w,int m,EpdRect a) {
-    if(a.height==UI_QUICK_HEIGHT){assert(a.x==0&&a.y==0&&a.width==684&&w==&E0470_WAVEFORM&&m==MODE_GL16);++quick_opens;}else {assert(a.width==UI_QUICK_SLIDER_WIDTH+4);++slider_draws;}
-    if(a.width==UI_QUICK_SLIDER_WIDTH+4)++slider_forced_draws;
+    if(a.height==UI_QUICK_HEIGHT){assert(a.x==0&&a.y==0&&a.width==684&&w==&E0470_WAVEFORM&&m==MODE_GL16);++quick_opens;}else {assert(a.width==ui_quick_slider_rect(false).width);++slider_draws;}
+    if(a.width==ui_quick_slider_rect(false).width)++slider_forced_draws;
     return update_display_area_with(h,w,m,a);
 }
 enum EpdDrawError update_display_gray_transition(EpdiyHighlevelState*h,EpdRect a) {
@@ -191,10 +191,10 @@ int ui_ai_menu_feed(ui_ai_menu_t*m,const app_ctx_t*c,bool valid){
 EpdRect ui_ai_menu_save_error(ui_ai_menu_t*m,uint8_t*f){(void)f;return m->rect;}
 const void *display_main_gray_waveform(void){return &E0470_WAVEFORM;}
 int metalio_take_volume(void) {if(step!=volume_step)return 0;volume_step=-1;return volume_value;}
-void ui_quick_menu_draw(uint8_t *fb,bool wifi,bool bluetooth,bool enabled,bool inverted,unsigned b,unsigned w,bool soften_text) {assert(!soften_text);(void)fb;(void)wifi;(void)bluetooth;(void)inverted;assert(enabled==light_enabled&&b==light_brightness_position&&w==light_warmth_position);fb[0]=0xaa;++quick_draws;}
+void ui_quick_menu_draw(uint8_t *fb,unsigned active,bool rotate_enabled,unsigned b,unsigned w) {assert(!rotate_enabled);(void)fb;assert(((active>>5)&1u)==light_enabled&&!(active&(64u|128u))&&b==light_brightness_position&&w==light_warmth_position);fb[0]=0xaa;++quick_draws;}
 void ui_quick_menu_draw_slider(uint8_t *fb,bool warmth,unsigned value) {
  (void)fb;unsigned expected=warmth?metalio_frontlight_position(true):ui_quick_brightness_position(metalio_frontlight_position(false));
- int raw=UI_QUICK_SLIDER_Y1-samples[step].y;if(raw<0)raw=0;if(raw>UI_QUICK_SLIDER_RANGE)raw=UI_QUICK_SLIDER_RANGE;
+ int raw=(samples[step].x-ui_quick_slider_x0(warmth)+1)/2;if(raw<0)raw=0;if(raw>UI_QUICK_SLIDER_RANGE)raw=UI_QUICK_SLIDER_RANGE;
  assert(value==expected || (samples[step].count==1&&value==(unsigned)raw));++slider_draws;
 }
 static int recent_requests,recent_cancels,status_draws;
@@ -203,11 +203,18 @@ void ble_pt_cancel_recent(void){++recent_cancels;}
 void ui_quick_menu_draw_status(uint8_t *fb){(void)fb;++status_draws;}
 void ui_quick_menu_end(void){}
 bool ui_quick_menu_restore(uint8_t *fb){fb[0]=0x11;return true;}
-bool ui_quick_menu_draw_button(uint8_t *fb,unsigned index,bool enabled,bool pressed,EpdRect *dirty) {(void)fb;(void)pressed;assert(index<UI_QUICK_BUTTON_COUNT);assert(enabled==(index==0?transfer_status.mode==READ_PICO_TRANSFER_MODE_STA&&transfer_status.state!=READ_PICO_TRANSFER_STOPPED:index==1?ble_enabled:index==4?light_enabled:false));*dirty=(EpdRect){UI_QUICK_CENTER_X(index)-48,UI_QUICK_CENTER_Y(index)-48,96,96};++button_draws;return true;}
+bool ui_quick_menu_draw_button(uint8_t *fb,unsigned index,bool enabled,bool pressed,EpdRect *dirty) {(void)fb;(void)pressed;assert(index<UI_QUICK_BUTTON_COUNT);assert(enabled==(index==0?transfer_status.mode==READ_PICO_TRANSFER_MODE_STA&&transfer_status.state!=READ_PICO_TRANSFER_STOPPED:index==1?ble_enabled:index==5?light_enabled:false));*dirty=(EpdRect){UI_QUICK_CENTER_X(index)-UI_QUICK_RADIUS,UI_QUICK_CENTER_Y(index)-UI_QUICK_RADIUS,UI_QUICK_TILE,UI_QUICK_TILE};++button_draws;return true;}
 
-EpdRect ui_quick_button_rect(unsigned index) {return (EpdRect){UI_QUICK_CENTER_X(index)-46,UI_QUICK_CENTER_Y(index)-46,93,93};}
-EpdRect ui_quick_slider_change_rect(bool warmth,unsigned before,unsigned after) {int a=240-(int)before,b=240-(int)after,t=a<b?a:b,z=a>b?a:b;if(t<2)t=2;if(t>238)t=238;if(z<2)z=2;if(z>238)z=238;return (EpdRect){UI_QUICK_SLIDER_X(warmth)+2,104+t,112,z>t?z-t:0};}
-EpdRect ui_quick_slider_rect(bool warmth) {return (EpdRect){UI_QUICK_SLIDER_X(warmth)-2,UI_QUICK_SLIDER_Y0-2,UI_QUICK_SLIDER_WIDTH+4,UI_QUICK_SLIDER_Y1-UI_QUICK_SLIDER_Y0+4};}
+EpdRect ui_quick_button_rect(unsigned index) {return (EpdRect){UI_QUICK_CENTER_X(index)-UI_QUICK_RADIUS,UI_QUICK_CENTER_Y(index)-UI_QUICK_RADIUS,UI_QUICK_TILE,UI_QUICK_TILE};}
+EpdRect ui_quick_slider_rect(bool warmth) {const int x0=ui_quick_slider_x0(warmth);return (EpdRect){x0-UI_QUICK_SLIDER_KNOB-4,ui_quick_slider_y(warmth)-UI_QUICK_SLIDER_KNOB-4,UI_QUICK_SLIDER_LENGTH+2*UI_QUICK_SLIDER_KNOB+8,2*UI_QUICK_SLIDER_KNOB+8};}
+EpdRect ui_quick_slider_change_rect(bool warmth,unsigned before,unsigned after) {
+ if(before>240){before=240;}
+ if(after>240){after=240;}
+ if(before==after)return (EpdRect){0,0,0,0};
+ EpdRect area=ui_quick_slider_rect(warmth);int a=ui_quick_slider_x0(warmth)+2*(int)before,b=ui_quick_slider_x0(warmth)+2*(int)after;
+ int l=(a<b?a:b)-UI_QUICK_SLIDER_KNOB-4,r=(a>b?a:b)+UI_QUICK_SLIDER_KNOB+4;if(l<area.x){l=area.x;}
+ if(r>area.x+area.width){r=area.x+area.width;}
+ return (EpdRect){l,area.y,r-l,area.height};}
 bool app_settings_ble_turner(void) {return ble_enabled;}
 void app_settings_set_ble_turner(bool enabled) {ble_enabled=enabled;}
 void ble_pt_reset_failure(void) {++ble_resets;}
@@ -672,7 +679,7 @@ int main(void) {
     // Run the real edge recognizer and loop to reject underlay leakage and repeated hold actions.
     reset();first.on_gesture=gesture;
     add(300,20,1,0);add(300,110,1,0);add(300,120,1,0);add(0,0,0,0);
-    add(300,500,1,0);add(0,0,0,0);add(100,400,1,0);add(0,0,0,0);run();
+    add(300,700,1,0);add(0,0,0,0);add(100,400,1,0);add(0,0,0,0);run();
     assert(quick_draws==1&&quick_opens==1&&quick_closes==1&&gl_areas==2&&!du_areas&&fulls==1);
     assert(events[UI_GESTURE_PRESS]==1&&events[UI_GESTURE_TAP]==1);
     reset();main_fast=true;saved_wifi=true;
@@ -688,22 +695,22 @@ int main(void) {
     assert(!wifi_starts&&!wifi_stops&&!touch_calls);
     assert(quick_opens==1&&button_partial_draws==2&&quick_draws==1);
     reset();add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(186,152,1,0);add(0,0,0,0);add(186,152,1,0);add(0,0,0,0);run();
+    add(261,152,1,0);add(0,0,0,0);add(261,152,1,0);add(0,0,0,0);run();
     assert(!ble_enabled&&!ble_resets&&recent_requests==1&&recent_cancels==1&&!touch_calls);
     assert(quick_opens==1&&quick_draws==1&&button_partial_draws==4&&status_partial_draws==2&&status_draws==2&&button_draws==4);
     reset();first.on_before_lock=before_lock;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(186,284,1,0);add(0,0,0,0);add(100,284,1,0);add(0,0,0,0);run();
+    add(261,312,1,0);add(0,0,0,0);add(585,164,1,0);add(0,0,0,0);run();
     assert(!idle_locks&&!before_locks&&fulls>=2&&!touch_calls&&!light_enabled&&light_brightness==30&&light_saves==1&&haptics==2);
     assert(quick_opens==1&&button_partial_draws==3&&button_draws==3);
     for(int policy=0;policy<3;++policy){
         reset();main_fast=policy==1;main_water=policy==2;check_clean_action=true;
         add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-        add(100,284,1,0);add(0,0,0,0);add(100,500,1,0);add(0,0,0,0);run();
+        add(585,164,1,0);add(0,0,0,0);add(100,700,1,0);add(0,0,0,0);run();
         assert(clean_action_fulls==1&&!quick_closes&&quick_draws==1&&touch_calls==1);
         reset();main_fast=policy==1;main_water=policy==2;
         add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-        add(300,500,1,0);add(0,0,0,0);run();
+        add(300,700,1,0);add(0,0,0,0);run();
         assert(quick_opens==1&&quick_closes==1&&gl_areas==2&&!du_areas&&fulls==1);
     }
     // 网络ready只改变内部状态，不重画菜单；异步WiFi停止只刷WiFi圆钮。
@@ -715,34 +722,34 @@ int main(void) {
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);run();
     assert(quick_opens==1&&quick_draws==1&&button_draws==1&&button_partial_draws==1);
     reset();light_enabled=false;light_brightness=light_brightness_position=0;
-    add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);add(186,284,1,0);add(0,0,0,0);run();
+    add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);add(261,312,1,0);add(0,0,0,0);run();
     assert(light_enabled&&light_brightness_position==72&&button_draws==2&&slider_draws==1&&quick_opens==1&&!slider_forced_draws);
     reset();time_step=100000;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(426,296,1,0);add(426,224,1,0);add(0,0,1,0);add(0,0,0,0);run();
+    add(208,432,1,0);add(352,432,1,0);add(683,0,1,0);add(0,0,0,0);run();
     assert(light_brightness==100&&light_warmth==50&&light_previews==3&&light_saves==1&&slider_draws>=2&&!touch_calls&&quick_opens==1);
     assert(slider_partial_draws==slider_draws&&!slider_forced_draws);
     reset();add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(572,104,1,0);add(0,0,0,9);add(0,0,0,0);run();
+    add(592,496,1,0);add(0,0,0,9);add(0,0,0,0);run();
     assert(light_warmth==100&&light_saves==1&&!touch_calls);
     reset();light_enabled=false;time_step=100000;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(426,104,1,0);add(0,0,0,0);add(572,104,1,0);add(0,0,0,0);run();
+    add(592,432,1,0);add(0,0,0,0);add(592,496,1,0);add(0,0,0,0);run();
     assert(light_enabled&&light_brightness==100&&light_warmth==100&&light_saves==2&&!touch_calls);
     assert(slider_partial_draws==2&&!slider_forced_draws);
     reset();time_step=100000;light_enabled=false;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(426,342,1,0);add(426,341,1,0);add(0,0,0,0);add(0,0,0,0);run();
+    add(116,432,1,0);add(118,432,1,0);add(0,0,0,0);add(0,0,0,0);run();
     assert(light_enabled&&light_brightness_position==1&&light_previews==1&&light_saves==1);
     assert(slider_draws==2&&slider_partial_draws==2&&!slider_forced_draws);
     reset();time_step=100000;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
-    add(426,224,1,0);add(0,0,0,0);run();assert(light_brightness==20&&light_brightness_position==48&&light_saves==1);
+    add(352,432,1,0);add(0,0,0,0);run();assert(light_brightness==20&&light_brightness_position==48&&light_saves==1);
     reset();time_step=100000;
     add(300,20,1,0);add(300,110,1,0);add(0,0,0,0);
     // 当前50%色温不变：按下/抬起不重复绘制，更不产生GL定稿黑框。
     // Tapping unchanged warmth must not redraw or force a GL capsule settle.
-    add(572,224,1,0);add(0,0,0,0);run();
+    add(352,496,1,0);add(0,0,0,0);run();
     assert(!slider_partial_draws&&!slider_forced_draws&&!slider_draws&&!light_saves);
     for(int policy=0;policy<3;++policy){
         reset();main_fast=policy==1;main_water=policy==2;first.on_gesture=gesture;click_enabled=true;
@@ -1001,4 +1008,4 @@ void nvs_close(nvs_handle_t h){(void)h;}
 const app_desc_t app_device_settings={0};
 bool ble_pt_connecting(void){return false;}
 void crash_report_poll(bool force){(void)force;}
-EpdRect ui_quick_menu_draw_notice(uint8_t*fb,const char*text){(void)fb;(void)text;return (EpdRect){24,348,636,34};}
+EpdRect ui_quick_menu_draw_notice(uint8_t*fb,const char*text){(void)fb;(void)text;return (EpdRect){76,530,532,50};}

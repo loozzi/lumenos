@@ -141,6 +141,7 @@ static esp_err_t backup_nvs_set_str(nvs_handle_t h, const char *key, const char 
 #define NVS_KEY_SYS_FONT "sys_font"
 #define NVS_KEY_SYS_SIZE "sys_size"
 #define NVS_KEY_INVERT "screen_invert"
+#define NVS_KEY_READER_LANDSCAPE "rd_landscape"
 #define NVS_KEY_SYS_CONTRAST "sys_contrast"
 #define NVS_KEY_LOCK_STYLE "lock_ui"
 #define NVS_KEY_WALLPAPER "wallpaper"
@@ -275,6 +276,7 @@ esp_err_t app_settings_clear_flash_fonts(void) {
 
 static uint8_t s_system_size = 100;
 static bool s_screen_inverted;
+static bool s_reader_landscape;
 static uint8_t s_system_contrast = SYSTEM_CONTRAST_DEFAULT;
 static uint8_t s_lock_style;
 static char s_wallpaper[288];
@@ -675,6 +677,8 @@ void app_settings_init(void) {
 #endif
     uint8_t inverted=0;
     s_screen_inverted=nvs_get_u8(h,NVS_KEY_INVERT,&inverted)==ESP_OK && inverted==1;
+    uint8_t landscape=0;
+    s_reader_landscape=nvs_get_u8(h,NVS_KEY_READER_LANDSCAPE,&landscape)==ESP_OK && landscape==1;
     uint8_t system_contrast;
     s_system_contrast = nvs_get_u8(h, NVS_KEY_SYS_CONTRAST, &system_contrast) == ESP_OK &&
         system_contrast >= 100 && system_contrast <= 140 && system_contrast % 10 == 0
@@ -1165,6 +1169,17 @@ bool app_settings_set_screen_inverted(bool enabled) {
     if(err==ESP_OK)err=settings_backup_commit(h);
     nvs_close(h);
     if(err==ESP_OK)s_screen_inverted=enabled;
+    return err==ESP_OK;
+}
+bool app_settings_reader_landscape(void) { return s_reader_landscape; }
+bool app_settings_set_reader_landscape(bool enabled) {
+    if(enabled==s_reader_landscape)return true;
+    nvs_handle_t h;
+    if(backup_nvs_open(NVS_NS,NVS_READWRITE,&h)!=ESP_OK)return false;
+    esp_err_t err=backup_nvs_set_u8(h,NVS_KEY_READER_LANDSCAPE,enabled?1:0);
+    if(err==ESP_OK)err=settings_backup_commit(h);
+    nvs_close(h);
+    if(err==ESP_OK)s_reader_landscape=enabled;
     return err==ESP_OK;
 }
 uint8_t app_settings_system_contrast(void) { return s_system_contrast; }

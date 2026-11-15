@@ -15,6 +15,8 @@ void app_book_cover_mode_changed(void);
 void app_home_cover_mode_changed(void);
 
 #if DPREADER_BOARD_METALIO47
+static inline bool app_book_landscape_ready(void) { return false; }
+static inline void app_book_orientation_changed(void) {}
 bool app_book_volume_key(app_ctx_t *ctx, int direction, app_redraw_t *redraw);
 bool app_book_ai_bookmark(void);
 #endif
