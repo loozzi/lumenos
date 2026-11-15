@@ -3,6 +3,7 @@
 from pathlib import Path
 from stage_usb_only_release import APP, identity, PARTS
 from verify_metalio_release import clean_image_identity
+import release_channel as channel
 import argparse
 import hashlib
 import json
@@ -20,8 +21,7 @@ def stage(build_root, output):
     for edition in ('full', 'love-book'):
         package = build_root / edition / 'packages/metalio47'
         info = json.loads((package / 'verification.json').read_text())
-        expected = r'\d+\.\d+\.\d+' + ('-love-vn' if edition == 'love-book' else '-vn')
-        if not re.fullmatch(expected, info['version']):
+        if not channel.archived(info['version'], edition):
             raise ValueError('Web Flash accepts official releases only; RC stays in local USB bundles')
         if info.get('edition') != edition:
             raise ValueError('Wrong package edition: ' + edition)
@@ -32,7 +32,7 @@ def stage(build_root, output):
                 raise ValueError('Invalid package checksum: ' + name)
         packages[edition] = (package, info)
     full, love = (packages[e][1] for e in ('full', 'love-book'))
-    if full['version'].removesuffix('-vn') != love['version'].removesuffix('-love-vn'):
+    if channel.base(full['version']) != channel.base(love['version']):
         raise ValueError('Build both editions at the same candidate version')
     output.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ROOT / 'web', output, dirs_exist_ok=True)
@@ -41,7 +41,7 @@ def stage(build_root, output):
         destination = output / relative
         destination.mkdir(parents=True, exist_ok=True)
         if info.get('storage_layout') == 'nvs256-clean':
-            usb_only = info['version'].removesuffix('-vn').removesuffix('-love') == '1.4.2'
+            usb_only = channel.base(info['version']) == '1.4.2'
             app_name = 'web-firmware.bin' if usb_only else APP
             shutil.copy2(package / APP, destination / app_name)
             for name in PARTS:

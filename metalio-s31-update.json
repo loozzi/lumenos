@@ -1,21 +1,21 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.4.5-vn",
+  "version": "1.5.1",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
   "minimum_base_version": "1.4.2",
   "usb_only": false,
-  "url": "https://dephia31.github.io/dpReader31/releases/dpReader_metalio47_firmware.bin",
-  "flash_page": "https://dephia31.github.io/dpReader31/",
-  "previous_version": "1.4.4-vn",
-  "notes": "Từ 1.4.1 trở xuống: nạp toàn phần tại dephia31.github.io/dpReader31/. Bản 1.4.2 cập nhật ứng dụng qua USB một lần. OTA hoạt động từ 1.4.3.",
+  "url": "https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/dpReader31/",
+  "previous_version": "1.4.5-vn",
+  "notes": "LumenOS 1.5.1: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
-      "sha256": "dd59211a8034371256c3422aba49566bfcbac2175a23aa4f5e5bc5bcd2912443",
-      "md5": "c926fde3a56a1d994ff9cc55ec8eab50"
+      "sha256": "4db9527d5eced3d195a9e467cfadf883572e26207c142b6951d4be885074d284",
+      "md5": "136840d1001b6196e2405a6efc71b2b3"
     },
     "partitions.bin": {
       "size": 3072,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "31af8f2500d5d12aa73551af29269850f55c7756409ce47cb34a5366dda6799e",
-      "md5": "ea8ece094d932fa06a6b4c0558f50cd8"
+      "sha256": "5de5d56867dee63346655c2740e0b6bf5dec21b64279cec206d2579790e6d1fa",
+      "md5": "815235e6881c9a78567bade537f133b9"
     }
   },
   "clean_image": {
-    "sha256": "f7af75d7d56696ac6ccd636bb5257c6b3efe8f553ce8885c70e294b362c61e51",
-    "md5": "a77dd5e0f581c0fd66ec75445716b03e"
+    "sha256": "0d65804084bdfde678b527d904624118b1017811a5c53fa2ba726f2de3d63abe",
+    "md5": "6b3831d44af448cd91b0058a446a7986"
   },
-  "size": 4761088,
-  "sha256": "46b6ea0de1acd874046ec2c6ffbcd41da114908d18694f3db1725f9f8e3fb472",
-  "md5": "2ee140278ba43e4ef7e8a29d967d65d4"
+  "size": 4956208,
+  "sha256": "c42bc345f670c245acfb4c40b81b4e407e7967cf44145df927fbe7f5a25d3363",
+  "md5": "d2f098230f2d8fe72dc97ec4b2921ce5"
 }

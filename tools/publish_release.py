@@ -3,11 +3,17 @@
 from pathlib import Path
 import argparse,hashlib,json,os,subprocess,urllib.request,urllib.error
 from verify_metalio_release import verify_all
+import release_channel as channel
 ROOT=Path(__file__).resolve().parents[1]
-REPO='dephia31/dpReader31'
+# 只发布到本渠道仓库；工作流中必须与 GITHUB_REPOSITORY 一致。
+# Publish only to the channel repository; in Actions it must match GITHUB_REPOSITORY.
+REPO=channel.REPO
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--dry-run',action='store_true');args=parser.parse_args()
-    manifest,love=verify_all();version=manifest['version'];tag='v'+version
+    manifest,love=verify_all();version=manifest['version'];tag=channel.tag(version)
+    if not channel.official(version,'full'):raise RuntimeError('Only LumenOS X.Y.Z releases are published from this channel: '+version)
+    workflow_repo=os.environ.get('GITHUB_REPOSITORY')
+    if workflow_repo and workflow_repo!=REPO:raise RuntimeError(f'Workflow repository {workflow_repo} differs from release channel {REPO}')
     def assets_for(feed, folder, prefix=''):
         ver=feed['version']
         files=['SHA256SUMS.txt','metalio-s31-update.json','verification.json',f'dpReader-metalio47-{ver}-USB.zip']
@@ -34,7 +40,7 @@ def main():
         token=dict(line.split('=',1) for line in r.stdout.splitlines() if '=' in line).get('password')
     if not token:raise RuntimeError('GitHub credential required')
     def api(route,method='GET',body=None,raw=None,kind='application/json'):
-        headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','User-Agent':'dpReader-release','Content-Type':kind}
+        headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','User-Agent':'lumenos-release','Content-Type':kind}
         if body is not None:raw=json.dumps(body).encode()
         url=route if route.startswith('https://') else 'https://api.github.com/repos/'+REPO+'/'+route
         with urllib.request.urlopen(urllib.request.Request(url,data=raw,headers=headers,method=method),timeout=90) as response:return json.load(response)
@@ -42,7 +48,7 @@ def main():
     try:release=api('releases/tags/'+tag)
     except urllib.error.HTTPError as error:
         if error.code!=404:raise
-        release=api('releases','POST',{'tag_name':tag,'name':'dpReader Metalio 4.7 Firmware '+tag,'body':notes,'draft':True,'prerelease':False})
+        release=api('releases','POST',{'tag_name':tag,'name':channel.RELEASE_NAME+' '+tag,'body':notes,'draft':True,'prerelease':False})
     for name,path in assets:
         data=path.read_bytes();digest='sha256:'+hashlib.sha256(data).hexdigest()
         old=next((a for a in release['assets'] if a['name']==name),None)

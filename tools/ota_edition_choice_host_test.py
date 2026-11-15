@@ -91,10 +91,13 @@ int main(void) {
  s_target_love=false;assert(!check_feed()&&outcome==PICO_UPDATE_FAILED);
  strcpy(candidate.version,"1.5.1");assert(check_feed()&&outcome==PICO_UPDATE_AVAILABLE);
  strcpy(candidate.project,"OtherBoard");assert(!check_feed()&&outcome==PICO_UPDATE_FAILED);
- assert(pico_release_url_valid("https://dephia31.github.io/dpReader31/releases/love-book/dpReader_metalio47_firmware.bin"));
- assert(pico_release_url_valid("https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/dpReader_metalio47_firmware.bin"));
- assert(!pico_release_url_valid("https://dephia31.github.io/dpReader31/releases/love-book/../bad.bin"));
- assert(!pico_release_url_valid("https://dephia31.github.io/dpReader31/releases/other/bad.bin"));
+ assert(pico_release_url_valid("https://loozzi.github.io/dpReader31/releases/love-book/dpReader_metalio47_firmware.bin"));
+ assert(pico_release_url_valid("https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/love-book/dpReader_metalio47_firmware.bin"));
+ assert(!pico_release_url_valid("https://loozzi.github.io/dpReader31/releases/love-book/../bad.bin"));
+ assert(!pico_release_url_valid("https://loozzi.github.io/dpReader31/releases/other/bad.bin"));
+ // 上游渠道不再接受。/ The upstream channel is no longer accepted.
+ assert(!pico_release_url_valid("https://dephia31.github.io/dpReader31/releases/love-book/dpReader_metalio47_firmware.bin"));
+ assert(!pico_release_url_valid("https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/dpReader_metalio47_firmware.bin"));
  puts("PASS first OTA choice, failed-save rollback, Full/Love feeds, confirmed same-version switching, wrong-branch/project rejection and downgrade refusal");
 }
 '''

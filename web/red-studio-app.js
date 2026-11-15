@@ -32,14 +32,14 @@ const riskAccepted = document.getElementById("risk-accepted");
 const flashReadiness = document.getElementById("flash-readiness");
 function automaticLayoutSelected() {
   const version = document.getElementById("release-version")?.value ?? "";
-  const parts = /^(\d+)\.(\d+)\.(\d+)(?:-love)?-vn$/.exec(version);
+  const parts = /^(\d+)\.(\d+)\.(\d+)(?:-love)?(?:-vn)?$/.exec(version);
   return version === "" || Boolean(parts && (+parts[1] > 1 || (+parts[1] === 1 &&
     (+parts[2] > 4 || (+parts[2] === 4 && +parts[3] >= 2)))));
 }
 function syncInstallationGuide() {
   const automatic = automaticLayoutSelected();
   const version = document.getElementById("release-version")?.value ||
-    (editionSelect?.value === "love-book" ? "1.4.5-love-vn" : "1.4.5-vn");
+    (editionSelect?.value === "love-book" ? "1.5.1-love" : "1.5.1");
   const archivedTransition = /^1\.4\.2(?:-love)?-vn$/.test(version);
   document.getElementById("flash-modes").hidden = archivedTransition;
   document.getElementById("legacy-downloads").hidden = automatic;
@@ -188,7 +188,7 @@ let currentReleaseInfo = null;
 function selectedReleaseFolder() {
   const version = document.getElementById("release-version")?.value || "";
   const base = editionSelect?.value === "love-book" ? "releases/love-book" : "releases";
-  return /^\d+\.\d+\.\d+(?:-love)?-vn$/.test(version) ? `${base}/${version}` : base;
+  return /^\d+\.\d+\.\d+(?:-love)?(?:-vn)?$/.test(version) ? `${base}/${version}` : base;
 }
 const releaseVersionSelect = document.getElementById("release-version");
 let previousEdition = editionSelect?.value || "full";
@@ -199,7 +199,8 @@ function snapshotReleaseOptions() {
 releaseOptions.set(previousEdition, snapshotReleaseOptions());
 releaseOptions.set("love-book", [
   {value: "", text: "Mới nhất"},
-  {value: "1.4.4-love-vn", text: "1.4.4-love-vn — bản chính thức trước"},
+  {value: "1.4.5-love-vn", text: "1.4.5-love-vn — bản chính thức trước"},
+  {value: "1.4.4-love-vn", text: "1.4.4-love-vn"},
   {value: "1.4.3-love-vn", text: "1.4.3-love-vn"},
   {value: "1.4.2-love-vn", text: "1.4.2-love-vn"},
 ]);
@@ -244,7 +245,7 @@ async function fetchLatestRelease() {
 
     if (!data || !data.version) {
       try {
-        const rawRes = await fetch(`https://raw.githubusercontent.com/dephia31/dpReader31/main/${requestedFolder}/metalio-s31-update.json?t=${Date.now()}`, { cache: "no-store" });
+        const rawRes = await fetch(`https://raw.githubusercontent.com/loozzi/dpReader31/main/${requestedFolder}/metalio-s31-update.json?t=${Date.now()}`, { cache: "no-store" });
         if (rawRes.ok) data = await rawRes.json();
       } catch (_) {}
     }
@@ -253,7 +254,7 @@ async function fetchLatestRelease() {
       try {
         const selectedVer = document.getElementById("release-version")?.value;
         const targetTag = selectedReleaseFolder() === "releases" ? "latest" : `tags/v${selectedVer}`;
-        const ghRes = await fetch(`https://api.github.com/repos/dephia31/dpReader31/releases/${targetTag}`);
+        const ghRes = await fetch(`https://api.github.com/repos/loozzi/dpReader31/releases/${targetTag}`);
         if (ghRes.ok) {
           const ghData = await ghRes.json();
           data = {
@@ -266,7 +267,7 @@ async function fetchLatestRelease() {
     }
 
     if (requestedFolder !== selectedReleaseFolder()) return;
-    if (data && (!requestedVersion || data.version === requestedVersion) && typeof data.version === "string" && /^\d+\.\d+\.\d+(?:-love)?-vn$/.test(data.version) && Number.isSafeInteger(data.size) && data.size > 0 && /^[a-f0-9]{64}$/i.test(data.sha256 || "") && ((data.version.includes("-love-vn")) === (editionSelect?.value === "love-book"))) {
+    if (data && (!requestedVersion || data.version === requestedVersion) && typeof data.version === "string" && /^\d+\.\d+\.\d+(?:-love)?(?:-vn)?$/.test(data.version) && Number.isSafeInteger(data.size) && data.size > 0 && /^[a-f0-9]{64}$/i.test(data.sha256 || "") && ((data.version.includes("-love")) === (editionSelect?.value === "love-book"))) {
       if (automaticLayoutSelected() && !data.usb_parts) throw new Error("Thiếu thông tin cài đặt NVS 256 KiB");
       editionReady = true;
       currentReleaseInfo = data;
@@ -416,7 +417,7 @@ async function fetchBinary(primaryUrl, fallbackUrl) {
 
 // 核对实际应用头和哈希，防止选择正确但下载了另一分支。/ Verify actual app identity/hash before any writes.
 async function verifySelectedFirmware(buffer, appOffset, release, edition) {
-  if (!release || !/^\d+\.\d+\.\d+(?:-love)?-vn$/.test(release.version)) throw new Error("Web Flash chỉ nhận bản chính thức, không nạp RC.");
+  if (!release || !/^\d+\.\d+\.\d+(?:-love)?(?:-vn)?$/.test(release.version)) throw new Error("Web Flash chỉ nhận bản chính thức, không nạp RC.");
   const bytes = new Uint8Array(buffer);
   const app = bytes.subarray(appOffset, appOffset + release.size);
   const view = new DataView(app.buffer, app.byteOffset, app.byteLength);
@@ -424,7 +425,7 @@ async function verifySelectedFirmware(buffer, appOffset, release, edition) {
   if (app.length !== release.size || app.length < 288 || app[0] !== 0xe9 ||
       view.getUint16(12, true) !== 32 || view.getUint32(32, true) !== 0xabcd5432 ||
       field(48) !== release.version || field(80) !== "Kiikoread_Metalio_S31" ||
-      field(48).includes("-love-vn") !== (edition === "love-book")) {
+      field(48).includes("-love") !== (edition === "love-book")) {
     throw new Error("Firmware không khớp bản Full/Love Book, phiên bản hoặc chip đã chọn.");
   }
   const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", app)), value => value.toString(16).padStart(2, "0")).join("");
@@ -461,7 +462,7 @@ async function fetchVerifiedPart(name, part) {
   if (!part || !/^[a-f0-9]{32}$/i.test(part.md5 || "") || !Number.isSafeInteger(part.size) || part.size <= 0 || !/^[a-f0-9]{64}$/i.test(part.sha256))
     throw new Error(`Thiếu thông tin xác minh ${name}.`);
   const folder = selectedReleaseFolder();
-  const bytes = new Uint8Array(await fetchBinary(`./${folder}/${name}`, `https://raw.githubusercontent.com/dephia31/dpReader31/main/${folder}/${name}`));
+  const bytes = new Uint8Array(await fetchBinary(`./${folder}/${name}`, `https://raw.githubusercontent.com/loozzi/dpReader31/main/${folder}/${name}`));
   const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), n => n.toString(16).padStart(2,"0")).join("");
   if (bytes.length !== part.size || sha !== part.sha256.toLowerCase()) throw new Error(`Sai checksum ${name}.`);
   return bytes;
@@ -588,7 +589,7 @@ flashBtn.addEventListener("click", async () => {
       progressStatus.textContent = "Đang tải firmware ứng dụng mới nhất...";
       binaryData = await fetchBinary(
         `./${selectedReleaseFolder()}/${fileName}?t=${timestamp}`,
-        `https://raw.githubusercontent.com/dephia31/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
+        `https://raw.githubusercontent.com/loozzi/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
       );
     } else if (radioFull.checked) {
       fileName = "dpReader_metalio47_full.bin";
@@ -596,7 +597,7 @@ flashBtn.addEventListener("click", async () => {
       progressStatus.textContent = "Đang tải firmware toàn diện (Full Flash)...";
       binaryData = await fetchBinary(
         `./${selectedReleaseFolder()}/${fileName}?t=${timestamp}`,
-        `https://raw.githubusercontent.com/dephia31/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
+        `https://raw.githubusercontent.com/loozzi/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
       );
     } else if (radioCustom.checked) {
       const file = customFileInput.files[0];

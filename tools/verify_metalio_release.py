@@ -3,6 +3,7 @@
 from pathlib import Path
 import hashlib,json,re,struct,zipfile,tempfile
 from flash_test_usb import validate_bundle
+import release_channel as channel
 ROOT=Path(__file__).resolve().parents[1]
 def clean_image_identity(folder, app):
     image = bytearray(b'\xff') * 0x1000000
@@ -23,7 +24,8 @@ def clean_image_identity(folder, app):
 def verify(folder=None, edition="full"):
     folder=Path(folder or ROOT/'releases')
     manifest=json.loads((folder/'metalio-s31-update.json').read_text())
-    version=manifest['version'];assert re.fullmatch(r'\d+\.\d+\.\d+'+('-love-vn' if edition=='love-book' else '-vn'),version)
+    version=manifest['version'];assert channel.archived(version,edition),version
+    legacy=version.endswith('-vn')
     assert manifest.get('edition',edition)==edition
     assert len(manifest['notes'].encode())<384
     info=json.loads((folder/'verification.json').read_text())
@@ -46,7 +48,9 @@ def verify(folder=None, edition="full"):
         else:
             relative = 'releases/love-book/' if edition == 'love-book' else 'releases/'
             assert manifest['minimum_base_version']=='1.4.2'
-            assert manifest['url']=='https://dephia31.github.io/dpReader31/'+relative+'dpReader_metalio47_firmware.bin'
+            # 旧 dpReader 清单保留原来源；LumenOS 正式版使用本渠道。/ Legacy dpReader feeds keep their origin; LumenOS uses this channel.
+            expected_url=('https://dephia31.github.io/dpReader31/'+relative+'dpReader_metalio47_firmware.bin') if legacy else channel.image_url(relative)
+            assert manifest['url']==expected_url,manifest['url']
             assert manifest['clean_image']==clean_image_identity(folder,app)
         assert info['storage_layout']=='nvs256-clean' and hashlib.md5(app).hexdigest()==manifest['md5']
         assert set(manifest['usb_parts'])=={'bootloader.bin','partitions.bin','storage-empty.bin'}
@@ -58,7 +62,7 @@ def verify(folder=None, edition="full"):
     assert not any(v for k,v in info.items() if k.startswith('experimental_') or k=='local_transfer_start_test')
     previous=manifest.get('previous_version')
     if previous:
-        assert previous!=version and re.fullmatch(r'\d+\.\d+\.\d+'+('-love-vn' if edition=='love-book' else '-vn'),previous)
+        assert previous!=version and channel.archived(previous,edition),previous
         old=json.loads((folder/previous/'metalio-s31-update.json').read_text())
         old_app=(folder/previous/('web-firmware.bin' if old.get('usb_only') else 'dpReader_metalio47_firmware.bin')).read_bytes()
         assert len(old_app)==old['size'] and hashlib.sha256(old_app).hexdigest()==old['sha256']
@@ -86,10 +90,11 @@ def verify(folder=None, edition="full"):
 def verify_all():
     full=verify()
     love_folder=ROOT/'releases/love-book'
-    required=tuple(int(x) for x in full['version'].removesuffix('-vn').split('.')) >= (1,3,3)
+    required=tuple(int(x) for x in channel.base(full['version']).split('.')) >= (1,3,3)
     love=verify(love_folder,'love-book') if required or love_folder.exists() else None
     if love:
-        assert love['version'].removesuffix('-love-vn')==full['version'].removesuffix('-vn')
+        assert channel.base(love['version'])==channel.base(full['version'])
+        assert love['version'].endswith('-vn')==full['version'].endswith('-vn')
     return full,love
 
 if __name__=='__main__':verify_all()

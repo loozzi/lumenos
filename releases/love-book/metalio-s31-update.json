@@ -1,21 +1,21 @@
 {
   "schema": 1,
   "edition": "love-book",
-  "version": "1.4.5-love-vn",
+  "version": "1.5.1-love",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
   "minimum_base_version": "1.4.2",
   "usb_only": false,
-  "url": "https://dephia31.github.io/dpReader31/releases/love-book/dpReader_metalio47_firmware.bin",
-  "flash_page": "https://dephia31.github.io/dpReader31/",
-  "previous_version": "1.4.4-love-vn",
-  "notes": "Từ 1.4.1 trở xuống: nạp toàn phần tại dephia31.github.io/dpReader31/. Bản 1.4.2 cập nhật ứng dụng qua USB một lần. OTA hoạt động từ 1.4.3.",
+  "url": "https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/dpReader31/",
+  "previous_version": "1.4.5-love-vn",
+  "notes": "LumenOS 1.5.1 Love Book: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
-      "sha256": "388acd7b68fc2d724cf4fcabc690d490f44947476271db5ca5630cecd45b0a9f",
-      "md5": "eae87ea84478d44698793f1d4164b351"
+      "sha256": "4ad40ffbfd7607642f7fe84fc9bb8ad32709d2216edd4ad5f6c035092082eed2",
+      "md5": "7c93bf786aff3eccfbfaa21a0bae2305"
     },
     "partitions.bin": {
       "size": 3072,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "d0f2abd10c4af13d91406338548618178dd9fb08b2255ae8d2452a4d306b8ce3",
-      "md5": "bc6f55bb992693c2c8f9794208a2205f"
+      "sha256": "5527219e0cc440c95a5df4aaee41df1d902ed754d3dc52c2cc8d867b116dec4b",
+      "md5": "65bd02a22e53efb6d693ce97e88495ba"
     }
   },
   "clean_image": {
-    "sha256": "eaf79825481e1f548d5ef6d40157f378548b2528b4354e8a23c9a85aebb276b0",
-    "md5": "0a0fa9e6b03d124b0cbd5e795902ff79"
+    "sha256": "7d4f5acd962a81532b7b8d5499dbc5a6af08093c023cf24640b5828023facc1b",
+    "md5": "e46ff116678b5dd28ca5ea8e591c0757"
   },
-  "size": 4692960,
-  "sha256": "41f36c7566af618f4aa68cec0600f353981adb9cff43bf2071668f93942ab9f4",
-  "md5": "5890f98e86d408d33494fa07f65d460a"
+  "size": 4889472,
+  "sha256": "f15b5f708c17f7c70177d810ee9a160e7783397dde72b44886b274657b8e894f",
+  "md5": "2a34561dc8aef1d4fb412ef624eed5b0"
 }

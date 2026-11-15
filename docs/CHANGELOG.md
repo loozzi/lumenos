@@ -1,4 +1,6 @@
-## LumenOS 1.5.1 / 1.5.1-love · Đang phát triển
+## LumenOS 1.5.1 / 1.5.1-love · Phát hành chính thức · 2026-11-15
+
+- Chuyển kênh phát hành chính thức (Release, OTA, Web Flash) sang `loozzi/dpReader31`. Máy đang chạy dpReader hoặc LumenOS 1.5.0 cần cài 1.5.1 qua USB một lần; từ 1.5.1 cập nhật qua Wi-Fi từ kênh mới.
 
 - Chọn kết nối hoặc xác nhận quên riêng từng mạng Wi-Fi đã lưu; thử các mạng còn lại sau khi mất kết nối.
 - Cho phép CPU chờ đọc ở 80 MHz với remote Bluetooth ổn định; giãn tự kết nối lại tối đa 5 phút khi remote vắng lâu.

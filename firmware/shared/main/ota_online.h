@@ -18,12 +18,19 @@
 #define PICO_OTA_LAYOUT "metalio-s31-dual-5m-v1"
 #define PICO_OTA_BOARD "Metalio-EINK4-Plus-S31"
 #define PICO_OTA_CAPABILITY "dpReader/1.0 (Metalio47; ESP32-S31)"
+// 用户2026-11-15把LumenOS正式发布渠道迁到 loozzi/dpReader31：raw 不重定向且无需启用 Pages，作为首选；
+// Pages 为备用及网页刷机。不得接收 dephia31 等其他来源，以免收到上游 dpReader 版本。
+// On 2026-11-15 the user moved LumenOS publication to loozzi/dpReader31. raw does not redirect and needs
+// no Pages setup, so it is preferred; Pages is the fallback and web flasher. Never accept dephia31 or other
+// origins, which would offer upstream dpReader builds.
+#define LUMEN_RELEASE_RAW "https://raw.githubusercontent.com/loozzi/dpReader31/main/"
+#define LUMEN_RELEASE_PAGES "https://loozzi.github.io/dpReader31/"
 #if DPREADER_LOVE_BOOK
-#define PICO_OTA_FEED_URL "https://dephia31.github.io/dpReader31/releases/love-book/metalio-s31-update.json"
-#define PICO_OTA_FEED_FALLBACK_URL "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/metalio-s31-update.json"
+#define PICO_OTA_FEED_URL LUMEN_RELEASE_RAW "releases/love-book/metalio-s31-update.json"
+#define PICO_OTA_FEED_FALLBACK_URL LUMEN_RELEASE_PAGES "releases/love-book/metalio-s31-update.json"
 #else
-#define PICO_OTA_FEED_URL "https://dephia31.github.io/dpReader31/metalio-s31-update.json"
-#define PICO_OTA_FEED_FALLBACK_URL "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/metalio-s31-update.json"
+#define PICO_OTA_FEED_URL LUMEN_RELEASE_RAW "releases/metalio-s31-update.json"
+#define PICO_OTA_FEED_FALLBACK_URL LUMEN_RELEASE_PAGES "metalio-s31-update.json"
 #endif
 #else
 #define PICO_OTA_IMAGE_MAX 0x400000
@@ -74,4 +81,4 @@ esp_err_t pico_online_commit(void);
 
 /* 1.4.3 enables OTA on the NVS256 layout introduced in 1.4.2. */
 #define DPREADER_USB_ONLY_RELEASE 0
-#define DPREADER_FLASH_PAGE "dephia31.github.io/dpReader31/"
+#define DPREADER_FLASH_PAGE "loozzi.github.io/dpReader31/"

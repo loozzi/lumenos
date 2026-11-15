@@ -57,13 +57,17 @@ bool pico_release_url_valid(const char *url) {
     // 升级源限定官方 HTTPS 站点，避免重定向泄漏或被替换为任意下载源。
     // Limit updates to the official HTTPS origin; do not follow arbitrary redirects.
     static const char *const prefixes[] = {
-        "https://dephia31.github.io/dpReader31/releases/love-book/",
-        "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/",
+#if DPREADER_BOARD_METALIO47
+        // 只接受 LumenOS 渠道。/ Accept the LumenOS channel only.
+        LUMEN_RELEASE_RAW "releases/love-book/",
+        LUMEN_RELEASE_RAW "releases/",
+        LUMEN_RELEASE_PAGES "releases/love-book/",
+        LUMEN_RELEASE_PAGES "releases/",
+        LUMEN_RELEASE_PAGES
+#else
         "https://kiikoread.com/",
-        "https://wegooo-cell.github.io/read-pico-reader/",
-        "https://dephia31.github.io/dpReader31/releases/",
-        "https://dephia31.github.io/dpReader31/",
-        "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/"
+        "https://wegooo-cell.github.io/read-pico-reader/"
+#endif
     };
     if (!url || strlen(url) >= 256) return false;
     const char *name = NULL;

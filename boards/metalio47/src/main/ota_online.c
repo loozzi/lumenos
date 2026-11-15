@@ -234,13 +234,13 @@ static bool check_feed(void) {
     char *json = heap_caps_malloc(8193, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     pico_release_t *release = heap_caps_calloc(1, sizeof(*release), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!json || !release) { state(PICO_UPDATE_FAILED, "Không đủ bộ nhớ, hãy thoát truyền sách rồi thử lại"); goto failed; }
-    // GitHub Pages清单优先，官网清单备用；同一缓冲区顺序请求，无并发TLS连接。
-    // Prefer GitHub Pages metadata, falling back to the website with one shared buffer and no concurrent TLS clients.
+    // LumenOS渠道：raw清单优先，Pages备用；同一缓冲区顺序请求，无并发TLS连接。
+    // LumenOS channel: raw metadata first, Pages as fallback, one shared buffer and no concurrent TLS clients.
     const char *feeds[] = {
-        s_target_love ? "https://dephia31.github.io/dpReader31/releases/love-book/metalio-s31-update.json"
-                      : "https://dephia31.github.io/dpReader31/metalio-s31-update.json",
-        s_target_love ? "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/metalio-s31-update.json"
-                      : "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/metalio-s31-update.json"
+        s_target_love ? LUMEN_RELEASE_RAW "releases/love-book/metalio-s31-update.json"
+                      : LUMEN_RELEASE_RAW "releases/metalio-s31-update.json",
+        s_target_love ? LUMEN_RELEASE_PAGES "releases/love-book/metalio-s31-update.json"
+                      : LUMEN_RELEASE_PAGES "metalio-s31-update.json"
     };
     bool valid = false;
     for (size_t source = 0; source < sizeof(feeds) / sizeof(feeds[0]) && !atomic_load(&s_cancel); ++source) {
@@ -313,8 +313,8 @@ static bool download(void) {
     // 两个允许的 HTTPS 源使用同一固定文件名和 SHA，连接失败才切换备用源。
     // Both trusted HTTPS origins use the same immutable name/hash; switch only after connection failure.
     const char *origins[] = {
-        s_target_love ? "https://dephia31.github.io/dpReader31/releases/love-book/" : "https://dephia31.github.io/dpReader31/releases/",
-        s_target_love ? "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/love-book/" : "https://raw.githubusercontent.com/dephia31/dpReader31/main/releases/"
+        s_target_love ? LUMEN_RELEASE_RAW "releases/love-book/" : LUMEN_RELEASE_RAW "releases/",
+        s_target_love ? LUMEN_RELEASE_PAGES "releases/love-book/" : LUMEN_RELEASE_PAGES "releases/"
     };
     const char *filename = strrchr(release->url, '/');
     if (!filename || !pico_release_url_valid(release->url)) goto failed;

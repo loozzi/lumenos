@@ -1,13 +1,18 @@
-## dpReader 1.4.5 cho Metalio E‑Ink4 Plus (ESP32-S31)
+## LumenOS 1.5.1 cho Metalio E‑Ink 4 Plus (ESP32-S31)
 
-- Thêm **Flash** trong Hiệu ứng lật trang. Flash quét đồng thời toàn màn hình, hỗ trợ ảnh và Đảo Màu.
-- Sóng Nước trong trình đọc dùng 6 dải, quét sát mép trên để xử lý dấu tiếng Việt ở dòng đầu. Khi bật Khử răng cưa, tăng hai xung cho điểm ảnh chuyển sang đen và giữ 41 nhịp quét.
-- Thêm **Tương phản chữ** trong Phông chữ → Tùy chỉnh để làm tối viền chữ khi bật Khử răng cưa.
+Bản phát hành chính thức đầu tiên của LumenOS trên kênh `loozzi/dpReader31`.
 
-Có hai bản Full và Love Book. Chọn đúng bản đang dùng khi cập nhật.
+- **Quick Settings mới** (vuốt xuống): bảng trắng gọn với tám nút có nhãn — Wi-Fi, Bluetooth, Đồng bộ, Làm mới, Khoá, Đèn, Xoay, Tối — và hai thanh trượt ngang cho độ sáng, nhiệt độ màu. Khi đọc ngang, bảng thu thành một hàng.
+- **Xoay**: chạm để đọc sách ngang hoặc dọc, không dùng cảm biến. Thanh công cụ, bảng cài đặt, ghi chú và màn khóa vẫn hiển thị dọc.
+- **Tối**: bật/tắt đảo màu toàn màn hình ngay trong Quick Settings.
+- Chọn kết nối hoặc quên riêng từng mạng Wi-Fi đã lưu; thử các mạng còn lại khi mất kết nối.
+- CPU chờ đọc ở 80 MHz với remote Bluetooth ổn định; giãn tự kết nối lại khi remote vắng lâu.
+- Giữ bộ đệm màn hình qua Light Sleep; xuất log an toàn hơn và thêm thông tin chẩn đoán.
 
-- Từ **1.4.3** trên bố cục NVS 256 KiB, cập nhật qua OTA hoặc chọn nạp cập nhật trên Web Flash.
-- Từ **1.4.2**, nạp cập nhật qua USB một lần.
-- Từ **1.4.1 trở xuống** hoặc firmware khác, sao lưu cài đặt ra thẻ SD trước khi chọn nạp toàn phần. Sau khi cài xong, dùng chức năng khôi phục từ thẻ SD.
+Có hai bản **Full** (`1.5.1`) và **Love Book** (`1.5.1-love`). Chọn đúng bản muốn dùng.
 
-[Web Flash](https://dephia31.github.io/dpReader31/)
+**Cách cài:** LumenOS dùng kênh cập nhật mới, nên máy đang chạy dpReader hoặc LumenOS 1.5.0 cần cài 1.5.1 qua USB một lần (gói `dpReader-metalio47-1.5.1-USB.zip` hoặc Web Flash). Từ 1.5.1 trở đi máy cập nhật qua Wi-Fi từ kênh này. Máy đã dùng bố cục NVS 256 KiB (dpReader 1.4.2 trở lên) giữ nguyên cài đặt khi chọn cập nhật ứng dụng.
+
+Bản này chưa được nghiệm thu đầy đủ trên thiết bị; hãy sao lưu cấu hình ra thẻ SD trước khi cài.
+
+[Web Flash](https://loozzi.github.io/dpReader31/) · [Thay đổi theo phiên bản](https://github.com/loozzi/dpReader31/blob/main/docs/CHANGELOG.md)

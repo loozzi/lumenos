@@ -8,12 +8,15 @@ import json
 from pathlib import Path
 import re
 
+import release_channel as channel
+
 
 def archive_s31_flat(folder: Path, commit: str) -> None:
     """中文：保留S31稳定版原文件与目录入口。/ English: Retain original stable S31 files and versioned entries."""
     manifest=json.loads((folder/'metalio-s31-update.json').read_text())
     version=manifest['version']
-    assert re.fullmatch(r'\d+\.\d+\.\d+(?:-love)?-vn',version)
+    edition='love-book' if '-love' in version else 'full'
+    assert channel.archived(version,edition),version
     assert re.fullmatch(r'[a-f0-9]{40}',commit)
     sums={line.split()[1]:line.split()[0] for line in (folder/'SHA256SUMS.txt').read_text().splitlines() if line.strip()}
     app_name = 'web-firmware.bin' if manifest.get('usb_only') else 'dpReader_metalio47_firmware.bin'
@@ -30,7 +33,7 @@ def archive_s31_flat(folder: Path, commit: str) -> None:
     for name,data in payloads.items():(destination/name).write_bytes(data)
     path=folder/'releases.json'
     catalog=json.loads(path.read_text()) if path.exists() else {'schema':1,'releases':[]}
-    entry={'version':version,'source_commit':commit,'path':('releases/love-book/' if version.endswith('-love-vn') else 'releases/')+version,
+    entry={'version':version,'source_commit':commit,'path':('releases/love-book/' if edition=='love-book' else 'releases/')+version,
            'files':{n:{'size':len(d),'sha256':hashlib.sha256(d).hexdigest()} for n,d in payloads.items()}}
     old=[r for r in catalog['releases'] if r['version']==version]
     assert not old or old==[entry]
