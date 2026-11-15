@@ -13,6 +13,11 @@ unit+=r'''
 #define APP_READER_KEY_FULLSCREEN 3
 #define APP_CONTROL_HOLD_DEFAULT 255
 #define UI_ICON_CHEVRON_DOWN 2
+typedef int ui_icon_t;
+#define UI_ICON_WIFI 3
+#define UI_ICON_RADIO_TOWER 4
+#define UI_ICON_SAVE 5
+#define UI_GRAY_BLACK 0
 static int s_control_key=-1,s_control_pick=-1;
 static void ui_clear_page(uint8_t*f){}
 static void ui_fill_round_rect(uint8_t*f,EpdRect r,int radius,int shade){}

@@ -1,3 +1,13 @@
+## Chưa phát hành
+
+- Trang chủ (bản Full): thẻ **lịch đọc trong tháng** thay cho khối Tiện Ích và danh sách Đọc gần đây. Ngày đạt mục tiêu được tô đậm, ngày có đọc nhưng chưa đạt có viền, hôm nay có vòng đậm; bên dưới là số phút hôm nay, chuỗi ngày đạt mục tiêu liên tiếp và số ngày đạt trong tháng. Chạm vào thẻ để mở trang lịch đọc và chỉnh mục tiêu. Giao diện tối giản và Love Book không đổi.
+- Tủ sách kiểu **Lưới tối giản** hiện 9 cuốn mỗi trang (3×3) thay vì 6; dưới mỗi bìa là tên sách, thanh tiến độ và phần trăm đã đọc thay cho định dạng và dung lượng tệp.
+- Thêm hàng lọc nhanh trên lưới tối giản: Tất cả, Đang đọc, Chưa đọc, Đã xong, Yêu thích.
+- Tiêu đề Tủ sách dùng bốn nút tròn: Tìm kiếm, Sắp xếp, Quản lý, Nhập sách. Tìm kiếm và sắp xếp mở được ngay từ Tủ sách, không cần vào Quản lý.
+- Tệp tin: trang gốc hiện 6 mục mỗi trang thay vì 5 nhờ thẻ Thẻ nhớ và các thẻ Truyền tệp gọn hơn; thẻ WiFi, Điểm phát, USB có thêm biểu tượng.
+- Tệp tin: nút sắp xếp ở Thư mục gốc đã hoạt động — chạm để chuyển Tên ↑, Tên ↓, Cỡ ↓ (thư mục luôn đứng trước; thứ tự không lưu sau khi tắt máy).
+- Tệp tin: biểu tượng theo loại tệp (sách, phông chữ, tệp khác); thư mục sách và thư mục phông được ghi nhãn ngay ở trang gốc.
+
 ## LumenOS 1.5.5 / 1.5.5-love · Phát hành chính thức · 2026-11-15
 
 - Khi đọc ngang, các bảng mở từ thanh công cụ giữ màn hình ngang: Cài đặt đọc, Phông chữ, Thống kê, Đánh dấu, Nhảy chương, Hình nền và các bảng con hiện ở cột bên phải dưới thanh trạng thái, trang sách vẫn ở bên trái; bảng cao vuốt lên/xuống để xem tiếp. Chạm vùng sách bên trái để đóng.

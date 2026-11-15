@@ -40,7 +40,7 @@ def shell(active,title=None):
 
 def home():
  img=shell(0)
- text(img,(36,103),'Thứ Bảy, 14 tháng 11',30)
+ text(img,(36,103),'Chủ nhật, 15 tháng 11',30)
  text(img,(490,104),'28 phút',24,anchor='rt')
  d=ImageDraw.Draw(img);d.ellipse((510,88,570,148),outline=68,width=7)
  d.ellipse((588,88,648,148),fill=238);text(img,(618,99),'L',30,anchor='mt')
@@ -52,27 +52,47 @@ def home():
  text(img,(264,465),'Đã đọc 42%',30)
  text(img,(622,466),'Đọc tiếp ›',28,anchor='rt')
  d.rounded_rectangle((264,514,622,518),2,fill=204);d.rounded_rectangle((264,511,414,520),5,fill=0)
- text(img,(60,606),'Tiện Ích',24)
- icon(img,'PENCIL',608,620,28)
- for i,(name,label) in enumerate([('LIBRARY_BIG','Thư viện'),('FOLDER_OPEN','Tệp tin'),('RADIO_TOWER','Duyệt OPDS'),('SLIDERS_HORIZONTAL','Cài đặt')]):
-  x=52+i*148;card(img,(x,662,136,108),16);icon(img,name,x+68,689,32)
-  fit(img,(x+8,718),label,18,120)
- text(img,(36,794),'Đọc gần đây',25)
- for i in range(4):
-  x=36+i*160;cover(img,i,(x,828,132,180));fit(img,(x,1018),BOOKS[i][0],19,132)
+ # Sample month: minutes read on 1..15 November 2026 against a 30-minute goal.
+ minutes=[35,0,42,31,12,0,50,33,0,38,45,31,40,36,28]
+ card(img,(36,590,612,490))
+ text(img,(60,610),'Tháng 11',28);text(img,(622,614),'Mục tiêu 30 phút/ngày',19,85,anchor='rt')
+ for i,name in enumerate(['T2','T3','T4','T5','T6','T7','CN']):text(img,(60+(i*564+282)//7,664),name,18,85,anchor='mt')
+ for day in range(1,31):
+  cell=6+day-1;cx=60+(cell%7*564+282)//7;cy=722+cell//7*50
+  read=minutes[day-1] if day<=15 else 0;gray=0 if day<=15 else 150
+  if read>=30:d.ellipse((cx-20,cy-20,cx+20,cy+20),fill=32);gray=255
+  elif read:d.ellipse((cx-20,cy-20,cx+20,cy+20),outline=96,width=2)
+  if day==15:d.ellipse((cx-25,cy-25,cx+25,cy+25),outline=48,width=3)
+  text(img,(cx,cy-12),str(day),21,gray,anchor='mt')
+ d.line((60,1004,623,1004),fill=176)
+ for i,(value,caption) in enumerate([('28 phút','Hôm nay'),('5 ngày','Chuỗi hiện tại'),('10 ngày','Đạt mục tiêu')]):
+  text(img,(154+i*188,1016),value,26,anchor='mt');text(img,(154+i*188,1050),caption,17,85,anchor='mt')
  return img
 
 def library():
- img=shell(1,'Tủ sách')
+ img=shell(1,'Tủ sách');d=ImageDraw.Draw(img)
  icon(img,'CHEVRON_DOWN',263,120,26)
- for x,label in [(404,'Quản lý'),(528,'+ Nhập sách')]:
-  card(img,(x,94,114 if x==404 else 120,52),14);text(img,(x+(57 if x==404 else 60),109),label,19,anchor='mt')
- for i,(title,author,detail) in enumerate(BOOKS):
-  x=36+(i%3)*214;y=224+(i//3)*376
-  cover(img,i,(x+10,y,164,214))
-  fit(img,(x,y+224),title,22,184)
-  text(img,(x,y+288),detail,17,85)
- pager(img)
+ for i,name in enumerate(['SEARCH','TEXT_ALIGN_START','PENCIL',None]):
+  x=416+i*60;d.ellipse((x,94,x+51,145),fill=221)
+  if name:icon(img,name,x+26,120,28)
+  else:d.rectangle((x+15,119,x+36,121),fill=0);d.rectangle((x+25,109,x+27,130),fill=0)
+ x=36
+ for i,label in enumerate(['Tất cả','Đang đọc','Chưa đọc','Đã xong','Yêu thích']):
+  w=int(font(18).getlength(label))+30
+  d.rounded_rectangle((x,160,x+w-1,199),20,fill=0 if i==0 else 221)
+  text(img,(x+w//2,169),label,18,255 if i==0 else 0,anchor='mt');x+=w+9
+ for i in range(9):
+  title,percent=(BOOKS[i][0],[42,100,0,17,0,73][i]) if i<6 else [('Lão Hạc',100),('Bỉ Vỏ',5),('Vang bóng một thời',0)][i-6]
+  x=46+(i%3)*214;y=212+(i//3)*262
+  cover(img,i%6,(x,y,164,214))
+  while font(19).getlength(title)>164:title=title[:-2]+'…'
+  text(img,(x,y+230),title,19,anchor='lm')
+  d.rounded_rectangle((x,y+247,x+109,y+252),3,fill=208)
+  if percent:d.rounded_rectangle((x,y+247,x+max(6,110*percent//100)-1,y+252),3,fill=0)
+  text(img,(x+164,y+250),'Xong' if percent==100 else f'{percent}%' if percent else 'Mới',15,80,anchor='rm')
+ icon(img,'CHEVRON_LEFT',190,1031,26)
+ text(img,(342,1020),'9 cuốn · 01/01',20,anchor='mt')
+ icon(img,'CHEVRON_RIGHT',494,1031,26)
  return img
 
 def pager(img):
@@ -81,24 +101,30 @@ def pager(img):
  icon(img,'CHEVRON_RIGHT',494,1040,26)
 
 def files():
- img=shell(2,'Tệp tin')
- card(img,(36,171,612,112))
- text(img,(58,188),'Thẻ nhớ',27);text(img,(624,191),'32 GB',21,anchor='rt')
- text(img,(58,222),'Đã dùng 12.4 GB / 32 GB',19,85)
- d=ImageDraw.Draw(img);d.rounded_rectangle((58,263,624,268),3,fill=204);d.rounded_rectangle((58,263,277,268),3,fill=102)
- text(img,(42,308),'Truyền tệp',21)
- for i,(label,detail) in enumerate([('WiFi','Cùng mạng'),('Điểm phát','Không cần mạng'),('USB','Cáp máy tính')]):
-  x=36+i*208;card(img,(x,346,196,100),20)
-  text(img,(x+98,360),label,19,anchor='mt');text(img,(x+98,406),detail,17,85,anchor='mt')
- text(img,(36,482),'Thư mục gốc · 5 mục',21)
- card(img,(537,458,111,50),18);text(img,(592,470),'Tên ↑',19,anchor='mt')
- for i,(label,detail) in enumerate([('Books','32 mục'),('Documents','18 mục'),('Downloads','12 mục'),('pictures','108 mục'),('fonts','6 mục')]):
-  y=520+i*91
-  if i:d.line((96,y,628,y),fill=221)
-  icon(img,'FOLDER_OPEN',70,y+46,38)
-  text(img,(101,y+28),label,23)
-  icon(img,'CHEVRON_RIGHT',628,y+46,24)
- pager(img)
+ img=shell(2,'Tệp tin');card(img,(36,171,612,104))
+ text(img,(58,184),'Thẻ nhớ',27);text(img,(624,187),'32 GB',21,anchor='rt')
+ text(img,(58,216),'Đã dùng 12.4 GB / 32 GB',19,85)
+ d=ImageDraw.Draw(img);d.rounded_rectangle((58,253,623,260),4,fill=160);d.rounded_rectangle((58,253,277,260),4,fill=64)
+ text(img,(42,284),'Truyền tệp',21)
+ for i,(name,label,detail) in enumerate([('WIFI','WiFi','Cùng mạng'),('RADIO_TOWER','Điểm phát','Không cần mạng'),('SAVE','USB','Cáp máy tính')]):
+  x=36+i*208;card(img,(x,318,196,76),20);icon(img,name,x+32,356,34)
+  text(img,(x+58,330),label,19);text(img,(x+58,360),detail,15,85)
+ text(img,(36,428),'Thư mục gốc · 7 mục',21)
+ card(img,(537,404,111,50),18);text(img,(592,416),'Tên ↑',19,anchor='mt')
+ rows=[('FOLDER','Books','Thư mục sách'),('FOLDER','Documents',None),('FOLDER','fonts','Thư mục phông'),('FOLDER','pictures',None),
+       ('BOOK_OPEN','Dế Mèn phiêu lưu ký.epub','3.4 MB'),('BOOK_OPEN','Số Đỏ.txt','412.6 KB')]
+ for i,(name,label,detail) in enumerate(rows):
+  y=468+i*84;folder=name=='FOLDER'
+  if i:d.line((96,y,628,y),fill=160,width=2)
+  icon(img,name,73,y+42,46 if folder else 40)
+  if folder:
+   text(img,(101,y+42),label,23,anchor='lm')
+   if detail:text(img,(596,y+42),detail,17,85,anchor='rm')
+  else:text(img,(101,y+13),label,23);text(img,(101,y+47),detail,19,85)
+  icon(img,'CHEVRON_RIGHT',630,y+42,24,96)
+ icon(img,'CHEVRON_LEFT',190,1031,26,170)
+ text(img,(342,1020),'Trang 1 / 2',20,anchor='mt')
+ icon(img,'CHEVRON_RIGHT',494,1031,26)
  return img
 
 def settings():

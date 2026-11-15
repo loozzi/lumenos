@@ -25,6 +25,7 @@ static int s_folder=3;
 typedef struct { char path[288]; char name[128]; off_t size; bool is_dir; } file_item_t;
 static file_item_t s_files[12];
 static int s_count,s_page,s_counts[3],s_view;
+static enum { FILE_SORT_NAME_UP, FILE_SORT_NAME_DOWN, FILE_SORT_SIZE_DOWN, FILE_SORT_COUNT } s_sort;
 enum { FILE_MAX=12, FILE_VIEW_MOVE=1 };
 typedef struct { bool mounted; } sd_info_t;
 static sd_info_t s_sd;

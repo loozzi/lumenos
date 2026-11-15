@@ -22,7 +22,7 @@ Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Lov
 
 | Trang chủ Full | Tủ sách Full |
 | :---: | :---: |
-| <img src="docs/screenshots/lumenos/home.png" width="300" alt="Minh họa Trang chủ với thẻ Đọc tiếp, Tiện Ích và sách gần đây"> | <img src="docs/screenshots/lumenos/library.png" width="300" alt="Minh họa Tủ sách lưới ba cột, bìa và thông tin tệp"> |
+| <img src="docs/screenshots/lumenos/home.png" width="300" alt="Minh họa Trang chủ với thẻ Đọc tiếp và lịch đọc trong tháng"> | <img src="docs/screenshots/lumenos/library.png" width="300" alt="Minh họa Tủ sách lưới ba cột, bìa và thông tin tệp"> |
 
 | Tệp tin | Cài đặt |
 | :---: | :---: |

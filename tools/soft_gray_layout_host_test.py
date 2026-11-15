@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real shelf geometry/paging for the user's3x2 soft-gray layout."""
+"""Real shelf geometry/paging for the user's 3x3 soft-gray layout (2026-11-15)."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -30,7 +30,7 @@ static bool overlap(EpdRect a,EpdRect b){return a.x<b.x+b.width&&b.x<a.x+a.width
 int main(void){
  s_view=SHELF;
  for(style=1;style<=5;++style){
-  int count=shelf_rows();assert(count==(style==2?6:style==5?4:9));
+  int count=shelf_rows();assert(count==(style==5?4:9));
   for(int row=0;row<count;++row){
    EpdRect card=row_rect(row),image=shelf_cover_image(row);
    assert(card.x>=36&&card.x+card.width<=648&&card.y>=184&&card.y+card.height<UI_NAV_REFRESH_END);
@@ -39,7 +39,8 @@ int main(void){
    for(int other=0;other<row;++other)assert(!overlap(card,row_rect(other)));
    if(style==2){
     assert(image.width==164&&image.height==214);
-    assert(image.y+320<card.y+card.height);
+    // 书名与进度条位于封面下方40px内，并止于分页条之上。/ Title and progress bar fit within 40px below the cover, above the pager.
+    assert(image.y+254<=card.y+card.height&&card.y+card.height<1006);
    }
   }
   for(s_visible_count=0;s_visible_count<=100;++s_visible_count){
@@ -51,7 +52,7 @@ int main(void){
   }
  }
  s_view=BULK;assert(shelf_rows()==9);
- puts("PASS: actual six-book3x2 geometry,disjoint hit targets,title/size bounds,original164x214 fast-cover budget,all page counts0..100;dark nine-book/list four-book layouts retained");
+ puts("PASS: actual nine-book 3x3 geometry,disjoint hit targets,caption bounds above the pager,original164x214 fast-cover budget,all page counts0..100;dark nine-book/list four-book layouts retained");
 }
 '''
 with tempfile.TemporaryDirectory() as folder:

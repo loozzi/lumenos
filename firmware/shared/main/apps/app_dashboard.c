@@ -21,7 +21,9 @@
  * 用户修订：首页原比例点阵独立落卡，复用灰阶缩略图；普通/水波纹复用灰阶缓存，始终预留内存。
  * User revision: persist proportional Home monochrome separately and reuse gray thumbnail files; ordinary/water reuse gray caches with a memory reserve.
  * 中文：首页使用真实续读、完整缓存书摘、可选书夹/时钟与月阅读记录；绘图不读卡。
- * English: Home uses real resume data, cached complete sentences, a four-slot utility card and four recently read books; painting never reads media.
+ * English: Home uses real resume data, cached complete sentences and cached monthly reading records; painting never reads media.
+ * 用户2026-11-15：Full首页以月阅读日历卡取代工具卡与最近阅读；极简首页保留其快捷方式。
+ * User 2026-11-15: a monthly reading-calendar card replaces Full Home's utility card and recent books; simple Home keeps its shortcuts.
  * 用户修订：缓存原位换位，只用一个条目的栈空间；保留复用速度，避免启动时复制七条占用半个主任务栈。
  * User revision: reorder the cache in place with one stack entry, retaining hot reuse without copying seven entries into half the main stack at boot.
  * 用户最新修订：续读书名复用已加载系统字体，按原40px直接生成字形；不加载阅读字体或增加内建字库。
@@ -177,6 +179,10 @@ static EpdRect control_feedback_area(EpdRect control) {
     return control.height == 378 ? (EpdRect){56,270,184,252} : control;
 }
 static bool s_reading_days_valid;
+#if !DPREADER_LOVE_BOOK
+static uint32_t s_recent_days[30];
+static bool s_recent_days_valid;
+#endif
 static bool s_home_force_full_once;
 static uint32_t s_cached_progress_revision=UINT32_MAX;
 static uint8_t *s_clock_base_cache;
@@ -603,7 +609,20 @@ static void component_prepare_neighbor(app_ctx_t *ctx) {
 static void refresh_days(void) {
     s_reading_days_valid=date_now(&s_date)&&book_ticket_month_days(s_date.tm_year+1900,s_date.tm_mon+1,s_reading_days);
     if(!s_reading_days_valid)memset(s_reading_days,0,sizeof(s_reading_days));
+#if !DPREADER_LOVE_BOOK
+    s_recent_days_valid=s_reading_days_valid&&book_ticket_recent_days(s_recent_days);
+#endif
 }
+static EpdRect home_calendar_rect(void){return(EpdRect){36,590,612,490};}
+#if !DPREADER_LOVE_BOOK
+// 首页日历卡：连续达标天数取最近30天，可跨月。/ Home calendar card: the streak spans the last 30 days across months.
+static unsigned home_streak_days(unsigned goal) {
+    if(!goal||!s_recent_days_valid)return 0;
+    unsigned n=s_recent_days[29]>=goal;
+    for(int i=28;i>=0&&s_recent_days[i]>=goal;--i)++n;
+    return n;
+}
+#endif
 static unsigned today_seconds(void) { return s_reading_days_valid?s_reading_days[s_date.tm_mday-1]:0; }
 static unsigned month_length(const struct tm *d) {
     static const uint8_t days[]={31,28,31,30,31,30,31,31,30,31,30,31};
@@ -624,9 +643,10 @@ static void ring(uint8_t *fb,int cx,int cy,int radius,int thick,uint32_t seconds
     }
 }
 static void calendar(uint8_t *fb,int x,int y,int step_x,int step_y,int px,unsigned goal) {
-    static const char *const weekdays[]={"CN","T2","T3","T4","T5","T6","T7"};
+    // 周一为首列，与首页日历卡一致。/ Monday is the first column, matching the Home calendar card.
+    static const char *const weekdays[]={"T2","T3","T4","T5","T6","T7","CN"};
     if(!s_reading_days_valid) {label(fb,x+3*step_x,y+100,20,"Vui lòng cài đặt ngày giờ trước",EPD_DRAW_ALIGN_CENTER,0x60);return;}
-    unsigned start=(s_date.tm_wday+7-(s_date.tm_mday-1)%7)%7;
+    unsigned start=(unsigned)(s_date.tm_wday+6+35-(s_date.tm_mday-1)%7)%7;
     for(int i=0;i<7;++i)label(fb,x+i*step_x,y-step_y,20,weekdays[i],EPD_DRAW_ALIGN_CENTER,0x70);
     for(unsigned day=1;day<=month_length(&s_date);++day) {
         unsigned cell=start+day-1;int cx=x+(cell%7)*step_x,cy=y+(cell/7)*step_y;
@@ -842,11 +862,6 @@ static const ui_icon_t utility_icons[APP_HOME_UTIL_COUNT]={
     UI_ICON_PENCIL,UI_ICON_BOOK_OPEN,UI_ICON_LIBRARY_BIG,UI_ICON_RADIO_TOWER,UI_ICON_REFRESH_CW,
     UI_ICON_SLIDERS_HORIZONTAL,UI_ICON_WIFI,UI_ICON_BLUETOOTH,UI_ICON_DOWNLOAD,UI_ICON_FOLDER_OPEN,UI_ICON_COPY,UI_ICON_ROTATE_CW
 };
-static EpdRect utility_button(unsigned i){return(EpdRect){52+(int)i*148,662,136,108};}
-static EpdRect utility_icon_rect(unsigned slot,bool labels) {
-    EpdRect button=utility_button(slot);int size=labels?32:64;
-    return(EpdRect){button.x+(button.width-size)/2,button.y+(labels?27:button.height/2)-size/2,size,size};
-}
 static EpdRect utility_notice_rect(void){return app_settings_simple_ui()?(EpdRect){100,668,484,64}:(EpdRect){100,812,484,100};}
 static bool utility_notice_expire(int64_t now_ms) {
     if(!s_utility_notice[0]||!s_utility_notice_until||now_ms<s_utility_notice_until)return false;
@@ -855,18 +870,6 @@ static bool utility_notice_expire(int64_t now_ms) {
 static EpdRect utility_labels_button(void){return(EpdRect){36,800,612,64};}
 static EpdRect utility_border_button(void){return(EpdRect){36,880,612,64};}
 static EpdRect utility_save_button(void){return(EpdRect){36,1000,612,80};}
-static EpdRect recent_cover(unsigned i){return(EpdRect){36+(int)i*160,828,132,180};}
-static unsigned recent_books(home_book_t *books[4]) {
-    if (app_settings_simple_ui()) return 0;
-    unsigned n=0;
-    if(s_current.path[0]&&s_current.has_progress)books[n++]=&s_current;
-    for(unsigned i=0;i<6&&n<4;++i)if(s_recent[i].path[0]&&s_recent[i].has_progress) {
-        bool duplicate=false;for(unsigned j=0;j<n;++j)if(!strcmp(books[j]->path,s_recent[i].path))duplicate=true;
-        if(!duplicate)books[n++]=&s_recent[i];
-    }
-    return n;
-}
-static bool utilities_configured(void){for(unsigned i=0;i<4;++i)if(app_settings_home_utility(i))return true;return false;}
 static void utilities_edit(void) {
     for(unsigned i=0;i<4;++i)s_utility_draft[i]=app_settings_simple_ui()?app_settings_simple_utility(i):app_settings_home_utility(i);
     s_utility_labels_draft=app_settings_simple_ui()?app_settings_simple_utility_labels():app_settings_home_utility_labels();
@@ -1309,15 +1312,7 @@ static app_redraw_t on_tick(app_ctx_t *ctx) {
         if(valid)s_date=date;
         s_clock_pending=true;s_area=(EpdRect){24,18,156,44};return APP_REDRAW_AREA;
     }
-    if(s_view==HOME_ROOT) {
-        home_book_t *recent[4];unsigned n=recent_books(recent);
-        for(unsigned i=0;i<n;++i)if(!recent[i]->cover) {
-            home_book_t *book=recent[i];int slot=book==&s_current?0:(int)(book-s_recent)+1;
-            if(load_cover(book,slot)){s_area=recent_cover(i);return APP_REDRAW_AREA;}
-            if(s_cover_waiting)return APP_REDRAW_NONE;
-        }
-        return APP_REDRAW_NONE;
-    }
+    if(s_view==HOME_ROOT)return APP_REDRAW_NONE;
     if(s_view==HOME_POP_MENU||s_view==HOME_ADD_BOOKS||s_view==HOME_UTILITIES||s_view==HOME_UTILITY_PICK)return APP_REDRAW_NONE;
     // 只为正在预览的书夹准备封面；切到时钟即停止隐藏文件处理。
     // Prepare covers only for the visible folder preview; switching to a clock stops hidden media work.
@@ -1366,12 +1361,6 @@ static EpdRect control(int x,int y) {
     if(s_view==HOME_ROOT) {
         if(featured()->path[0] && hit(continue_card_hit_rect(),x,y))return continue_card_rect();
         if(hit((EpdRect){510,88,60,60},x,y))return(EpdRect){510,88,60,60};
-        if(hit((EpdRect){36,590,612,64},x,y))return(EpdRect){548,598,80,48};
-        if(!utilities_configured()&&hit((EpdRect){150,672,384,88},x,y))return(EpdRect){150,672,384,88};
-        if(utilities_configured())for(unsigned i=0;i<4;++i)if(hit(utility_button(i),x,y))return utility_button(i);
-        home_book_t *recent[4];unsigned count=recent_books(recent);
-        for(unsigned i=0;i<count;++i)if(hit(recent_cover(i),x,y))return recent_cover(i);
-
     }else if(hit((EpdRect){36,78,60,60},x,y))return(EpdRect){0}; // 共享圆圈反馈负责题头返回，避免再叠错位框。/ Shared circle feedback owns header backs; do not add a shifted frame.
     if(s_view==HOME_COMPONENT){
         if(hit((EpdRect){36,472,64,64},x,y))return(EpdRect){36,472,64,64};
@@ -1507,14 +1496,8 @@ static app_redraw_t on_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
         return APP_REDRAW_NONE;
     }else {
         int tab=ui_nav_hit(x,y);if(tab>=0){ui_nav_request(ctx,tab);return APP_REDRAW_NONE;}
-        if(hit((EpdRect){36,590,612,206},x,y)) {
-            if(!utilities_configured()||y<654){utilities_edit();return APP_REDRAW_PAGE;}
-            for(unsigned i=0;i<4;++i)if(hit(utility_button(i),x,y))return utility_run(ctx,app_settings_home_utility(i));
-            return APP_REDRAW_NONE;
-        }
-        home_book_t *recent[4];unsigned count=recent_books(recent);
-        for(unsigned i=0;i<count;++i)if(hit((EpdRect){36+(int)i*160,818,132,262},x,y)&&app_book_request_open_from_home(recent[i]->path)){ui_nav_request(ctx,1);return APP_REDRAW_NONE;}
-        if(hit((EpdRect){510,88,60,60},x,y)){refresh_days();s_goal_draft=app_settings_home_goal_minutes();s_view=HOME_GOAL;s_save_error=false;return APP_REDRAW_PAGE;}
+        // 日历卡与目标环进入同一月记录页。/ The calendar card and goal ring open the same monthly record.
+        if(hit((EpdRect){510,88,60,60},x,y)||(!DPREADER_LOVE_BOOK&&hit(home_calendar_rect(),x,y))){refresh_days();s_goal_draft=app_settings_home_goal_minutes();s_view=HOME_GOAL;s_save_error=false;return APP_REDRAW_PAGE;}
         if(hit(continue_card_hit_rect(),x,y)) {
             home_book_t *b=featured();
             if(b->path[0] && app_book_request_open_from_home(b->path)){

@@ -318,6 +318,10 @@ Metalio 4.7 lưu tối đa sáu mạng Wi-Fi trong `DPRWIFI/WIFI.BIN` trên th�
 
 Phông chữ, ảnh và sách nằm trên thẻ. Bản sao lưu giữ đường dẫn cài đặt tới tài nguyên. PIN, khóa ghép đôi Bluetooth và hiệu chuẩn màn hình thuộc dữ liệu riêng của thiết bị. Lựa chọn giao diện đã đặt trên máy đích được giữ khi khôi phục.
 
+### Home reading calendar
+
+Per the user's 2026-11-15 decision, Full Home shows a monthly reading-calendar card below Continue Reading in place of the Tiện Ích card and the four recently read books. Days are Monday-first: days that met the daily goal are filled, days with at least a minute of reading are outlined, and today is ringed. A footer shows today's minutes, the current streak (from the last 30 days, so it continues across a month boundary) and the number of goal days this month. Tapping the card opens the same monthly record and goal page as the header ring. The card paints from records cached on entry and day change; with no valid date it shows the set-date prompt. The four saved shortcut slots, their NVS keys and backup blocks are retained but no longer shown on Full Home; the paragraphs below describe the editor and shortcut behavior still used by the simple Home.
+
 ### Home utilities
 
 Home places the Tiện Ích tag card below Continue Reading, followed by four individually tappable recently read books. The calendar widget and recent-reading caption are removed from this layout. An unconfigured card offers Thiết lập; its header edit icon reopens four slot selectors. Choices include resume, library, OPDS, KoSync for the resumed book, settings, radio toggles, OTA settings, files, file transfer and full refresh. Selection changes remain a draft until Save; Back discards them. The four NVS slots are included in the same SD settings backup (v23); older backups preserve existing shortcuts. Radio shortcuts reuse quick-panel connection/admission logic; OTA opens the existing confirmation flow without starting an update.
@@ -369,6 +373,10 @@ Menu quick action vuốt lên ở cuối trang đọc dùng sáu thẻ xám riê
 ## Thẻ xám trên bốn trang chính
 
 Theo mẫu giao diện ngày 13/11/2026, Full dùng thẻ xám phẳng, khoảng trắng và thanh điều hướng trắng với nền riêng cho mục chọn. Kiểu Tủ sách số2 là “Lưới tối giản”, sáu cuốn mỗi trang, dùng lại ảnh164×214 và cache hiện có; phân trang và vùng chạm lấy cùng bố cục. Hai kiểu kệ tối màu/danh sách vẫn có trong Cài đặt. Không thêm bộ lọc, tìm kiếm hoặc thông báo giả. Simple/Love giữ bố cục Trang chủ riêng.
+
+Người dùng sửa đổi ngày 15/11/2026, thay câu “sáu cuốn mỗi trang” và “không thêm bộ lọc, tìm kiếm” ở trên: “Lưới tối giản” là lưới 3×3, chín cuốn mỗi trang, vẫn dùng ảnh 164×214 và cache hiện có. Dưới mỗi bìa là một dòng tên sách, thanh tiến độ và nhãn phần trăm (“Mới” khi chưa đọc, “Xong” khi 100%) thay cho định dạng và dung lượng tệp. Tiêu đề Tủ sách dùng bốn nút tròn cho mọi kiểu kệ: tìm kiếm (tô đen khi đang có từ khóa), sắp xếp, quản lý và nhập sách; tìm kiếm và sắp xếp dùng lại bàn phím và bảng chọn sẵn có của trang Quản lý. Riêng lưới tối giản có hàng lọc theo trạng thái đọc: Tất cả, Đang đọc (1–99%), Chưa đọc (0%), Đã xong (100%) và Yêu thích. Bộ lọc này không lưu qua lần khởi động và không áp dụng cho kệ tối màu hay danh sách. Thanh phân trang dùng chung giữ nguyên.
+
+Cũng theo yêu cầu ngày 15/11/2026, trang gốc của Tệp tin thu gọn thẻ Thẻ nhớ (cao 104) và ba thẻ Truyền tệp (cao 76, có biểu tượng bên trái), danh sách thư mục gốc bắt đầu ở y=468 với sáu dòng 84px. Các tuyến WiFi/Điểm phát/USB, luồng định dạng thẻ và thao tác giữ lâu không đổi. Nút sắp xếp là điều khiển thật: Tên ↑, Tên ↓, Cỡ ↓; thư mục luôn đứng trước, thứ tự áp dụng cho cả thư mục con và không lưu qua lần khởi động. Biểu tượng dòng theo loại: thư mục, sách, phông chữ, tệp khác; thư mục sách/phông có nhãn ở trang gốc như trong thư mục con.
 
 Màu thẻ221 và mục chọn187 được bù tương phản100–140%. Chế độ thường dùng refresh xám cho nội dung hệ thống; Fast vẫn dùng đen trắng. Vùng nội dung0..1087 và thanh điều hướng1088..1215 giữ độc lập. Menu vuốt lên khi đọc dùng sáu nút thẻ xám riêng theo cùng vật liệu.
 

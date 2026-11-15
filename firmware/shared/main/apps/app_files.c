@@ -13,6 +13,8 @@
  * 用户修订：输入只刷新变化区域，布局切换局部灰阶，避免打字累计整屏清残影。
  * User revision: input refreshes changed regions; layout switches use local grayscale, without accumulating whole-page cleanup.
  * User reference2026-11-13: flat gray storage/transfer cards and open directory rows; preserve transfer routes, status and hit regions.
+ * 用户2026-11-15：首页收紧存储与传输卡片，根目录显示六行；传输卡带图标，排序按钮可用，行图标按文件类型。
+ * User 2026-11-15: the root page tightens the storage/transfer cards to show six root rows; transfer cards carry icons, the sort pill works and row icons follow the file type.
  */
 #if DPREADER_BOARD_METALIO47
 #include "metalio_hw.h"
@@ -144,7 +146,10 @@ static int visible_rows(void) {
     int end=s_folder>=0||s_view==FILE_VIEW_MOVE?file_action_rect(0).y-16:file_pager_top()-16;
     return (end-214)/88;
 }
-static int root_rows(void) { return 5; }
+#define ROOT_LIST_TOP 468
+#define ROOT_ROW_HEIGHT 84
+static int root_rows(void) { return 6; }
+static EpdRect root_sort_rect(void) { return (EpdRect){537, 404, 111, 50}; }
 static int file_pager_pages(void) {
     int rows=s_folder<0?root_rows():visible_rows();
     return s_count?1+(s_count-1)/rows:1;
@@ -181,12 +186,12 @@ static bool file_pager_event(app_ctx_t *ctx,const ui_gesture_event_t *ev,app_red
     return true;
 }
 static EpdRect home_transfer_rect(int index) {
-    return (EpdRect){36 + index * 208, 346, 196, 100};
+    return (EpdRect){36 + index * 208, 318, 196, 76};
 }
 
 // 存储卡卡片的位置，绘制与命中测试共用一份，免得两处各写一个坐标。
 // The storage card's rect, shared by drawing and hit testing so the two cannot drift apart.
-static EpdRect storage_card_rect(void) { return (EpdRect){36, 171, 612, 112}; }
+static EpdRect storage_card_rect(void) { return (EpdRect){36, 171, 612, 104}; }
 
 // 需要格式化：卡在、没挂上、而且不是超时。超时是接触或供电问题，格式化解决不了，那种情况下
 // 说"格式化可能可以解决"会把用户带偏。
@@ -412,10 +417,15 @@ static bool supported(int folder, const char *name) {
     return !strcasecmp(ext, ".ttf") || !strcasecmp(ext, ".otf");
 }
 
+// 排序只在本次开机内有效；文件夹始终在前，按大小时文件夹仍按名称。
+// The order lasts for this boot only; folders stay first and keep name order under the size sort.
+static enum { FILE_SORT_NAME_UP, FILE_SORT_NAME_DOWN, FILE_SORT_SIZE_DOWN, FILE_SORT_COUNT } s_sort;
 static int compare_files(const void *left, const void *right) {
     const file_item_t *a = left, *b = right;
     if (a->is_dir != b->is_dir) return a->is_dir ? -1 : 1;
-    return strcasecmp(a->name, b->name);
+    if (s_sort == FILE_SORT_SIZE_DOWN && !a->is_dir && a->size != b->size) return a->size > b->size ? -1 : 1;
+    int order = strcasecmp(a->name, b->name);
+    return s_sort == FILE_SORT_NAME_DOWN ? -order : order;
 }
 
 static void scan_folder(int folder) {
@@ -476,11 +486,18 @@ static int count_root(int folder) {
 // Lucide folder / file marks for list rows; a 46 px box centred on the old artwork.
 #define FILE_ICON_PX 46
 
-static void file_icon(uint8_t *fb, int x, int y, bool folder) {
-    ui_draw_icon(
-        fb, x + 21, y + 21, FILE_ICON_PX,
-        folder ? UI_ICON_FOLDER : UI_ICON_FILE, UI_GRAY_BLACK
-    );
+static void file_icon(uint8_t *fb, int x, int y, const file_item_t *item) {
+    ui_icon_t icon = UI_ICON_FOLDER;
+    if (!item->is_dir) {
+        const char *ext = strrchr(item->name, '.');
+        icon = ext && (!strcasecmp(ext, ".ttf") || !strcasecmp(ext, ".otf")) ? UI_ICON_TYPE :
+               book_file_path_supported(item->name) ? UI_ICON_BOOK_OPEN : UI_ICON_FILE;
+    }
+    ui_draw_icon(fb, x + 21, y + 21, item->is_dir ? FILE_ICON_PX : 40, icon, UI_GRAY_BLACK);
+}
+static const char *file_role_tag(const file_item_t *item) {
+    return !strcmp(item->path, app_settings_books_dir()) ? "Thư mục sách" :
+           !strcmp(item->path, app_settings_fonts_dir()) ? "Thư mục phông" : NULL;
 }
 
 static void file_detail(char *dst, size_t cap, const file_item_t *item) {
@@ -545,7 +562,7 @@ static void render_actions(uint8_t *fb) {
     ui_fill_round_rect(fb, (EpdRect){604, 454+offset, 38, 38}, 19, 0xe0);
     file_text_center(fb, 623, 473+offset, 24, "×", EPD_DRAW_ALIGN_CENTER, false);
     char name[128]; copy_utf8(name, sizeof(name), s_selected.name); fit_name(name, 28, 540);
-    file_icon(fb, 48, 467+offset, s_selected.is_dir);
+    file_icon(fb, 48, 467+offset, &s_selected);
     file_text(fb, 102, 462+offset, 28, name, EPD_DRAW_ALIGN_LEFT, false);
     char detail[48]; file_detail(detail, sizeof(detail), &s_selected);
     file_text(fb, 102, 507+offset, 20, detail, EPD_DRAW_ALIGN_LEFT, false);
@@ -646,12 +663,11 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
                 while (n && ((unsigned char)name[n] & 0xc0) == 0x80) --n;
                 name[n] = 0;
             }
-            file_icon(fb, 48, y + 20, s_files[index].is_dir);
+            file_icon(fb, 48, y + 20, &s_files[index]);
             file_text(fb, 101, y + 11, 23, name, EPD_DRAW_ALIGN_LEFT, false);
             char detail[32]; file_detail(detail, sizeof(detail), &s_files[index]);
             file_text(fb, 101, y + 49, 19, detail, EPD_DRAW_ALIGN_LEFT, false);
-            const char *tag = !strcmp(s_files[index].path, app_settings_books_dir()) ? "Thư mục sách" :
-                              !strcmp(s_files[index].path, app_settings_fonts_dir()) ? "Thư mục phông" : NULL;
+            const char *tag = file_role_tag(&s_files[index]);
             if (tag) file_text(fb, 588, y + 35, 18, tag, EPD_DRAW_ALIGN_RIGHT, false);
             file_text(fb, 640, y + 30, 22, "›", EPD_DRAW_ALIGN_RIGHT, false);
             file_rule(fb, 101, y + 82, 547);
@@ -667,7 +683,7 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
         file_text(fb, 36, 91, 52, "Tệp tin", EPD_DRAW_ALIGN_LEFT, false);
         EpdRect storage = storage_card_rect();
         ui_draw_soft_card(fb, storage, 24, false);
-        file_text(fb, 58, 188, 27, "Thẻ nhớ", EPD_DRAW_ALIGN_LEFT, false);
+        file_text(fb, 58, 184, 27, "Thẻ nhớ", EPD_DRAW_ALIGN_LEFT, false);
         char total[32], usage[96];
         if (s_sd.mounted) {
             storage_usage(&s_sd,total,sizeof(total),usage,sizeof(usage));
@@ -681,52 +697,50 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
             snprintf(total, sizeof(total), "Chưa gắn thẻ");
             snprintf(usage, sizeof(usage), "Vui lòng kiểm tra thẻ nhớ");
         }
-        file_text(fb, 624, 191, 21, total, EPD_DRAW_ALIGN_RIGHT, false);
-        ui_text_caption(fb,(EpdRect){58,222,566,38},19,usage,EPD_DRAW_ALIGN_LEFT,false);
-        EpdRect capacity = {58, 263, 566, 6};
-        ui_fill_round_rect(fb, capacity, 3, 0xa0);
+        file_text(fb, 624, 187, 21, total, EPD_DRAW_ALIGN_RIGHT, false);
+        ui_text_caption(fb,(EpdRect){58,216,566,34},19,usage,EPD_DRAW_ALIGN_LEFT,false);
+        EpdRect capacity = {58, 253, 566, 8};
+        ui_fill_round_rect(fb, capacity, 4, 0xa0);
         if (storage_space_valid(&s_sd)) {
             capacity.width = (int)((s_sd.filesystem_bytes - s_sd.free_bytes) * 566 / s_sd.filesystem_bytes);
-            if (capacity.width > 0) ui_fill_round_rect(fb, capacity, 3, 0x68);
+            if (capacity.width > 0) ui_fill_round_rect(fb, capacity, 4, 0x40);
         }
-        file_text(fb, 42, 308, 21, "Truyền tệp", EPD_DRAW_ALIGN_LEFT, false);
+        file_text(fb, 42, 284, 21, "Truyền tệp", EPD_DRAW_ALIGN_LEFT, false);
         static const char *const methods[] = {"WiFi", "Điểm phát", "USB"};
         static const char *const details[] = {"Cùng mạng", "Không cần mạng", "Cáp máy tính"};
+        static const ui_icon_t method_icons[] = {UI_ICON_WIFI, UI_ICON_RADIO_TOWER, UI_ICON_SAVE};
         for (int i = 0; i < 3; ++i) {
             EpdRect card = home_transfer_rect(i);
             ui_draw_soft_card(fb, card, 20, false);
-            ui_text_box(fb,(EpdRect){card.x+12,card.y+12,card.width-24,40},19,methods[i],EPD_DRAW_ALIGN_CENTER,false);
-            ui_text_box(fb,(EpdRect){card.x+12,card.y+60,card.width-24,34},17,details[i],EPD_DRAW_ALIGN_CENTER,false);
+            ui_draw_icon(fb, card.x + 32, card.y + card.height / 2, 34, method_icons[i], UI_GRAY_BLACK);
+            ui_text_box(fb,(EpdRect){card.x+58,card.y+8,card.width-64,32},19,methods[i],EPD_DRAW_ALIGN_LEFT,false);
+            ui_text_box(fb,(EpdRect){card.x+58,card.y+40,card.width-64,28},15,details[i],EPD_DRAW_ALIGN_LEFT,false);
         }
         char summary[48]; snprintf(summary, sizeof(summary), "Thư mục gốc · %d mục", s_count);
-        file_text(fb, 36, 482, 21, summary, EPD_DRAW_ALIGN_LEFT, false);
-        ui_fill_round_rect(fb, (EpdRect){537, 458, 111, 50}, 23, UI_GRAY_WHITE);
-        ui_draw_soft_card(fb, (EpdRect){537, 458, 111, 50}, 18, false);
-        file_text_center(fb, 592, 483, 19, "Tên ↑", EPD_DRAW_ALIGN_CENTER, false);
+        file_text(fb, 36, 428, 21, summary, EPD_DRAW_ALIGN_LEFT, false);
+        static const char *const sorts[FILE_SORT_COUNT] = {"Tên ↑", "Tên ↓", "Cỡ ↓"};
+        ui_draw_soft_card(fb, root_sort_rect(), 18, false);
+        file_text_center(fb, 592, 429, 19, sorts[s_sort], EPD_DRAW_ALIGN_CENTER, false);
         int first = s_page * root_rows();
-        int rows = s_count - first;
-        if (rows > root_rows()) rows = root_rows();
-        if (rows < 0) rows = 0;
-        EpdRect list = {36, 520, 612, root_rows() * 91};
-        ui_fill_round_rect(fb, list, 24, UI_GRAY_WHITE);
-        if (!s_count) file_text_center(fb, 342, 565, 22, s_message[0] ? s_message : "Thư mục gốc trống", EPD_DRAW_ALIGN_CENTER, false);
+        if (!s_count) file_text_center(fb, 342, ROOT_LIST_TOP + 45, 22, s_message[0] ? s_message : "Thư mục gốc trống", EPD_DRAW_ALIGN_CENTER, false);
         for (int row = 0; row < root_rows(); ++row) {
             int index = first + row;
             if (index >= s_count) break;
-            int y = 520 + row * 91;
+            const file_item_t *item = &s_files[index];
+            int y = ROOT_LIST_TOP + row * ROOT_ROW_HEIGHT;
             if (row) file_rule(fb, 96, y, 532);
-            char name[128]; copy_utf8(name, sizeof(name), s_files[index].name); fit_name(name, 23, 430);
-            file_icon(fb, 52, y + 24, s_files[index].is_dir);
-            if (s_files[index].is_dir)
-                file_text_center(fb, 101, y + 46, 23, name, EPD_DRAW_ALIGN_LEFT, false);
-            else
-                file_text(fb, 101, y + 20, 23, name, EPD_DRAW_ALIGN_LEFT, false);
-            char detail[32]; file_detail(detail, sizeof(detail), &s_files[index]);
-            if (s_files[index].is_dir) file_text_center(fb, 628, y + 46, 24, "›", EPD_DRAW_ALIGN_RIGHT, false);
-            else {
-                file_text(fb, 101, y + 55, 19, detail, EPD_DRAW_ALIGN_LEFT, false);
-                file_text_center(fb, 624, y + 44, 22, "›", EPD_DRAW_ALIGN_RIGHT, false);
+            const char *tag = item->is_dir ? file_role_tag(item) : NULL;
+            char name[128]; copy_utf8(name, sizeof(name), item->name); fit_name(name, 23, tag ? 330 : 470);
+            file_icon(fb, 52, y + 21, item);
+            if (item->is_dir) {
+                file_text_center(fb, 101, y + 42, 23, name, EPD_DRAW_ALIGN_LEFT, false);
+                if (tag) file_text_center(fb, 596, y + 42, 17, tag, EPD_DRAW_ALIGN_RIGHT, false);
+            } else {
+                file_text(fb, 101, y + 13, 23, name, EPD_DRAW_ALIGN_LEFT, false);
+                char detail[32]; file_detail(detail, sizeof(detail), item);
+                file_text(fb, 101, y + 47, 19, detail, EPD_DRAW_ALIGN_LEFT, false);
             }
+            ui_draw_icon(fb, 630, y + 42, 24, UI_ICON_CHEVRON_RIGHT, 0x60);
         }
     }
     if(s_folder>=0&&s_folder!=3&&s_message[0])
@@ -1100,7 +1114,7 @@ static app_redraw_t on_gesture(app_ctx_t *ctx, const ui_gesture_event_t *ev) {
     if (ev->type == UI_GESTURE_SWIPE_R && s_folder < 0 && s_page > 0) { --s_page; return APP_REDRAW_PAGE; }
     if (ev->type != UI_GESTURE_TAP && ev->type != UI_GESTURE_LONG_PRESS) return APP_REDRAW_NONE;
     bool long_press = ev->type == UI_GESTURE_LONG_PRESS;
-    if (long_press && ev->y0 < (s_folder >= 0 ? 214 : 520)) return APP_REDRAW_NONE;
+    if (long_press && ev->y0 < (s_folder >= 0 ? 214 : ROOT_LIST_TOP)) return APP_REDRAW_NONE;
     int tab = files_nav_hit(ev->x0, ev->y0);
     if (!long_press && tab >= 0) { ui_nav_request(ctx, tab); return APP_REDRAW_NONE; }
     if (s_folder >= 0) {
@@ -1185,8 +1199,14 @@ static app_redraw_t on_gesture(app_ctx_t *ctx, const ui_gesture_event_t *ev) {
         ctx->request_app = &app_transfer;
         return APP_REDRAW_NONE;
     }
-    if (ev->y0 >= 520 && ev->y0 < 975) {
-        int row = (ev->y0 - 520) / 91;
+    if (!long_press && ui_rect_hit(root_sort_rect(), ev->x0, ev->y0)) {
+        s_sort = (s_sort + 1) % FILE_SORT_COUNT;
+        if (s_files && s_count > 1) qsort(s_files, s_count, sizeof(s_files[0]), compare_files);
+        s_page = 0;
+        return APP_REDRAW_PAGE;
+    }
+    if (ev->y0 >= ROOT_LIST_TOP && ev->y0 < ROOT_LIST_TOP + root_rows() * ROOT_ROW_HEIGHT) {
+        int row = (ev->y0 - ROOT_LIST_TOP) / ROOT_ROW_HEIGHT;
         int index = s_page * root_rows() + row;
         if (row >= 0 && row < root_rows() && index < s_count) {
             if (long_press) {

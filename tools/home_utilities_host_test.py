@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise actual Home utility routes, editor geometry and four-book selection."""
+"""Exercise actual Home utility routes and editor geometry (simple Home shortcuts)."""
 from pathlib import Path
 import subprocess,tempfile
 from home_cover_cache_host_test import function
@@ -29,7 +29,7 @@ static bool simple;static bool app_settings_simple_ui(void){return simple;}
 static bool app_settings_simple_utility_labels(void){return true;}
 static bool app_settings_simple_utility_border(void){return true;}
 static uint8_t app_settings_simple_utility(unsigned slot){(void)slot;return 0;}
-static home_book_t s_current,s_recent[6];
+static home_book_t s_current;
 static int s_view;static bool s_save_error;
 static uint8_t s_utility_draft[4],saved[4];
 static unsigned s_utility_slot,s_utility_page;
@@ -55,20 +55,15 @@ static void header(uint8_t *fb,const char *s){(void)fb;assert(*s);}
 static void ui_draw_button(uint8_t *fb,EpdRect r,const char *s,bool selected){(void)fb;(void)selected;assert(*s);assert(r.x>=36&&r.x+r.width<=648&&r.y>=190&&r.y+r.height<=1088);++buttons;}
 static void ui_text_caption(uint8_t *fb,EpdRect r,int px,const char *s,int align,bool bold){(void)fb;(void)r;(void)px;(void)s;(void)align;(void)bold;}
 '''+settings[a:b]+names
-for name in ('utility_button','utility_icon_rect','utility_notice_rect','utility_notice_expire','utility_labels_button','utility_border_button','utility_save_button','recent_cover','recent_books','utilities_configured','utilities_edit','render_utilities_editor','utility_run'):
+for name in ('utility_notice_rect','utility_notice_expire','utility_labels_button','utility_border_button','utility_save_button','utilities_edit','render_utilities_editor','utility_run'):
     unit+=function(name,source)+'\n'
 unit+=r'''
 int main(void){
- assert(!utilities_configured());saved[2]=APP_HOME_UTIL_WIFI;assert(utilities_configured());utilities_edit();assert(s_view==HOME_UTILITIES&&s_utility_draft[2]==APP_HOME_UTIL_WIFI);
- for(unsigned i=0;i<4;++i){EpdRect u=utility_button(i),r=recent_cover(i);assert(u.x>=36&&u.x+u.width<=648&&u.y>=654&&u.y+u.height<796);assert(r.x>=36&&r.x+r.width<=648&&r.y>796&&r.y+r.height<1018);if(i){EpdRect prev=utility_button(i-1);assert(prev.x+prev.width<u.x);}}
+ saved[2]=APP_HOME_UTIL_WIFI;utilities_edit();assert(s_view==HOME_UTILITIES&&s_utility_draft[2]==APP_HOME_UTIL_WIFI);
  buttons=0;render_utilities_editor(NULL);assert(buttons==7);
  EpdRect lb=utility_labels_button(),bb=utility_border_button(),sb=utility_save_button();assert(lb.y>=780&&lb.y+lb.height<bb.y&&bb.y+bb.height<sb.y&&sb.y+sb.height<=1088);
  s_view=HOME_UTILITY_PICK;for(s_utility_page=0;s_utility_page<2;++s_utility_page){buttons=0;render_utilities_editor(NULL);assert(buttons==8);}
- home_book_t *books[4];assert(!recent_books(books));
  strcpy(s_current.path,"current");s_current.has_progress=true;
- for(unsigned i=0;i<6;++i){snprintf(s_recent[i].path,288,"book%u",i);s_recent[i].has_progress=true;}
- strcpy(s_recent[0].path,"current");assert(recent_books(books)==4&&books[0]==&s_current&&books[1]==&s_recent[1]&&books[3]==&s_recent[3]);
- s_current.has_progress=false;s_recent[1].has_progress=false;assert(recent_books(books)==4&&books[0]==&s_recent[0]&&books[1]==&s_recent[2]);
  app_ctx_t ctx={0};
  for(unsigned action=1;action<APP_HOME_UTIL_COUNT;++action){tab=-1;radio=0;ctx.request_app=NULL;app_redraw_t result=utility_run(&ctx,action);
  switch(action){
@@ -85,12 +80,11 @@ int main(void){
  case APP_HOME_UTIL_REFRESH:assert(result==APP_REDRAW_FULL);break;
  default:assert(false);
  }}
- for(unsigned i=0;i<4;++i)for(int show=0;show<2;++show){EpdRect icon=utility_icon_rect(i,show),button=utility_button(i);assert(icon.width==icon.height&&icon.width==(show?32:64));assert(icon.x+icon.width/2==button.x+button.width/2);assert(icon.y+icon.height/2==button.y+(show?27:button.height/2));assert(icon.x>=button.x&&icon.y>=button.y&&icon.x+icon.width<=button.x+button.width&&icon.y+icon.height<=button.y+button.height);}
  utility_run(&ctx,APP_HOME_UTIL_WIFI);assert(s_utility_notice_until==fake_ms+2000);assert(!utility_notice_expire(fake_ms+1999)&&s_utility_notice[0]);assert(utility_notice_expire(fake_ms+2000)&&!s_utility_notice[0]&&!s_utility_notice_until);assert(!utility_notice_expire(fake_ms+3000)&&s_area.width==484&&s_area.height==100);
  fake_ms=5000;utility_run(&ctx,APP_HOME_UTIL_BLUETOOTH);assert(!utility_notice_expire(6000));fake_ms=6500;utility_run(&ctx,APP_HOME_UTIL_WIFI);assert(!utility_notice_expire(7000));assert(utility_notice_expire(8500));
  s_current.path[0]=0;tab=-1;assert(utility_run(&ctx,APP_HOME_UTIL_RESUME)==APP_REDRAW_PAGE&&tab==-1&&s_utility_notice[0]);
  network_error=ESP_ERR_NOT_FOUND;utility_run(&ctx,APP_HOME_UTIL_WIFI);assert(strstr(s_utility_notice,"Wi-Fi"));
- puts("PASS Home: four non-overlapping slots/covers, editor pages, recent-book deduplication and all shortcut routes");
+ puts("PASS Home: editor pages, notice expiry and all shortcut routes");
 }
 '''
 with tempfile.TemporaryDirectory() as d:

@@ -93,8 +93,8 @@ int main(void){
  assert(pixels[1006*684+116]==240&&pixels[1055*684+203]==240);
  memset(pixels,240,sizeof(pixels));ui_pager_draw(pixels,"0本书 · 01/01",0,1,true,-1);for(int a=0;a<4;++a)assert(!ink_in(ui_pager_rect(a)));check_outside();
  app_ctx_t ctx={pixels,NULL};s_view=FILE_VIEW_LIST;s_folder=-1;s_count=96;s_page=5;
- assert(file_pager_pages()==20);tap(&ctx,UI_PAGER_FIRST,0);tap(&ctx,UI_PAGER_PREVIOUS,0);tap(&ctx,UI_PAGER_NEXT,1);tap(&ctx,UI_PAGER_LAST,19);tap(&ctx,UI_PAGER_NEXT,19);tap(&ctx,UI_PAGER_PREVIOUS,18);
- assert(strstr(drawn_label," / 20"));s_folder=3;assert(visible_rows()==7);
+ assert(file_pager_pages()==16);tap(&ctx,UI_PAGER_FIRST,0);tap(&ctx,UI_PAGER_PREVIOUS,0);tap(&ctx,UI_PAGER_NEXT,1);tap(&ctx,UI_PAGER_LAST,15);tap(&ctx,UI_PAGER_NEXT,15);tap(&ctx,UI_PAGER_PREVIOUS,14);
+ assert(strstr(drawn_label," / 16"));s_folder=3;assert(visible_rows()==7);
  s_folder=0;s_page=2;assert(file_pager_pages()==14);tap(&ctx,UI_PAGER_LAST,13);
  s_folder=3;s_view=FILE_VIEW_MOVE;s_page=1;assert(file_pager_pages()==14);tap(&ctx,UI_PAGER_LAST,13);tap(&ctx,UI_PAGER_FIRST,0);
  {
