@@ -176,9 +176,15 @@ static int power_signature(void) {
     return (pmu_battery_percent(pmu)+1)*8+(pmu_battery_charging(pmu)?4:0)+(wifi?2:0)+(ble_pt_running()?1:0);
 }
 
+// 状态栏按旋转后的屏宽排布：竖屏仍是684，阅读横屏时右侧图标贴右缘。
+// Lay out the status strip on the rotated width: 684 in portrait; in reader landscape the right group hugs the right edge.
+static int status_width(void) {
+    int width = epd_rotated_display_width();
+    return width > UI_LOCK_WIDTH ? width : UI_LOCK_WIDTH;
+}
 EpdRect ui_nav_status_area(void) {
-    return s_status_compact ? (EpdRect){0,0,UI_LOCK_WIDTH,UI_NAV_READER_STATUS_HEIGHT}
-                            : (EpdRect){0,12,UI_LOCK_WIDTH,56};
+    return s_status_compact ? (EpdRect){0,0,status_width(),UI_NAV_READER_STATUS_HEIGHT}
+                            : (EpdRect){0,12,status_width(),56};
 }
 static void draw_status(uint8_t *fb, bool compact);
 
@@ -273,6 +279,7 @@ void ui_nav_clock_draw(uint8_t *fb) {
 }
 static void draw_status(uint8_t *fb, bool compact) {
     s_status_compact = compact;
+    const int screen_w = status_width(), right = screen_w - UI_LOCK_WIDTH;
     status_prepare_metrics();
     const pmu_snapshot_t *pmu = read_pico_pmu_get();
     char clock[12]; clock_text(clock,sizeof(clock));
@@ -289,19 +296,19 @@ static void draw_status(uint8_t *fb, bool compact) {
     if (gauge_percent >= 0) snprintf(percent, sizeof(percent), "%u%%", (unsigned)gauge_percent);
     // 按实际百分比宽度排列网络图标，留 10 像素间隔；墨色与电池相同。
     // Place the network marks 10 px before the measured percentage, using the battery ink.
-    const int percent_left = 595 - status_number_width(percent);
+    const int percent_left = right + 595 - status_number_width(percent);
     const int network_right = percent_left - 10;
     const int wifi_center = network_right - UI_NAV_NETWORK_ICON_PX / 2;
     const int bluetooth_center = wifi_center - (wifi_visible ? UI_NAV_NETWORK_ICON_PX + 8 : 0);
     int signature_width = 280;
     const int clock_right = 36 + status_number_width(clock);
-    int available = 2 * (UI_LOCK_WIDTH / 2 - clock_right - 12);
+    int available = 2 * (screen_w / 2 - clock_right - 12);
     if (available < signature_width) signature_width = available > 0 ? available : 0;
     int group_left = percent_left;
     if (wifi_visible || bluetooth_visible) {
         group_left = (bluetooth_visible ? bluetooth_center : wifi_center) - UI_NAV_NETWORK_ICON_PX / 2;
     }
-    available = 2 * (group_left - 12 - UI_LOCK_WIDTH / 2);
+    available = 2 * (group_left - 12 - screen_w / 2);
     if (available < signature_width) signature_width = available > 0 ? available : 0;
     char signature[96];
     // 阅读页优先显示书名：书名通常比用户签名长，因此单独按固定字号截短，不套用签名的字宽表。
@@ -312,34 +319,34 @@ static void draw_status(uint8_t *fb, bool compact) {
         copy_utf8_boundary(signature, sizeof(signature), s_status_title);
         fit_status_title(signature, signature_width);
         if (signature[0])
-            ui_text_fixed_vc(fb, UI_LOCK_WIDTH / 2, status_center_y, UI_STATUS_TITLE_PX,
+            ui_text_fixed_vc(fb, screen_w / 2, status_center_y, UI_STATUS_TITLE_PX,
                              signature, EPD_DRAW_ALIGN_CENTER, false);
     } else {
         snprintf(signature, sizeof(signature), "%s", app_settings_status_signature());
         status_fit_signature(signature, signature_width);
-        if (signature[0]) ui_text_fixed_vc(fb, UI_LOCK_WIDTH / 2, status_center_y, UI_STATUS_SIGNATURE_PX,
+        if (signature[0]) ui_text_fixed_vc(fb, screen_w / 2, status_center_y, UI_STATUS_SIGNATURE_PX,
                                           signature, EPD_DRAW_ALIGN_CENTER, false);
     }
     if (wifi_visible) ui_nav_wifi_icon(fb, wifi_center, status_center_y, UI_NAV_NETWORK_ICON_PX, UI_GRAY_BLACK);
     if (bluetooth_visible)
         ui_draw_icon(fb, bluetooth_center, status_center_y, UI_NAV_NETWORK_ICON_PX,
                      UI_ICON_BLUETOOTH, UI_GRAY_BLACK);
-    EpdRect battery = {606, status_center_y - 11, 40, 22};
+    EpdRect battery = {right + 606, status_center_y - 11, 40, 22};
     ui_draw_round_rect(fb, battery, 6, UI_GRAY_BLACK);
-    ui_fill_round_rect(fb, (EpdRect){648, status_center_y - 4, 5, 8}, 2, UI_GRAY_BLACK);
+    ui_fill_round_rect(fb, (EpdRect){right + 648, status_center_y - 4, 5, 8}, 2, UI_GRAY_BLACK);
     bool charging = pmu_battery_charging(pmu);
     if (gauge_percent >= 0) {
         int width = (31 * gauge_percent + 50) / 100;
-        if (width > 0) ui_fill_round_rect(fb, (EpdRect){610, status_center_y - 7, width, 14}, 4, UI_GRAY_BLACK);
+        if (width > 0) ui_fill_round_rect(fb, (EpdRect){right + 610, status_center_y - 7, width, 14}, 4, UI_GRAY_BLACK);
     }
     if (charging) {
         // 固定黑底与白色闪电描边，0%时也有完整对比，不依赖电量填充宽度。
         // A fixed black well and white bolt outline retain contrast even at0%, independent of the charge fill.
-        ui_fill_round_rect(fb,(EpdRect){614,status_center_y-10,26,20},3,UI_GRAY_BLACK);
-        ui_draw_icon(fb, 627, status_center_y, 22, UI_ICON_ZAP, UI_GRAY_WHITE);
+        ui_fill_round_rect(fb,(EpdRect){right+614,status_center_y-10,26,20},3,UI_GRAY_BLACK);
+        ui_draw_icon(fb, right + 627, status_center_y, 22, UI_ICON_ZAP, UI_GRAY_WHITE);
 
     }
-    ui_text_fixed_vc(fb, 595, status_center_y, UI_STATUS_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, false);
+    ui_text_fixed_vc(fb, right + 595, status_center_y, UI_STATUS_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, false);
     ui_status_mark_visible(fb);
     s_power_signature=(gauge_percent+1)*8+(charging?4:0)+(wifi_visible?2:0)+(bluetooth_visible?1:0);
 }

@@ -44,14 +44,15 @@ static bool ble_pt_connecting(void){return connecting;}
 static void read_pico_transfer_get_status(read_pico_transfer_status_t *s){*s=network;}
 static unsigned fills,frames,texts;
 static char rendered[96];
-static void ui_fill_round_rect(uint8_t *fb,EpdRect r,int radius,int color){assert(fb&&r.x==24&&r.y==348&&r.width==636&&r.height==34&&radius==10&&color==255);++fills;}
-static void ui_draw_control_frame(uint8_t *fb,EpdRect r,int radius,int color){assert(fb&&r.y+r.height<=384&&r.x+r.width<=684&&radius==10&&color==0);++frames;}
-static void ui_text_box(uint8_t *fb,EpdRect r,int px,const char *text,int align,bool invert){assert(fb&&r.x>=24&&r.y>=348&&r.x+r.width<=660&&r.y+r.height<=382&&px==22&&align==0&&!invert);snprintf(rendered,sizeof(rendered),"%s",text);++texts;}
+static EpdRect ui_quick_panel_rect(void){return (EpdRect){18,88,648,436};}
+static void ui_fill_round_rect(uint8_t *fb,EpdRect r,int radius,int color){assert(fb&&color==255);if(radius==25){assert(r.x==76&&r.y==530&&r.width==532&&r.height==50);return;}assert(r.x==82&&r.y==536&&r.width==520&&r.height==38&&radius==19);++fills;}
+static void ui_draw_control_frame(uint8_t *fb,EpdRect r,int radius,int color){assert(fb&&r.y+r.height<=600&&r.x+r.width<=684&&radius==19&&color==0);++frames;}
+static void ui_text_box(uint8_t *fb,EpdRect r,int px,const char *text,int align,bool invert){assert(fb&&r.x>=98&&r.y>=540&&r.x+r.width<=586&&r.y+r.height<=570&&px==22&&align==0&&!invert);snprintf(rendered,sizeof(rendered),"%s",text);++texts;}
 '''
 for name,path in [('ui_quick_menu_draw_notice','main/ui/ui_quick_menu.c'),('quick_notice_begin','main/app/app_loop.c'),('quick_notice_poll','main/app/app_loop.c'),('quick_toggle_wifi','main/app/app_loop.c')]:unit+=function(name,ROOT/path)+'\n'
 unit+=r'''
 static uint8_t fb;
-static void expect(const char *text){unsigned before=texts;EpdRect r=quick_notice_poll(&fb);assert(r.height==34&&texts==before+1&&!strcmp(rendered,text));assert(!quick_notice_poll(&fb).height&&texts==before+1);}
+static void expect(const char *text){unsigned before=texts;EpdRect r=quick_notice_poll(&fb);assert(r.height==50&&texts==before+1&&!strcmp(rendered,text));assert(!quick_notice_poll(&fb).height&&texts==before+1);}
 int main(void){
  assert(quick_toggle_wifi()==ESP_ERR_NOT_FOUND&&!starts);
  saved_error=9;assert(quick_toggle_wifi()==9&&!starts);saved_error=0;
@@ -73,8 +74,11 @@ int main(void){
  stop_failed=true;expect("Bluetooth chưa dừng được");stop_failed=false;
  running=false;expect("Đã tắt Bluetooth");
  quick_notice_begin(2,9);expect("Không thể bật/tắt Bluetooth");
+ quick_notice_begin(3,9);expect("Chế độ tối: không lưu được cài đặt");
+ quick_notice_begin(4,9);expect("Xoay màn hình: không lưu được cài đặt");
+ quick_notice_begin(5,9);expect("Chỉ xoay được khi đang đọc sách");
  assert(fills==frames&&frames==texts);s_quick_notice_kind=0;assert(!quick_notice_poll(&fb).height);
- puts("PASS actual quick radio notifications: on/off/connecting/connected/errors, no redraw while unchanged, black frame within existing saved384px underlay");
+ puts("PASS actual quick radio notifications: on/off/connecting/connected/errors, no redraw while unchanged, dark/rotate notices, pill below the compact panel inside the saved layer");
 }
 '''
 with tempfile.TemporaryDirectory() as d:

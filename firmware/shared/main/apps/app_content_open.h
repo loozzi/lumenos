@@ -27,6 +27,12 @@ void app_book_request_manage(void);
 void app_book_request_opds(void);
 bool app_book_reader_body_visible(void);
 #if DPREADER_BOARD_METALIO47
+/// 纯正文可见，无对话框/面板/笔记层，可横屏。/ Bare body visible with no dialog, panel or notes layer; landscape-capable.
+bool app_book_landscape_ready(void);
+/// 旋转改变后按新尺寸重排，不绘制。/ Re-lay out for the new rotation without drawing.
+void app_book_orientation_changed(void);
+#endif
+#if DPREADER_BOARD_METALIO47
 bool app_book_reader_open(void);
 #include "app/app.h"
 #include "settings.h"

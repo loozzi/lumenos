@@ -5,6 +5,9 @@
 - Giữ bộ đệm LCD qua Light Sleep và thử lại chính sách hạ xung khi thức dậy, vẫn bảo vệ các lần khởi động sau panic/WDT/brownout.
 - Xuất log qua tệp tạm, giữ log cũ nếu lưu thất bại; thêm thống kê CPU, Bluetooth, Wi-Fi, nguyên nhân reset và thanh ghi panic.
 - Menu nhanh giữ vị trí và trạng thái ẩn của thanh trạng thái; mở rộng vùng quét khi lật trang Đen trắng nhanh để xóa dấu chữ dòng đầu.
+- Quick Settings (vuốt xuống) đổi sang bảng trắng gọn: tám nút vuông bo góc có nhãn — Wi-Fi, Bluetooth, Đồng bộ, Làm mới, Khoá, Đèn, Xoay, Tối — nút đang bật tô đen; thanh độ sáng và nhiệt độ màu chuyển sang dạng ngang. Khi đọc ngang, bảng thành một hàng tám nút với hai thanh trượt cạnh nhau. Thông báo lỗi Wi-Fi/Bluetooth hiện thành viên nhỏ dưới bảng, không chiếm chỗ.
+- Thêm nút **Xoay**: khi đang đọc, chạm để chuyển nội dung sách giữa dọc và ngang (không dùng cảm biến). Thanh công cụ, các bảng cài đặt, ghi chú, khóa màn hình và các trang khác vẫn hiển thị dọc; đóng lại thì sách trở về ngang. Chọn chữ/ghi chú chỉ dùng được khi đọc dọc.
+- Thêm nút **Tối** để bật/tắt chế độ tối (đảo màu toàn màn hình) ngay trong Quick Settings, và nút **Khoá** để khóa máy.
 
 ## LumenOS 1.5.0 / 1.5.0-love · Build cục bộ · 2026-11-14
 

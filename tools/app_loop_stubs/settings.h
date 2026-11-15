@@ -29,3 +29,5 @@ static inline unsigned app_settings_wifi_timeout_minutes(void){return 0;}
 static inline unsigned app_settings_ble_timeout_minutes(void){return 0;}
 
 static inline bool app_settings_screen_inverted(void){return false;}
+static inline bool app_settings_reader_landscape(void){return false;}
+static inline bool app_settings_set_reader_landscape(bool enabled){(void)enabled;return false;}

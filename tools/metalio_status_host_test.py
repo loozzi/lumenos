@@ -40,7 +40,7 @@ static int s_power_signature=-1000;
 static unsigned header_clears,bolts,bolt_wells;
 static char center_label[96];
 static uint8_t fb[684*1216/2],preview[sizeof(fb)];
-static int epd_width(void){return 1216;}static int epd_height(void){return 684;}
+static int epd_width(void){return 1216;}static int epd_height(void){return 684;}static int epd_rotated_display_width(void){return 684;}
 static const pmu_snapshot_t *read_pico_pmu_get(void){return &state;}
 static int pmu_battery_percent(const pmu_snapshot_t *p){assert(p==&state);return soc;}
 static bool pmu_battery_charging(const pmu_snapshot_t *p){assert(p==&state);return charging;}
@@ -72,7 +72,7 @@ static bool ui_font_has_text(const char *text){(void)text;return true;}
 static int ui_font_text_width_px(int px,const char *text){return ui_text_fixed_width_px(px,text);}
 '''
 unit+=nav[nav.index('static bool s_status_reading;'):nav.index('static const char *const labels[]')]
-for name,path in [('ui_status_mark_visible' ,'main/ui/ui_kit.c'),('ui_status_visible','main/ui/ui_kit.c'),('ui_clear_page','main/ui/ui_kit.c'),('power_signature','main/ui/ui_nav.c'),('ui_nav_status_area','main/ui/ui_nav.c'),('ui_nav_refresh_power','main/ui/ui_nav.c'),('status_time','main/ui/ui_nav.c'),('clock_text','main/ui/ui_nav.c'),('draw_status','main/ui/ui_nav.c'),('ui_nav_status','main/ui/ui_nav.c'),('ui_nav_reader_status','main/ui/ui_nav.c'),('ui_nav_redraw_status','main/ui/ui_nav.c')]:
+for name,path in [('ui_status_mark_visible' ,'main/ui/ui_kit.c'),('ui_status_visible','main/ui/ui_kit.c'),('ui_clear_page','main/ui/ui_kit.c'),('power_signature','main/ui/ui_nav.c'),('status_width','main/ui/ui_nav.c'),('ui_nav_status_area','main/ui/ui_nav.c'),('ui_nav_refresh_power','main/ui/ui_nav.c'),('status_time','main/ui/ui_nav.c'),('clock_text','main/ui/ui_nav.c'),('draw_status','main/ui/ui_nav.c'),('ui_nav_status','main/ui/ui_nav.c'),('ui_nav_reader_status','main/ui/ui_nav.c'),('ui_nav_redraw_status','main/ui/ui_nav.c')]:
  unit+=function(name,root/path)+'\n'
 unit+=r'''
 int main(void){

@@ -433,3 +433,6 @@ bool app_settings_set_reader_edge_warmth(bool on);
 // Output inversion; raster/cache coordinates and colors stay logical.
 bool app_settings_screen_inverted(void);
 bool app_settings_set_screen_inverted(bool enabled);
+/// 阅读正文横屏；只在正文可见时生效，其他页面保持竖屏。/ Reader-body landscape; applies only while the body is visible, other pages stay portrait.
+bool app_settings_reader_landscape(void);
+bool app_settings_set_reader_landscape(bool enabled);

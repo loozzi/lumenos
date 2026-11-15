@@ -68,6 +68,13 @@ trang lịch hoặc thử Lưu để đọc lại; vòng nền không tự lặp
 
 Trong nội dung sách, vuốt xuống mở bảng cài đặt nhanh giống thao tác kéo từ cạnh trên. Vuốt cạnh chỉnh đèn, phóng ảnh, chọn văn bản và các bảng công cụ đang mở giữ thao tác riêng.
 
+### Quick Settings
+
+Vuốt xuống từ cạnh trên (hoặc trong nội dung sách) để mở Quick Settings. Các nút gồm **Wi-Fi**, **Bluetooth**, **Đồng bộ** (KOSync), **Làm mới** (làm mới toàn màn hình), **Khoá**, **Đèn**, **Xoay** và **Tối**; nút đang bật có nền đen. Hai thanh ngang chỉnh độ sáng (mặt trời) và nhiệt độ màu (nhiệt kế). Màn dọc xếp hai hàng nút, hai thanh trượt chồng nhau; khi đọc ngang, bảng thu thành một hàng nút với hai thanh trượt cạnh nhau. Lỗi bật Wi-Fi/Bluetooth hiện thành viên nhỏ ngay dưới bảng. Chạm ngoài bảng hoặc vuốt lên để đóng.
+
+- **Xoay** chỉ dùng được khi đang đọc sách: chạm để chuyển nội dung giữa dọc và ngang, máy không tự xoay theo cảm biến. Lựa chọn được lưu cho lần đọc sau. Khi mở thanh công cụ, bảng cài đặt đọc, mục lục, hộp thoại, khóa màn hình hoặc rời trình đọc, màn hình tạm về dọc; quay lại nội dung sách thì trở về ngang. Chọn chữ, ghi chú và tra từ chỉ dùng được khi đọc dọc.
+- **Tối** đảo màu toàn bộ giao diện, chữ và ảnh (nền đen chữ trắng), dùng chung thiết lập với **Cài đặt → Hiển thị → Đảo màu**.
+
 ### Pop menu và Quick Settings trên Home
 
 Trong giao diện Đơn giản và Đơn giản hoàn toàn, vuốt lên trên Home, kể cả ngay trên thẻ Đọc tiếp, để mở **pop menu** với Mở sách, Truyền file, OPDS và Cài đặt. Chạm ngoài hoặc vuốt xuống để đóng pop menu.

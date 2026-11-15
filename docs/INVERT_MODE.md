@@ -26,6 +26,6 @@ Hardware acceptance: repeated toggles; at least 50 turns with AA on/off; illustr
 
 ## RC9 controls
 
-Quick Settings includes a sixth contrast-icon toggle (bottom row, right). Its badge shares the persistent inversion preference with Settings > Display. Toggling keeps the quick layer open and performs one full presentation in the new polarity; a failed NVS save keeps the previous mode and reports a notice.
+Quick Settings includes a "Tối" (moon icon) tile, the last tile of the bottom row (2026-11-15 layout). Its badge shares the persistent inversion preference with Settings > Display. Toggling keeps the quick layer open and performs one full presentation in the new polarity; a failed NVS save keeps the previous mode and reports a notice.
 
 The "Dao mau" action can be assigned to AI short press, volume buttons, front buttons and configurable holds. Existing stored action IDs are unchanged; the new IDs are appended. These bindings request full presentation only after persistence succeeds. USB/OTA ownership guards remain in place. The configurable action menu keeps its existing ten-action capacity and content; this addition targets Quick Settings and hardware bindings.

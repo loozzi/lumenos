@@ -230,6 +230,16 @@ static ui_online_fonts_t s_online_fonts;
 #include "ui_menu.h"
 #include "ui_nav.h"
 #include "ui_click_feedback.h"
+#if DPREADER_BOARD_METALIO47
+// 用户2026-11-15：正文可横屏；阅读页按当前旋转后的屏幕尺寸排版，竖屏时仍为684×1216。
+//面板、工具栏和书架只在竖屏绘制，主循环在它们出现前切回竖屏。
+// User 2026-11-15: the reader body may be landscape. Size it from the rotated screen, still 684×1216
+// in portrait. Panels, tools and shelves draw only in portrait; the loop rotates back before they appear.
+#undef UI_LOCK_WIDTH
+#undef UI_LOCK_HEIGHT
+#define UI_LOCK_WIDTH (epd_rotated_display_width())
+#define UI_LOCK_HEIGHT (epd_rotated_display_height())
+#endif
 #include "app_transfer_mode.h"
 
 // 阅读工具栏图标盒边长；行内图标在 1096..1216 的工具条里以 1138 为中心。
@@ -444,6 +454,15 @@ bool app_book_reader_open(void) {
 bool app_book_reader_body_visible(void) {
     return s_view == READING && s_text && s_reader_panel == READER_PANEL_NONE && !s_clear_confirm && !book_notes_active();
 }
+#if DPREADER_BOARD_METALIO47
+static bool reader_choice_visible(void);
+// 只有纯正文可横屏；任何对话框、面板或笔记层都要求竖屏。
+// Only the bare body may be landscape; any dialog, panel or notes layer requires portrait.
+bool app_book_landscape_ready(void) {
+    return app_book_reader_body_visible() && !reader_choice_visible();
+}
+static bool reader_landscape_active(void) { return epd_rotated_display_width() > epd_rotated_display_height(); }
+#endif
 static blk_t* s_blocks;
 // 书内字体的 run 表与块表同生共死：都来自同一次 html_text 解析，排版直接借用。
 // The face run table lives and dies with the block table: both come from the same html_text
@@ -4022,9 +4041,10 @@ static void draw_reader_outer(uint8_t *fb,size_t page) {
     draw_reader_images(fb, page, body);
     draw_reader_footer(fb, page);
     if (s_reader_notice[0]) {
-        EpdRect notice = {42, 150, 600, 132};
+        const int notice_x = (UI_LOCK_WIDTH - 684) / 2;
+        EpdRect notice = {notice_x + 42, 150, 600, 132};
         ui_draw_soft_card(fb,notice,24,false);
-        ui_text_box(fb,(EpdRect){58,160,568,112},38,s_reader_notice,EPD_DRAW_ALIGN_CENTER,false);
+        ui_text_box(fb,(EpdRect){notice_x+58,160,568,112},38,s_reader_notice,EPD_DRAW_ALIGN_CENTER,false);
     }
     if (reader_chapter_undo_visible()) {
         EpdRect notice={104,160,476,126};
@@ -8345,6 +8365,10 @@ static bool reader_edge_light_gesture(const ui_gesture_event_t *ev) {
 #endif
 static bool reader_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,app_redraw_t *out) {
     if(s_view!=READING||!s_text||s_reader_panel!=READER_PANEL_NONE||s_toolbar||s_clear_confirm||s_zoom_active)return false;
+#if DPREADER_BOARD_METALIO47
+    // 选字、笔记和脚注弹窗按竖屏布局；横屏时不接管手势。/ Selection, notes and footnote popups are portrait-only.
+    if(reader_landscape_active())return false;
+#endif
     if (!book_notes_active() && ev->type != UI_GESTURE_TAP && ev->type != UI_GESTURE_LONG_PRESS)
         return false;
     app_redraw_t notes=APP_REDRAW_NONE;
@@ -9047,6 +9071,33 @@ static bool reader_reflow_font(void) {
     }
     return true;
 }
+
+#if DPREADER_BOARD_METALIO47
+static bool reader_choice_visible(void) { return s_reader_choice.open; }
+// 主循环改变旋转后调用：按新屏幕尺寸重排当前章并回到同一文字位置；预绘页与封面缓存作废。
+// Called by the loop after a rotation change: re-lay the chapter for the new screen size at the same
+// text offset and drop prepared pages. Must not draw or present.
+void app_book_orientation_changed(void) {
+    book_layout_set_image_bleed_width(UI_LOCK_WIDTH);
+    reader_zoom_reset();
+    if(s_view!=READING || !s_text) { invalidate_prep(); return; }
+    size_t off = reader_page_offset(s_page);
+    lock_draw();
+    invalidate_prep();
+    bool ok = reader_build_current_layout(s_px);
+    if (ok) {
+        s_page = book_layout_page_for_offset(off);
+        s_jump_page = s_page;
+        s_jump_offset = off;
+    }
+    unlock_draw();
+    if(!ok) {
+        free_book();
+        s_view=SHELF;
+        copy_text(s_message,sizeof(s_message),"Dàn trang lại thất bại, vui lòng mở lại sách");
+    }
+}
+#endif
 
 static app_redraw_t on_tick(app_ctx_t* ctx) {
 #if DPREADER_BOARD_METALIO47

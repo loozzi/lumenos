@@ -278,6 +278,9 @@ Web Flash selects Full/Love Book independently of full-base/app-only write mode.
 用户2026-11-06补充：Web Flash只接收正式版，禁止RC（包括本地Web预览）。RC仅生成本地USB/TF测试包；RC双构建不得自动生成Web Flash预览，网页及打包器都必须拒绝RC。不得上传RC到网页、Pages或OTA。
 User clarification2026-11-06: Web Flash accepts official releases only, including local previews. RCs remain local USB/TF test bundles; RC dual builds must not stage Web Flash previews, and both the page and staging tool must reject RCs. Never upload RCs to web/Pages/OTA. This supersedes the earlier automatic RC preview rule.
 
+用户2026-11-15修订（S31）：下拉Quick Settings改为白色面板只包住控件的八个带文字圆角方键（Wi-Fi、Bluetooth、Đồng bộ、Làm mới、Khoá、Đèn、Xoay、Tối）与两条横向滑杆；竖屏两行，横屏一行且滑杆并排；错误提示为面板下方胶囊，不预留空白。“Tối”切换既有的整屏反色输出（与“Đảo màu”同一设置），不恢复旧Dark screen包装器。“Xoay”只在阅读正文点按切换横竖屏，不读重力传感器；仅纯正文横屏，工具栏、面板、笔记、对话框、锁屏及其他页面保持竖屏。
+User revision 2026-11-15 (S31): Quick Settings uses a white panel with a compact panel of eight labelled tiles (Wi-Fi, Bluetooth, Sync, Refresh, Lock, Light, Rotate, Dark) and two horizontal sliders: two rows in portrait, one row with side-by-side sliders in landscape; error feedback is a pill below the panel with no reserved space. "Tối" toggles the existing whole-screen inversion (the same setting as "Đảo màu"); it does not restore the removed Dark-screen wrappers. "Xoay" is a tap-only reader-body orientation toggle, never driven by the accelerometer; only the bare body goes landscape, while tools, panels, notes, dialogs, lock and other pages stay portrait.
+
 用户2026-11-06取消Dark screen：Full与Love Book均只保留亮色界面；不保留开关、NVS读取或输出反色包装器。旧dark键忽略，不清除其他设置。
 User decision2026-11-06 removes Dark screen from both Full and Love Book: keep light UI only, with no toggle, NVS reader or output inversion wrappers. Ignore the old dark key without clearing other settings.
 
