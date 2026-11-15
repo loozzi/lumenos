@@ -1,1 +1,1 @@
-LumenOS 1.5.5: Khi đọc ngang, Cài đặt đọc, Phông chữ, Thống kê, Đánh dấu, Mục lục và các bảng con giữ màn hình ngang, hiện ở cột bên phải; danh sách chọn xếp theo khổ ngang.
+LumenOS 1.5.6: Trang chủ có lịch đọc trong tháng; Tủ sách lưới 3×3 kèm tiến độ, lọc Đang đọc/Chưa đọc/Đã xong/Yêu thích, nút Tìm kiếm và Sắp xếp; Tệp tin hiện 6 mục, sắp xếp theo tên hoặc cỡ.

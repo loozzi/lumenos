@@ -1,4 +1,4 @@
-## Chưa phát hành
+## LumenOS 1.5.6 / 1.5.6-love · Phát hành chính thức · 2026-11-15
 
 - Trang chủ (bản Full): thẻ **lịch đọc trong tháng** thay cho khối Tiện Ích và danh sách Đọc gần đây. Ngày đạt mục tiêu được tô đậm, ngày có đọc nhưng chưa đạt có viền, hôm nay có vòng đậm; bên dưới là số phút hôm nay, chuỗi ngày đạt mục tiêu liên tiếp và số ngày đạt trong tháng. Chạm vào thẻ để mở trang lịch đọc và chỉnh mục tiêu. Giao diện tối giản và Love Book không đổi.
 - Tủ sách kiểu **Lưới tối giản** hiện 9 cuốn mỗi trang (3×3) thay vì 6; dưới mỗi bìa là tên sách, thanh tiến độ và phần trăm đã đọc thay cho định dạng và dung lượng tệp.
