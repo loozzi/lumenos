@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.1-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/dpReader31/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/dpReader31/",
+  "previous_version": "1.4.5-love-vn",
+  "notes": "LumenOS 1.5.1 Love Book: Quick Settings mới với Xoay đọc ngang và chế độ Tối; quản lý từng mạng Wi-Fi; tiết kiệm pin khi dùng remote Bluetooth.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "4ad40ffbfd7607642f7fe84fc9bb8ad32709d2216edd4ad5f6c035092082eed2",
+      "md5": "7c93bf786aff3eccfbfaa21a0bae2305"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "5527219e0cc440c95a5df4aaee41df1d902ed754d3dc52c2cc8d867b116dec4b",
+      "md5": "65bd02a22e53efb6d693ce97e88495ba"
+    }
+  },
+  "clean_image": {
+    "sha256": "7d4f5acd962a81532b7b8d5499dbc5a6af08093c023cf24640b5828023facc1b",
+    "md5": "e46ff116678b5dd28ca5ea8e591c0757"
+  },
+  "size": 4889472,
+  "sha256": "f15b5f708c17f7c70177d810ee9a160e7783397dde72b44886b274657b8e894f",
+  "md5": "2a34561dc8aef1d4fb412ef624eed5b0"
+}
