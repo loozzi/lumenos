@@ -245,7 +245,7 @@ async function fetchLatestRelease() {
 
     if (!data || !data.version) {
       try {
-        const rawRes = await fetch(`https://raw.githubusercontent.com/loozzi/dpReader31/main/${requestedFolder}/metalio-s31-update.json?t=${Date.now()}`, { cache: "no-store" });
+        const rawRes = await fetch(`https://raw.githubusercontent.com/loozzi/lumenos/main/${requestedFolder}/metalio-s31-update.json?t=${Date.now()}`, { cache: "no-store" });
         if (rawRes.ok) data = await rawRes.json();
       } catch (_) {}
     }
@@ -254,7 +254,7 @@ async function fetchLatestRelease() {
       try {
         const selectedVer = document.getElementById("release-version")?.value;
         const targetTag = selectedReleaseFolder() === "releases" ? "latest" : `tags/v${selectedVer}`;
-        const ghRes = await fetch(`https://api.github.com/repos/loozzi/dpReader31/releases/${targetTag}`);
+        const ghRes = await fetch(`https://api.github.com/repos/loozzi/lumenos/releases/${targetTag}`);
         if (ghRes.ok) {
           const ghData = await ghRes.json();
           data = {
@@ -462,7 +462,7 @@ async function fetchVerifiedPart(name, part) {
   if (!part || !/^[a-f0-9]{32}$/i.test(part.md5 || "") || !Number.isSafeInteger(part.size) || part.size <= 0 || !/^[a-f0-9]{64}$/i.test(part.sha256))
     throw new Error(`Thiếu thông tin xác minh ${name}.`);
   const folder = selectedReleaseFolder();
-  const bytes = new Uint8Array(await fetchBinary(`./${folder}/${name}`, `https://raw.githubusercontent.com/loozzi/dpReader31/main/${folder}/${name}`));
+  const bytes = new Uint8Array(await fetchBinary(`./${folder}/${name}`, `https://raw.githubusercontent.com/loozzi/lumenos/main/${folder}/${name}`));
   const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), n => n.toString(16).padStart(2,"0")).join("");
   if (bytes.length !== part.size || sha !== part.sha256.toLowerCase()) throw new Error(`Sai checksum ${name}.`);
   return bytes;
@@ -589,7 +589,7 @@ flashBtn.addEventListener("click", async () => {
       progressStatus.textContent = "Đang tải firmware ứng dụng mới nhất...";
       binaryData = await fetchBinary(
         `./${selectedReleaseFolder()}/${fileName}?t=${timestamp}`,
-        `https://raw.githubusercontent.com/loozzi/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
+        `https://raw.githubusercontent.com/loozzi/lumenos/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
       );
     } else if (radioFull.checked) {
       fileName = "dpReader_metalio47_full.bin";
@@ -597,7 +597,7 @@ flashBtn.addEventListener("click", async () => {
       progressStatus.textContent = "Đang tải firmware toàn diện (Full Flash)...";
       binaryData = await fetchBinary(
         `./${selectedReleaseFolder()}/${fileName}?t=${timestamp}`,
-        `https://raw.githubusercontent.com/loozzi/dpReader31/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
+        `https://raw.githubusercontent.com/loozzi/lumenos/main/${selectedReleaseFolder()}/${fileName}?t=${timestamp}`
       );
     } else if (radioCustom.checked) {
       const file = customFileInput.files[0];
