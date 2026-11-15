@@ -17,6 +17,8 @@ unit=r'''
 #include <stdlib.h>
 #define UI_LOCK_WIDTH 684
 #define UI_LOCK_HEIGHT 1216
+#define READER_TOOLS_HEIGHT 120
+#define READER_TOOLS_TOP (UI_LOCK_HEIGHT - READER_TOOLS_HEIGHT)
 #define READER_STATS_TOP 768
 #define UI_GRAY_WHITE 255
 #define BYTES (684*1216/2)

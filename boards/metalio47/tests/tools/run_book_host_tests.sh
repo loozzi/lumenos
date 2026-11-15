@@ -21,7 +21,7 @@ python3 tools/progress_sd_host_test.py
 build/book-tests/store
 build/book-tests/policy
 gcc "${flags[@]}" -Itools/ui_gesture_stubs -Imain/ui tools/ui_gesture_host_test.c main/ui/ui_gesture.c -o build/book-tests/gesture
-gcc "${flags[@]}" -ffunction-sections -fdata-sections "${link_gc[@]}" -Itools/ui_gesture_stubs -Itools/html_text_stubs -Imain -Imain/ui -Imain/font tools/ui_kit_host_test.c main/ui/ui_kit.c -o build/book-tests/ui_kit
+gcc "${flags[@]}" -ffunction-sections -fdata-sections "${link_gc[@]}" -Itools/ui_gesture_stubs -Itools/html_text_stubs -Imain -Imain/ui -Imain/font -DDPREADER_BOARD_METALIO47=1 tools/ui_kit_host_test.c main/ui/ui_kit.c -o build/book-tests/ui_kit
 build/book-tests/gesture
 build/book-tests/ui_kit
 gcc "${flags[@]}" -Itools/html_text_stubs tools/html_text_host_test.c main/book/html_text.c -o build/book-tests/html

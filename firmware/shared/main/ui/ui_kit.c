@@ -15,6 +15,7 @@
  */
 
 #include "ui_kit.h"
+#include "dpreader_board_config.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -273,14 +274,21 @@ void ui_draw_acrylic_guard(uint8_t *fb, EpdRect rect) { draw_frosted(fb, rect, f
 void ui_draw_frosted_pocket(uint8_t *fb, EpdRect rect) { draw_frosted(fb, rect, true); }
 
 // 先用宽整数裁剪，再合并，避免异常坐标加法溢出。/ Clip using wide integers before union to avoid overflow on invalid coordinates.
+// S31阅读正文可横屏，按当前旋转后的屏幕裁剪；固定竖屏尺寸会把横屏翻页区域截成左侧684列。
+// The S31 reader body may be landscape, so clip to the rotated screen; fixed portrait bounds cut landscape turns to the left 684 columns.
 static EpdRect clip_refresh_rect(EpdRect r) {
     if (r.width <= 0 || r.height <= 0) return (EpdRect){0};
     int64_t x0 = r.x, y0 = r.y;
     int64_t x1 = x0 + r.width, y1 = y0 + r.height;
+#if DPREADER_BOARD_METALIO47
+    const int64_t width = epd_rotated_display_width(), height = epd_rotated_display_height();
+#else
+    const int64_t width = UI_LOCK_WIDTH, height = UI_LOCK_HEIGHT;
+#endif
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
-    if (x1 > UI_LOCK_WIDTH) x1 = UI_LOCK_WIDTH;
-    if (y1 > UI_LOCK_HEIGHT) y1 = UI_LOCK_HEIGHT;
+    if (x1 > width) x1 = width;
+    if (y1 > height) y1 = height;
     if (x0 >= x1 || y0 >= y1) return (EpdRect){0};
     return (EpdRect){ .x = (int)x0, .y = (int)y0, .width = (int)(x1 - x0), .height = (int)(y1 - y0) };
 }

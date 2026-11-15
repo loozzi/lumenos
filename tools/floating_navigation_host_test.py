@@ -80,6 +80,8 @@ static int ui_nav_hit(uint16_t x,uint16_t y);
 READER = r'''
 #define BOOK_TOOL_COUNT 6
 #define READER_TOOL_ICON_PX 40
+#define READER_TOOLS_HEIGHT 120
+#define READER_TOOLS_TOP (UI_LOCK_HEIGHT - READER_TOOLS_HEIGHT)
 static bool reader_marked;
 static int bookmark_reads;
 static bool bookmark_is_current(void){++bookmark_reads;return reader_marked;}

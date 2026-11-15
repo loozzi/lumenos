@@ -155,11 +155,11 @@ static unsigned s_quick_slider_drawn[2],s_quick_slider_level[2];
 static bool power_dialog_open;
 #if DPREADER_BOARD_METALIO47
 /* ---- 阅读横屏 / Reader landscape ---- */
-// 用户2026-11-15：快捷设置“Xoay”只切换阅读正文横竖屏，不读重力传感器。纯正文可见时横屏，
-// 面板、对话框、锁屏和其他页面一律竖屏；切换后整页重排并全刷。
+// 用户2026-11-15：快捷设置“Xoay”只切换阅读正文横竖屏，不读重力传感器。正文、底部工具条与快捷设置
+// 可横屏；其他阅读面板、对话框、锁屏和其他页面一律竖屏；切换后整页重排并全刷。
 // User 2026-11-15: the Quick Settings rotate tile switches the reader body only, never from the
-// accelerometer. Landscape applies while the bare body is visible; panels, dialogs, lock and other
-// pages stay portrait. Every switch re-lays out the page and refreshes fully.
+// accelerometer. The body, its bottom tool strip and Quick Settings may be landscape; other reader
+// panels, dialogs, lock and other pages stay portrait. Every switch re-lays out the page and refreshes fully.
 #define ORIENTATION_PORTRAIT EPD_ROT_INVERTED_PORTRAIT
 #define ORIENTATION_LANDSCAPE EPD_ROT_LANDSCAPE
 static bool orientation_landscape_wanted(const app_desc_t *current) {
@@ -746,7 +746,7 @@ static void present_page(app_ctx_t* ctx, const app_desc_t* app,
 // Reuse reading recognition from any horizontal content origin, retaining status/navigation and control-owned gestures.
 static bool edge_back_contact(app_ctx_t *ctx,const app_desc_t *app,const ui_gesture_event_t *event) {
     return app->on_key && app->edge_back_enabled && app->edge_back_enabled(ctx) &&
-        event->x0 < UI_LOCK_WIDTH && event->y0 >= 76 &&
+        event->x0 < epd_rotated_display_width() && event->y0 >= 76 &&
         event->y0 < (navigation_page_ready(ctx,app)?UI_NAV_TOUCH_TOP:UI_LOCK_HEIGHT) &&
         (!app->back_swipe_area || app->back_swipe_area(ctx,event));
 }

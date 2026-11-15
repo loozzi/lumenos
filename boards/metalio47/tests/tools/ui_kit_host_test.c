@@ -14,8 +14,10 @@
 #include <string.h>
 #define W 100
 #define H 100
-int epd_rotated_display_width(void){return W;}
-int epd_rotated_display_height(void){return H;}
+#include "dpreader_board_config.h"
+static int screen_w = W, screen_h = H;
+int epd_rotated_display_width(void){return screen_w;}
+int epd_rotated_display_height(void){return screen_h;}
 static uint8_t pixel_value(const uint8_t *data,int index){unsigned n=(data[index/2]>>((index&1)*4))&15;return n==15?255:n<<4;}
 static void fill_frame(uint8_t *data,int gray,size_t size){memset(data,(gray>>4)*17u,size);}
 static enum EpdRotation rotation = EPD_ROT_LANDSCAPE;
@@ -196,11 +198,20 @@ static void test_icons(void) {
     assert(memcmp(fb, reference, sizeof(fb)) != 0);
 }
 int main(void) {
+    screen_w = UI_LOCK_WIDTH; screen_h = UI_LOCK_HEIGHT;
     rect_eq(ui_rect_union((EpdRect){0}, (EpdRect){10,20,30,40}), 10,20,30,40);
     rect_eq(ui_rect_union((EpdRect){10,20,30,40}, (EpdRect){5,30,50,10}), 5,20,50,40);
     rect_eq(ui_rect_union((EpdRect){-10,-20,30,40}, (EpdRect){0}), 0,0,20,20);
     rect_eq(ui_rect_union((EpdRect){680,1210,INT_MAX,INT_MAX}, (EpdRect){0}), 680,1210,4,6);
     rect_eq(ui_rect_union((EpdRect){INT_MIN,INT_MIN,10,10}, (EpdRect){0}), 0,0,0,0);
+#if DPREADER_BOARD_METALIO47
+    // 横屏阅读翻页：正文与页脚合并后必须覆盖整块1216列，不能被竖屏宽度截断。
+    // Landscape reader turn: the fused body/footer must span all 1216 columns, not the portrait width.
+    screen_w = 1216; screen_h = 684;
+    rect_eq(ui_rect_union((EpdRect){0,0,1216,620}, (EpdRect){0,620,1216,64}), 0,0,1216,684);
+    rect_eq(ui_rect_union((EpdRect){1200,600,INT_MAX,INT_MAX}, (EpdRect){0}), 1200,600,16,84);
+#endif
+    screen_w = W; screen_h = H;
     uint8_t fb[W * H]; fill_frame(fb, UI_GRAY_WHITE, sizeof(fb));
     ui_draw_control_frame(fb,(EpdRect){10,10,60,40},0,0xa0);
     assert(pixel_value(fb,10*W+30)<128&&pixel_value(fb,11*W+30)<128&&pixel_value(fb,12*W+30)==255);

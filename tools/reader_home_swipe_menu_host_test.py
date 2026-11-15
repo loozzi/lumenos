@@ -14,6 +14,8 @@ unit=r'''
 #include <stdbool.h>
 #define UI_LOCK_WIDTH 684
 #define UI_LOCK_HEIGHT 1216
+#define READER_TOOLS_HEIGHT 120
+#define READER_TOOLS_TOP (UI_LOCK_HEIGHT - READER_TOOLS_HEIGHT)
 typedef struct {int x,y,width,height;} EpdRect;
 typedef struct {int request_app;bool user_activity,request_quick_menu,request_back_ripple;} app_ctx_t;
 typedef struct {int type,x0,y0;bool swipe_leftward;} ui_gesture_event_t;

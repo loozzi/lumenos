@@ -231,10 +231,10 @@ static ui_online_fonts_t s_online_fonts;
 #include "ui_nav.h"
 #include "ui_click_feedback.h"
 #if DPREADER_BOARD_METALIO47
-// 用户2026-11-15：正文可横屏；阅读页按当前旋转后的屏幕尺寸排版，竖屏时仍为684×1216。
-//面板、工具栏和书架只在竖屏绘制，主循环在它们出现前切回竖屏。
-// User 2026-11-15: the reader body may be landscape. Size it from the rotated screen, still 684×1216
-// in portrait. Panels, tools and shelves draw only in portrait; the loop rotates back before they appear.
+// 用户2026-11-15：正文与底部工具条可横屏；阅读页按当前旋转后的屏幕尺寸排版，竖屏时仍为684×1216。
+// 其他面板和书架只在竖屏绘制，主循环在它们出现前切回竖屏。
+// User 2026-11-15: the reader body and bottom tool strip may be landscape. Size them from the rotated
+// screen, still 684×1216 in portrait. Other panels and shelves draw only in portrait; the loop rotates back first.
 #undef UI_LOCK_WIDTH
 #undef UI_LOCK_HEIGHT
 #define UI_LOCK_WIDTH (epd_rotated_display_width())
@@ -242,9 +242,13 @@ static ui_online_fonts_t s_online_fonts;
 #endif
 #include "app_transfer_mode.h"
 
-// 阅读工具栏图标盒边长；行内图标在 1096..1216 的工具条里以 1138 为中心。
-// Reader toolbar icon box; the row centres on y=1138 inside the 1096..1216 bar.
+// 阅读工具栏图标盒边长；工具条贴屏幕底部高120，竖屏为1096..1216，图标行在条顶下42。
+// Reader toolbar icon box; the 120px strip hugs the screen bottom (1096..1216 in portrait) with icons 42px below its top.
 #define READER_TOOL_ICON_PX 40
+#define READER_TOOLS_HEIGHT 120
+// 用户2026-11-15：底部工具条随正文横屏，按当前旋转后的屏幕底部定位。
+// User 2026-11-15: the bottom tool strip follows the landscape body and sits at the rotated screen bottom.
+#define READER_TOOLS_TOP (UI_LOCK_HEIGHT - READER_TOOLS_HEIGHT)
 // Plain-arrow box inside a secondary panel back control.
 #define READER_SHEET_BACK_PX 52
 
@@ -456,10 +460,12 @@ bool app_book_reader_body_visible(void) {
 }
 #if DPREADER_BOARD_METALIO47
 static bool reader_choice_visible(void);
-// 只有纯正文可横屏；任何对话框、面板或笔记层都要求竖屏。
-// Only the bare body may be landscape; any dialog, panel or notes layer requires portrait.
+// 正文及底部工具条可横屏；其他面板、对话框或笔记层都要求竖屏。
+// The body and its bottom tool strip may be landscape; other panels, dialogs and notes require portrait.
 bool app_book_landscape_ready(void) {
-    return app_book_reader_body_visible() && !reader_choice_visible();
+    return s_view == READING && s_text &&
+        (s_reader_panel == READER_PANEL_NONE || s_reader_panel == READER_PANEL_TOOLS) &&
+        !s_clear_confirm && !book_notes_active() && !reader_choice_visible();
 }
 static bool reader_landscape_active(void) { return epd_rotated_display_width() > epd_rotated_display_height(); }
 #endif
@@ -1455,7 +1461,7 @@ static void draw_shelf_furniture(uint8_t* fb) {
 static EpdRect tool_rect(int i) {
     int x0 = i * UI_LOCK_WIDTH / BOOK_TOOL_COUNT;
     int x1 = (i + 1) * UI_LOCK_WIDTH / BOOK_TOOL_COUNT;
-    return (EpdRect){x0, 1096, x1 - x0, 120};
+    return (EpdRect){x0, READER_TOOLS_TOP, x1 - x0, READER_TOOLS_HEIGHT};
 }
 static int leaves(void) {
     if (s_view == TOC) return book_toc_pages(book_navigation_count());
@@ -3519,9 +3525,10 @@ static EpdRect reader_fast_panel_rect(void) {
 #endif
 // Bottom-swipe actions share flat page cards; keep six hit columns and icon/label positions without body work or presentation.
 static void draw_reader_tools(uint8_t *fb) {
-    ui_fill_rect_fast((EpdRect){0,1096,UI_LOCK_WIDTH,120},UI_GRAY_WHITE,fb);
+    const int top=READER_TOOLS_TOP;
+    ui_fill_rect_fast((EpdRect){0,top,UI_LOCK_WIDTH,READER_TOOLS_HEIGHT},UI_GRAY_WHITE,fb);
 #if !DPREADER_BOARD_METALIO47
-    ui_hairline(fb,1096,0,UI_LOCK_WIDTH,0x98);
+    ui_hairline(fb,top,0,UI_LOCK_WIDTH,0x98);
 #endif
     const char* labels[]={"Mục lục","Đánh dấu","Đồng bộ","Thống kê","Cài đặt đọc","Phông chữ"};
     for(int i=0;i<BOOK_TOOL_COUNT;++i) {
@@ -3529,10 +3536,10 @@ static void draw_reader_tools(uint8_t *fb) {
         const int cx=rect.x+rect.width/2;
         const bool bookmarked=i==1&&bookmark_is_current();
 #if DPREADER_BOARD_METALIO47
-        ui_draw_soft_card(fb,(EpdRect){rect.x+4,1106,rect.width-8,104},18,bookmarked);
+        ui_draw_soft_card(fb,(EpdRect){rect.x+4,top+10,rect.width-8,104},18,bookmarked);
 #endif
-        draw_reader_tool_icon(fb,cx,1138,i,bookmarked);
-        ui_text_box(fb,(EpdRect){rect.x+4,1159,rect.width-8,40},20,bookmarked?"Đã lưu dấu":labels[i],EPD_DRAW_ALIGN_CENTER,false);
+        draw_reader_tool_icon(fb,cx,top+42,i,bookmarked);
+        ui_text_box(fb,(EpdRect){rect.x+4,top+63,rect.width-8,40},20,bookmarked?"Đã lưu dấu":labels[i],EPD_DRAW_ALIGN_CENTER,false);
     }
 }
 
@@ -4449,7 +4456,7 @@ static bool reader_panel_fast_present(app_ctx_t *ctx,app_redraw_t redraw) {
         int prior_top;
         switch(s_reader_panel_frame.panel){
             case READER_PANEL_NONE:prior_top=UI_LOCK_HEIGHT;break;
-            case READER_PANEL_TOOLS:prior_top=1096;break;
+            case READER_PANEL_TOOLS:prior_top=READER_TOOLS_TOP;break;
             case READER_PANEL_FONT_SETTINGS:prior_top=reader_font_top();break;
             case READER_PANEL_REFRESH_SETTINGS:prior_top=reading_settings_top();break;
             case READER_PANEL_LAYOUT_SETTINGS:prior_top=500;break;
@@ -4461,7 +4468,7 @@ static bool reader_panel_fast_present(app_ctx_t *ctx,app_redraw_t redraw) {
         if(top>prior_top)return false;
     }
     else if(tools_closing)top=0;
-    else if(s_reader_panel_frame.panel==READER_PANEL_NONE&&s_reader_panel==READER_PANEL_TOOLS)top=1096;
+    else if(s_reader_panel_frame.panel==READER_PANEL_NONE&&s_reader_panel==READER_PANEL_TOOLS)top=READER_TOOLS_TOP;
     else if(s_reader_panel_frame.panel==READER_PANEL_TOOLS){
         if(s_reader_panel==READER_PANEL_FONT_SETTINGS)top=reader_font_top();
         else if(s_reader_panel==READER_PANEL_REFRESH_SETTINGS)top=reading_settings_top();
@@ -7593,7 +7600,7 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
         return APP_REDRAW_NONE;
     }
     if (s_view == READING) {
-        if (s_toolbar && !(s_reader_panel == READER_PANEL_TOOLS && y < 1096 && ui_rect_hit(body_rect(), x, y)))
+        if (s_toolbar && !(s_reader_panel == READER_PANEL_TOOLS && y < READER_TOOLS_TOP && ui_rect_hit(body_rect(), x, y)))
             return reader_panel_action(ctx, x, y);
         // 通栏插图铺满整屏，点在图两侧的边条上同样要翻页；文字页仍按正文栏判定。
         // A full-bleed illustration spans the panel, so taps on its side strips must turn pages
@@ -8066,7 +8073,7 @@ static bool reader_quick_swipe(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
 static bool reader_tools_swipe(app_ctx_t *ctx, const ui_gesture_event_t *ev) {
     if (s_view != READING || !s_text || s_reader_panel != READER_PANEL_NONE ||
         s_clear_confirm || s_scan_pending || ctx->consumed || ev->type != UI_GESTURE_SWIPE_U ||
-        ev->x0 >= UI_LOCK_WIDTH || ev->y0 < UI_LOCK_HEIGHT - 120 || ev->y0 >= UI_LOCK_HEIGHT) return false;
+        ev->x0 >= UI_LOCK_WIDTH || ev->y0 < READER_TOOLS_TOP || ev->y0 >= UI_LOCK_HEIGHT) return false;
     s_reader_tap.pending = false;
     s_pressed_control = s_reader_slider = -1;
     s_reader_panel = READER_PANEL_TOOLS;
@@ -8525,7 +8532,7 @@ static app_redraw_t gesture_event(app_ctx_t* ctx, const ui_gesture_event_t* ev) 
     if (s_view == READING && ev->type != UI_GESTURE_PRESS) s_stats_activity_ms = ctx->now_ms;
     // A tap outside the tool strip dismisses it without turning the page.
     if (s_view == READING && s_reader_panel == READER_PANEL_TOOLS &&
-        ev->type == UI_GESTURE_TAP && ev->y0 < 1096) {
+        ev->type == UI_GESTURE_TAP && ev->y0 < READER_TOOLS_TOP) {
         s_reader_panel = READER_PANEL_NONE;
         s_reader_tap.pending = false;
         s_pressed_control = -1;
@@ -8587,7 +8594,7 @@ static app_redraw_t gesture_event(app_ctx_t* ctx, const ui_gesture_event_t* ev) 
             return action_at(ctx, ev->x0, ev->y0);
     }
     if (!s_clear_confirm && !s_scan_pending) {
-        if (s_view == READING && (!s_toolbar || (s_reader_panel == READER_PANEL_TOOLS && ev->y0 < 1096)) &&
+        if (s_view == READING && (!s_toolbar || (s_reader_panel == READER_PANEL_TOOLS && ev->y0 < READER_TOOLS_TOP)) &&
             ui_rect_hit(body_rect(), ev->x0, ev->y0)) {
             int direction = reader_swipe_direction(ev->type, app_settings_reader_turn_mode());
             if (direction) { ctx->user_activity = true; return turn_page(ctx, direction); }
