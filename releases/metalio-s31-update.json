@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.5.9",
+  "version": "1.5.10",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.6",
-  "notes": "LumenOS 1.5.9: Thanh điều hướng mới dạng khung bo tròn, nút Cài đặt tròn riêng; mở EPUB và lấy bìa nhanh hơn; chạm chú thích ưu tiên trước lật trang, mở được khi đọc ngang.",
+  "previous_version": "1.5.9",
+  "notes": "LumenOS 1.5.10: Tủ sách dạng Danh sách mới: ô tìm kiếm luôn hiện, nút Nhập sách rõ chữ, tab lọc kèm số sách, 5 cuốn mỗi trang với tác giả, tiến độ và nơi lưu. Lần đầu nâng cấp tự chuyển sang kiểu này.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "883385e67a82321c60391eb5f14db9cc04374bb2f2de66cc681f71fc3f801481",
-      "md5": "a65b440ee22511a3c00b76d8e51d494d"
+      "sha256": "686bd50a1d75cbd725467c7c0bc92e2e8a84294dba4cb3a4839ab0d616d1ee57",
+      "md5": "a17f94157e5da0a0a4e46f4730fa20d5"
     }
   },
   "clean_image": {
-    "sha256": "76ee2c6e4599a0ea2900f434a5ff990a52c8f2d40e9158d02a5e366a77b3d1de",
-    "md5": "6ffa01b4fdf0800b5a831a5a723ef58a"
+    "sha256": "ae2498563dc2195b918520e5666cd127552043781368d9497f0605b8e2fe82f6",
+    "md5": "86abed69d4f6f554e9a4495c8a58421e"
   },
-  "size": 4973760,
-  "sha256": "9128b95a5e6f2bfbf6e143ca25d4c3312231b9f0607f09b9747610bce1e2cf9a",
-  "md5": "28f6da5b1c7a63c684538a4d0235054e"
+  "size": 4976384,
+  "sha256": "b11da43bef1222ad3ffc1b8294b3b96c89c9c0fed953a2791958654f9bc937b8",
+  "md5": "8626e2f2a078f7e596aaf7a12736c947"
 }

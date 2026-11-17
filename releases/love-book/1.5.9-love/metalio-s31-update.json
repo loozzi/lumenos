@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.9-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.6-love",
+  "notes": "LumenOS 1.5.9 Love Book: Thanh điều hướng mới dạng khung bo tròn, nút Cài đặt tròn riêng; mở EPUB nhanh hơn; chạm chú thích ưu tiên trước lật trang, mở được khi đọc ngang.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "ecea0e924a62b688c190275eadfe5df9e6353db8ed527fe8be1433508494f939",
+      "md5": "d616ede99b83a02be765fd23d037ad9e"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "3d6638611fa6c3ed10b294c758b5bcddbf9ab5c3a6446c51612e35023586a8f7",
+      "md5": "daca2fa57379e3296922ac9dfe1e1770"
+    }
+  },
+  "clean_image": {
+    "sha256": "35fd6a526dfe0803775781c2ccbe7c43a554f5e808e21dac89b5b36c314fef4a",
+    "md5": "13b3847844b1f210d41d963cb83224d7"
+  },
+  "size": 4906336,
+  "sha256": "2df5c5e609d0827f209c969d0d9461f399974a71b985f7ceaab5c415b58cd56b",
+  "md5": "bc6e7678048f584ae3853f73d293a779"
+}
