@@ -1,3 +1,8 @@
+## LumenOS 1.5.9 / 1.5.9-love · Phát hành chính thức · 2026-11-17
+
+- Thanh điều hướng dưới cùng làm mới: Trang chủ, Tủ sách và Tệp tin nằm trong một khung bo tròn, mục đang mở là khối đen có biểu tượng và tên; Cài đặt là nút tròn riêng bên phải với biểu tượng bánh răng. Thanh thẳng mép với các thẻ nội dung.
+- Gồm các thay đổi của bản thử 1.5.7 và 1.5.8: mở EPUB và lấy bìa nhanh hơn, giảm ghi lại tiến độ không đổi, đóng tệp sách trước khi ngủ sâu, chạm chú thích/citation ưu tiên trước lật trang và mở được khi đọc ngang.
+
 ## LumenOS 1.5.8 / 1.5.8-love · Bản thử cục bộ · 2026-11-17
 
 - Chạm chú thích/citation được ưu tiên trước thao tác lật trang. Tải lỗi vẫn mở hộp thoại báo lỗi; ký hiệu `[1]` dạng chữ không có liên kết hiện thông báo thiếu liên kết, không đoán nội dung và không lật trang.

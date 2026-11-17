@@ -1,1 +1,1 @@
-LumenOS 1.5.6 Love Book: Tệp tin hiện 6 mục mỗi trang, sắp xếp theo tên hoặc cỡ, biểu tượng theo loại tệp; thẻ Truyền tệp gọn hơn.
+LumenOS 1.5.9 Love Book: Thanh điều hướng mới dạng khung bo tròn, nút Cài đặt tròn riêng; mở EPUB nhanh hơn; chạm chú thích ưu tiên trước lật trang, mở được khi đọc ngang.
