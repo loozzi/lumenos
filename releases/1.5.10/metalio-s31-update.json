@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.5.10",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.9",
+  "notes": "LumenOS 1.5.10: Tủ sách dạng Danh sách mới: ô tìm kiếm luôn hiện, nút Nhập sách rõ chữ, tab lọc kèm số sách, 5 cuốn mỗi trang với tác giả, tiến độ và nơi lưu. Lần đầu nâng cấp tự chuyển sang kiểu này.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5",
+      "md5": "a865d71c2d6db481384bdd719fbfc2d9"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "686bd50a1d75cbd725467c7c0bc92e2e8a84294dba4cb3a4839ab0d616d1ee57",
+      "md5": "a17f94157e5da0a0a4e46f4730fa20d5"
+    }
+  },
+  "clean_image": {
+    "sha256": "ae2498563dc2195b918520e5666cd127552043781368d9497f0605b8e2fe82f6",
+    "md5": "86abed69d4f6f554e9a4495c8a58421e"
+  },
+  "size": 4976384,
+  "sha256": "b11da43bef1222ad3ffc1b8294b3b96c89c9c0fed953a2791958654f9bc937b8",
+  "md5": "8626e2f2a078f7e596aaf7a12736c947"
+}

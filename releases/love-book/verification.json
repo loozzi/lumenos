@@ -4,9 +4,9 @@
   "target": "esp32s31",
   "chip_id": 32,
   "project": "Kiikoread_Metalio_S31",
-  "version": "1.5.10-love",
+  "version": "1.5.11-love",
   "size": 4908032,
-  "sha256": "9085d4c08ee53b39b06e24b0f08781bbe5d97126788bf5ac8d0904f42b7d9a37",
+  "sha256": "065ea3aa3c30fb1e141c606864602fb0e9562589b3e926b359e9d6d7bc8ceafd",
   "partitions": {
     "otadata": [
       1,
