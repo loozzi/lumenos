@@ -307,5 +307,32 @@ int main(void) {
         assert(html_to_blocks_note(h, strlen(h), "missing", &a, &b, &t) == ESP_ERR_NOT_FOUND);
         assert(t.utf8 == NULL);
     }
+    {
+        const char *h = "<p>Text <a role='doc-biblioref' href='refs.xhtml'>[a]</a> "
+                        "<a href='#letter'><sup>b</sup></a> "
+                        "<a class='footnote-ref' href='notes&amp;more.xhtml&#35;fn%201'>c</a> "
+                        "<a href='chapter.xhtml'>next</a></p>";
+        html_text_t t = {0};
+        assert(html_to_blocks(h, strlen(h), &t) == ESP_OK);
+        assert(t.link_count == 3);
+        assert(!strcmp(t.links[0].href, "refs.xhtml"));
+        assert(!strcmp(t.links[1].href, "#letter"));
+        assert(!strcmp(t.links[2].href, "notes&more.xhtml#fn%201"));
+        html_text_free(&t);
+        const char *target = "<p id='fn&amp;1'>Citation text.</p>";
+        size_t a = 0, b = 0;
+        assert(html_to_blocks_note(target, strlen(target), "fn&1", &a, &b, &t) == ESP_OK);
+        assert(b - a == strlen("Citation text."));
+        html_text_free(&t);
+        char long_ref[800];
+        memset(long_ref, 'x', sizeof(long_ref));
+        strcpy(long_ref, "<p><a epub:type='noteref' href='");
+        size_t at = strlen(long_ref);
+        memset(long_ref + at, 'x', 180); at += 180;
+        strcpy(long_ref + at, ".xhtml#note'>[1]</a></p>");
+        assert(html_to_blocks(long_ref, strlen(long_ref), &t) == ESP_OK);
+        assert(t.link_count == 1 && strlen(t.links[0].href) > 127);
+        html_text_free(&t);
+    }
     puts("html_text_host_test: PASS");
 }

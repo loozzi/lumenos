@@ -134,7 +134,9 @@ int main(void){
  puts("PASS actual OTA check/download workers retain ownership against concurrent Sleep/restore requests");
  puts("PASS WiFi Sleep: OTA owner/upload exclusion, unlock without reconnect, HTTP/stop/deinit failures retry without false OFF, no reconnect polling and newer-session protection");}
 '''
-assert 'if(pico_online_busy())' in function('enter_lock_and_sleep',sleep)
+assert 'if(!app_lock_prepare_resources())' in ''.join(function('enter_lock_and_sleep',sleep).split())
+prepare=function('app_lock_prepare_resources',sleep)
+assert prepare.index('pico_online_busy()') < prepare.index('read_pico_transfer_pause_for_sleep()')
 ota_start=function('start',r/'boards/metalio47/src/main/ota_online.c');assert ota_start.index('s_status->busy = true')<ota_start.index('xTaskCreate(worker')
 loop=(r/'main/app/app_loop.c').read_text();assert 'if(radio_ready)read_pico_transfer_resume_service();' in loop
 for n in ['read_pico_transfer_start','read_pico_transfer_scan_wifi','sync_time_run','read_pico_transfer_preempt_for_network']:assert 'read_pico_transfer_sleep_blocked()' in function(n,src)

@@ -1,3 +1,17 @@
+## LumenOS 1.5.8 / 1.5.8-love · Bản thử cục bộ · 2026-11-17
+
+- Chạm chú thích/citation được ưu tiên trước thao tác lật trang. Tải lỗi vẫn mở hộp thoại báo lỗi; ký hiệu `[1]` dạng chữ không có liên kết hiện thông báo thiếu liên kết, không đoán nội dung và không lật trang.
+- Bổ sung nhận diện citation dùng chữ, chữ trên, `doc-biblioref` và các lớp chú thích; hỗ trợ đích là cả tệp, địa chỉ dài hơn và ký tự mã hóa trong đường dẫn/ID.
+- Hộp thoại chú thích mở được khi đọc ngang và giữ hướng đọc; tự giới hạn chiều cao, phân trang nội dung dài. Công cụ chọn chữ/ghi chú vẫn dùng giao diện dọc.
+- Giữ các tối ưu mở sách, bìa và ngủ của bản 1.5.7.
+
+## LumenOS 1.5.7 / 1.5.7-love · Bản thử cục bộ · 2026-11-17
+
+- Mở EPUB và lấy ảnh bìa: gom các lần đọc nhỏ trong thư mục ZIP thành khối, tái sử dụng bộ đệm sẵn có; tính CRC nhanh hơn và giữ nguyên kiểm tra tệp hỏng.
+- Đóng sách/lưu tiến độ: tránh ghi lại vị trí đã lưu thành công nếu chưa thay đổi; vẫn ghi khi mở sách mới và thử lại đầy đủ khi lưu lỗi.
+- Tủ sách: dùng kích thước bìa có sẵn trong RAM khi đọc cache ảnh, giảm lượt mở tệp trên thẻ nhớ.
+- Deep Sleep: đóng tệp sách trước khi tháo thẻ; nếu chuẩn bị ngủ thất bại, phục hồi qua luồng mở lại tệp. Wi-Fi/Bluetooth tiếp tục phải dừng thành công trước khi ngủ. Khóa thường vẫn dùng Light Sleep rồi tắt nguồn theo thời gian đã chọn.
+
 ## LumenOS 1.5.6 / 1.5.6-love · Phát hành chính thức · 2026-11-15
 
 - Trang chủ (bản Full): thẻ **lịch đọc trong tháng** thay cho khối Tiện Ích và danh sách Đọc gần đây. Ngày đạt mục tiêu được tô đậm, ngày có đọc nhưng chưa đạt có viền, hôm nay có vòng đậm; bên dưới là số phút hôm nay, chuỗi ngày đạt mục tiêu liên tiếp và số ngày đạt trong tháng. Chạm vào thẻ để mở trang lịch đọc và chỉnh mục tiêu. Giao diện tối giản và Love Book không đổi.

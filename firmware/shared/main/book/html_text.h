@@ -59,13 +59,13 @@ typedef struct {
     size_t run_count; ///< 本块的 run 数；零表示整块用系统字体 / Runs owned by this block; zero means the system face throughout
 } blk_t;
 
-#define HTML_LINK_HREF_MAX 127u
+#define HTML_LINK_HREF_MAX 511u
 #define HTML_LINK_MAX 512u
 
 /// 疑似脚注引用的链接：noteref 语义或短编号文字。/ Likely footnote reference: noteref semantics or short numbered text.
 typedef struct {
     size_t start, end; ///< 规范化正文的字节区间 / Byte range in normalized text
-    char href[HTML_LINK_HREF_MAX + 1]; ///< 原文 href，含 #片段 / Source href including its #fragment
+    char href[HTML_LINK_HREF_MAX + 1]; ///< 解码XML实体的href，保留URI转义 / XML-decoded href, retaining URI escapes
 } html_link_t;
 
 typedef struct {

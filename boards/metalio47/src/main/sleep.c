@@ -733,7 +733,10 @@ esp_err_t app_enter_host_sleep(app_sleep_mode_t mode) {
     (void)ttf_font_open_builtin();
     if(mode==APP_SLEEP_DEEP) {
         s_lock_io_pending=true;
-        err=ttf_font_suspend_io();
+        // 先关闭书籍句柄再卸载TF；深睡失败可沿原检查点恢复。
+        // Close book handles before unmounting TF; failed deep entry can resume the checkpoint.
+        err=book_suspend_io();
+        if(err==ESP_OK)err=ttf_font_suspend_io();
     }
     if(err==ESP_OK) err = read_pico_sd_sync();
     if (err != ESP_OK) {

@@ -630,6 +630,41 @@ static bool block_tag(const char* name) {
     return false;
 }
 
+// 有界解码属性中的XML实体，拒绝内嵌NUL。/ Decode XML attribute entities within bounds, rejecting embedded NUL.
+static bool decode_attribute(const char *value, size_t length, char *path, size_t cap) {
+    if (!value || !cap) return false;
+    size_t used = 0;
+    for (size_t i = 0; i < length;) {
+        uint32_t cp = 0;
+        size_t consumed = value[i] == '&' ? entity(value + i, length - i, &cp) : 0;
+        if (consumed) {
+            if (!cp) return false;
+            char bytes[4]; size_t count = 0;
+            if (cp < 0x80) bytes[count++] = (char)cp;
+            else if (cp < 0x800) {
+                bytes[count++] = (char)(0xc0 | (cp >> 6));
+                bytes[count++] = (char)(0x80 | (cp & 63));
+            } else if (cp < 0x10000) {
+                bytes[count++] = (char)(0xe0 | (cp >> 12));
+                bytes[count++] = (char)(0x80 | ((cp >> 6) & 63));
+                bytes[count++] = (char)(0x80 | (cp & 63));
+            } else {
+                bytes[count++] = (char)(0xf0 | (cp >> 18));
+                bytes[count++] = (char)(0x80 | ((cp >> 12) & 63));
+                bytes[count++] = (char)(0x80 | ((cp >> 6) & 63));
+                bytes[count++] = (char)(0x80 | (cp & 63));
+            }
+            if (used + count > (cap - 1)) return false;
+            memcpy(path + used, bytes, count); used += count; i += consumed;
+        } else {
+            if (used == (cap - 1) || !value[i]) return false;
+            path[used++] = value[i++];
+        }
+    }
+    path[used] = 0;
+    return used != 0;
+}
+
 // 识别常见惰性图片属性及 SVG 引用，并解码路径中的 XML 实体。
 // Recognize common lazy image attributes and SVG references, decoding XML entities in paths.
 static bool image_attr(const char* at, const char* end, bool object,
@@ -655,35 +690,7 @@ static bool image_attr(const char* at, const char* end, bool object,
         }
     }
     if (!value || !length || length > HTML_IMAGE_PATH_MAX) return false;
-    size_t used = 0;
-    for (size_t i = 0; i < length;) {
-        uint32_t cp = 0;
-        size_t consumed = value[i] == '&' ? entity(value + i, length - i, &cp) : 0;
-        if (consumed) {
-            char bytes[4]; size_t count = 0;
-            if (cp < 0x80) bytes[count++] = (char)cp;
-            else if (cp < 0x800) {
-                bytes[count++] = (char)(0xc0 | (cp >> 6));
-                bytes[count++] = (char)(0x80 | (cp & 63));
-            } else if (cp < 0x10000) {
-                bytes[count++] = (char)(0xe0 | (cp >> 12));
-                bytes[count++] = (char)(0x80 | ((cp >> 6) & 63));
-                bytes[count++] = (char)(0x80 | (cp & 63));
-            } else {
-                bytes[count++] = (char)(0xf0 | (cp >> 18));
-                bytes[count++] = (char)(0x80 | ((cp >> 12) & 63));
-                bytes[count++] = (char)(0x80 | ((cp >> 6) & 63));
-                bytes[count++] = (char)(0x80 | (cp & 63));
-            }
-            if (used + count > HTML_IMAGE_PATH_MAX) return false;
-            memcpy(path + used, bytes, count); used += count; i += consumed;
-        } else {
-            if (used == HTML_IMAGE_PATH_MAX) return false;
-            path[used++] = value[i++];
-        }
-    }
-    path[used] = 0;
-    return used != 0;
+    return decode_attribute(value, length, path, HTML_IMAGE_PATH_MAX + 1);
 }
 
 static esp_err_t add_image(writer_t* w, const char* path) {
@@ -739,7 +746,10 @@ static esp_err_t link_close(writer_t* w) {
     const char* href = w->link_href;
     size_t href_len = w->link_href_len;
     w->link_href = NULL;
-    if (!href || w->auxiliary_depth || href_len > HTML_LINK_HREF_MAX || !memchr(href, '#', href_len)) return ESP_OK;
+    if (!href || w->auxiliary_depth) return ESP_OK;
+    char decoded[HTML_LINK_HREF_MAX + 1];
+    if (!decode_attribute(href, href_len, decoded, sizeof(decoded)) ||
+        (!w->link_note && !strchr(decoded, '#'))) return ESP_OK;
     size_t a = w->link_start, b = w->text.len;
     while (a < b && (w->text.utf8[a] == '\n' || w->text.utf8[a] == ' ')) ++a;
     while (b > a && w->text.utf8[b - 1] == ' ') --b;
@@ -757,8 +767,7 @@ static esp_err_t link_close(writer_t* w) {
     html_link_t* link = &w->text.links[w->text.link_count++];
     link->start = a;
     link->end = b;
-    memcpy(link->href, href, href_len);
-    link->href[href_len] = 0;
+    strcpy(link->href, decoded);
     return ESP_OK;
 }
 
@@ -897,9 +906,15 @@ static esp_err_t html_to_blocks_core(const char* html, size_t len,
                         w.link_href = back ? NULL : href;
                         w.link_href_len = href_len;
                         w.link_note = attr_has(html + at, html + end, "epub:type", "noteref") ||
-                                      attr_has(html + at, html + end, "role", "noteref");
+                                      attr_has(html + at, html + end, "role", "noteref") ||
+                                      attr_has(html + at, html + end, "role", "biblioref") ||
+                                      attr_has(html + at, html + end, "epub:type", "biblioref") ||
+                                      attr_has(html + at, html + end, "class", "noteref") ||
+                                      attr_has(html + at, html + end, "class", "footnote-ref") ||
+                                      attr_has(html + at, html + end, "class", "citation");
                     }
                 }
+                if (!closing && w.link_depth && name_equal(name, "sup")) w.link_note = true;
                 if (!closing && (name_equal(name, "img") || name_equal(name, "image") ||
                                  name_equal(name, "svg:image") || name_equal(name, "object"))) {
                     char path[HTML_IMAGE_PATH_MAX + 1];
@@ -945,11 +960,13 @@ static esp_err_t html_to_blocks_core(const char* html, size_t len,
                 if (!closing && !skip[0] && anchor_offset) {
                     const char *value = NULL; size_t length = 0;
                     bool matched = tag_offset == source_offset;
+                    char decoded_anchor[128];
                     if (!matched && anchor && *anchor &&
                         (attr_value(html + at, html + end, "id", &value, &length) ||
                          attr_value(html + at, html + end, "xml:id", &value, &length) ||
                          attr_value(html + at, html + end, "name", &value, &length)) &&
-                        length == strlen(anchor) && !memcmp(value, anchor, length)) matched = true;
+                        decode_attribute(value, length, decoded_anchor, sizeof(decoded_anchor)) &&
+                        !strcmp(decoded_anchor, anchor)) matched = true;
                     if (matched && anchor_end) {
                         // 脚注只认第一个同名目标，并跟踪到它闭合。/ Notes take the first matching target and follow it to its close.
                         if (*anchor_end == SIZE_MAX && tag_offset != source_offset) {

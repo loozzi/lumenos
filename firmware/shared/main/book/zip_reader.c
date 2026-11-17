@@ -43,6 +43,9 @@ struct zip_reader {
     FILE* file;
 #if DPREADER_BOARD_METALIO47
     bool io_suspended;
+    uint8_t *directory_buffer;
+    size_t directory_capacity, directory_bytes;
+    uint32_t directory_offset;
     struct stat io_stat;
 #else
 #endif
@@ -73,6 +76,24 @@ static uint16_t u16(const uint8_t* p) { return (uint16_t)(p[0] | ((uint16_t)p[1]
 static uint32_t u32(const uint8_t* p) { return (uint32_t)u16(p) | ((uint32_t)u16(p + 2) << 16); }
 static bool read_at(zip_reader_t* z, uint32_t pos, void* dst, size_t size) {
 #if DPREADER_BOARD_METALIO47
+    // 开书时复用EOCD缓冲顺序预读中央目录，不另建读取缓冲。
+    // Reuse the EOCD buffer for sequential directory reads without a second read buffer.
+    if (z->directory_buffer && pos >= z->directory && pos <= z->size &&
+        size <= z->size - pos && size <= z->directory_capacity) {
+        if (pos < z->directory_offset || (size_t)(pos - z->directory_offset) > z->directory_bytes ||
+            size > z->directory_bytes - (size_t)(pos - z->directory_offset)) {
+            z->directory_offset = pos;
+            z->directory_bytes = z->size - pos;
+            if (z->directory_bytes > z->directory_capacity) z->directory_bytes = z->directory_capacity;
+            if (fseek(z->file, (long)pos, SEEK_SET) ||
+                fread(z->directory_buffer, 1, z->directory_bytes, z->file) != z->directory_bytes) {
+                z->directory_bytes = 0;
+                return false;
+            }
+        }
+        memcpy(dst, z->directory_buffer + pos - z->directory_offset, size);
+        return true;
+    }
     if(z->prefetch_ready && pos>=z->prefetch_offset &&
        (size_t)(pos-z->prefetch_offset)<=z->prefetch_size &&
        size<=z->prefetch_size-(size_t)(pos-z->prefetch_offset)) {
@@ -99,10 +120,17 @@ static bool extras_valid(zip_reader_t* z, uint32_t pos, uint16_t len) {
 }
 
 static uint32_t zip_crc32(const uint8_t* data, size_t len) {
+    static const uint32_t nibble[16] = {
+        0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+        0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+        0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+        0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c,
+    };
     uint32_t crc = UINT32_MAX;
     while (len--) {
         crc ^= *data++;
-        for (int i = 0; i < 8; ++i) crc = (crc >> 1) ^ (UINT32_C(0xedb88320) & (0U - (crc & 1U)));
+        crc = (crc >> 4) ^ nibble[crc & 15];
+        crc = (crc >> 4) ^ nibble[crc & 15];
     }
     return ~crc;
 }
@@ -217,7 +245,12 @@ esp_err_t zip_open(const char* path, zip_reader_t** out) {
     uint32_t dir_size = u32(eocd + 12), eocd_pos = tail_pos + end;
     err = ESP_ERR_INVALID_SIZE;
     if (dir_size > DIRECTORY_MAX || z->directory > eocd_pos || dir_size != eocd_pos - z->directory) goto fail;
+#if DPREADER_BOARD_METALIO47
+    z->directory_buffer = tail;
+    z->directory_capacity = tail_len;
+#else
     free(tail); tail = NULL;
+#endif
     if (z->count) {
         z->entries = heap_caps_calloc(z->count, sizeof(*z->entries), PSRAM);
         unsigned slots = 16;
@@ -261,6 +294,10 @@ esp_err_t zip_open(const char* path, zip_reader_t** out) {
         pos += record_len;
     }
     if (pos != eocd_pos) goto fail;
+#if DPREADER_BOARD_METALIO47
+    z->directory_buffer = NULL;
+    free(tail);
+#endif
     *out = z;
     return ESP_OK;
 fail:

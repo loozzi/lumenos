@@ -462,11 +462,11 @@ bool app_book_reader_body_visible(void) {
 #if DPREADER_BOARD_METALIO47
 static bool reader_choice_visible(void);
 static bool reader_panel_viewport_allowed(reader_panel_t panel);
-// 正文、底部工具条、目录、选择列表及已支持视窗的面板可横屏；其余面板、对话框或笔记层要求竖屏。
+// 正文、工具条、目录、选择列表、视窗面板及脚注可横屏；其余面板和笔记工具要求竖屏。
 // The body, tool strip, TOC, choice lists and viewport-capable panels may be landscape; other panels,
-// dialogs and notes require portrait.
+// dialogs and annotation tools require portrait; footnotes retain the reader orientation.
 bool app_book_landscape_ready(void) {
-    if (!s_text || s_clear_confirm || book_notes_active()) return false;
+    if (!s_text || s_clear_confirm || (book_notes_active() && !book_notes_footnote_active())) return false;
     if (s_view == TOC) return true;
     return s_view == READING &&
         (s_reader_panel == READER_PANEL_NONE || s_reader_panel == READER_PANEL_TOOLS ||
@@ -2074,12 +2074,14 @@ static void save_progress(void) {
         .px = (uint8_t)s_px, .pct = (uint8_t)percent(s_page),
         .last_open_s = 0,
     };
-    if (!pending->dirty || pending->value.file_size != p.file_size || pending->value.chapter != p.chapter ||
+    // 已成功保存且位置未变时不重写进度；新开书和失败重试仍提交。
+    // Keep unchanged saved positions clean; new opens and failed commits still persist.
+    if (!pending->progress_saved || pending->value.file_size != p.file_size || pending->value.chapter != p.chapter ||
         pending->value.byte_off != p.byte_off || pending->value.px != p.px || pending->value.pct != p.pct) {
         pending->value = p;
         pending->progress_saved = false;
+        pending->dirty = true;
     }
-    pending->dirty = true;
     if (pending_flush(pending)) {
         s_unsaved = 0;
         s_save_failed = false;
@@ -8597,8 +8599,9 @@ static bool reader_edge_light_gesture(const ui_gesture_event_t *ev) {
 static bool reader_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,app_redraw_t *out) {
     if(s_view!=READING||!s_text||s_reader_panel!=READER_PANEL_NONE||s_toolbar||s_clear_confirm||s_zoom_active)return false;
 #if DPREADER_BOARD_METALIO47
-    // 选字、笔记和脚注弹窗按竖屏布局；横屏时不接管手势。/ Selection, notes and footnote popups are portrait-only.
-    if(reader_landscape_active())return false;
+    // 横屏只接管脚注点击及其弹窗；选字和笔记工具仍按竖屏布局。
+    // In landscape, accept footnote taps/dialogs only; selection and annotation tools remain portrait.
+    if(reader_landscape_active()&&!book_notes_footnote_active()&&ev->type!=UI_GESTURE_TAP)return false;
 #endif
     if (!book_notes_active() && ev->type != UI_GESTURE_TAP && ev->type != UI_GESTURE_LONG_PRESS)
         return false;
@@ -9309,6 +9312,7 @@ static bool reader_choice_visible(void) { return s_reader_choice.open; }
 // Called by the loop after a rotation change: re-lay the chapter for the new screen size at the same
 // text offset and drop prepared pages. Must not draw or present.
 void app_book_orientation_changed(void) {
+    book_notes_cancel();
     // 回到竖屏时释放横屏面板视窗暂存帧。/ Free the landscape panel viewport scratch when returning to portrait.
     if (epd_get_rotation() != EPD_ROT_LANDSCAPE) reader_viewport_release();
     book_layout_set_image_bleed_width(UI_LOCK_WIDTH);

@@ -64,7 +64,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='book-epub-') as temp:
         work = Path(temp)
         exe = work / 'test'
-        subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
+        subprocess.run(['cc', '-std=c11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
                         '-I' + str(ROOT / 'tools/book_epub_stubs'), '-I' + str(ROOT / 'tools/zip_host_stubs'),
                         '-I' + str(ROOT / 'main/book'), str(ROOT / 'tools/book_epub_host_test.c'),
                         str(ROOT / 'main/book/book_epub.c'), str(ROOT / 'main/book/zip_reader.c'),
@@ -80,6 +80,16 @@ def main():
             return lambda files: files.__setitem__('OPS/pkg/book.opf', files['OPS/pkg/book.opf'].replace(old, new))
 
         case('good_paths')
+        def citation_book(files):
+            files['OPS/text/part 1&x.xhtml'] = (
+                '<html><body><p>Text <a role="doc-biblioref" href="notes.xhtml">[a]</a> '
+                '<a epub:type="noteref" href="notes&amp;more.xhtml#fn%201%26x">[1]</a>'
+                '<a href="#local%20note"><sup>b</sup></a></p>'
+                '<aside id="local note"><p>Same chapter citation text with enough detail.</p></aside></body></html>')
+            files['OPS/text/notes.xhtml'] = '<html><body><p>Whole document citation text with enough detail.</p></body></html>'
+            files['OPS/text/notes&more.xhtml'] = '<html><body><aside id="fn 1&amp;x"><p>Encoded citation text with enough detail.</p></aside></body></html>'
+        case('good_citation_dialog', citation_book)
+
         def bounded_cover(files):
             files['OPS/pkg/book.opf'] = files['OPS/pkg/book.opf'].replace(
                 '</manifest>', '<item id="image-cover" href="../covers/test.png" '
@@ -267,7 +277,7 @@ def main():
         large = work / 'long_5000.epub'
         make_large_book(large)
         large_exe = work / 'large-test'
-        subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
+        subprocess.run(['cc', '-std=c11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
                         '-I' + str(ROOT / 'tools/book_epub_stubs'), '-I' + str(ROOT / 'tools/zip_host_stubs'),
                         '-I' + str(ROOT / 'main/book'), str(ROOT / 'tools/book_epub_large_host_test.c'),
                         str(ROOT / 'main/book/book_epub.c'), str(ROOT / 'main/book/zip_reader.c'),

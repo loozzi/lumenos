@@ -25,7 +25,7 @@
 enum { CLOSED, SELECT, EDIT_NOTE, LOOKUP, LIST, FOOTNOTE };
 enum { DEFINITION_PX=32, DEFINITION_LINE_H=44, DEFINITION_LINES=10, NOTES_LIST_ROWS=7, NOTES_LIST_ROW_H=80 };
 // 脚注引用的触控外扩，编号字很小。/ Touch slop around tiny footnote markers.
-enum { FOOTNOTE_SLOP=8, FOOTNOTE_TEXT_X=62, FOOTNOTE_BUTTON_H=58 };
+enum { FOOTNOTE_SLOP=8, FOOTNOTE_BUTTON_H=58 };
 typedef struct {
     book_annotations_t annotations, committed;
     book_dictionary_t dictionary;
@@ -42,7 +42,7 @@ typedef struct {
     size_t link_count;
     book_notes_footnote_fn footnote_load;
     char *footnote;
-    unsigned footnote_lines;
+    unsigned footnote_lines,footnote_page_lines;
     EpdRect footnote_panel;
 } notes_t;
 static notes_t *s;
@@ -62,6 +62,7 @@ void book_notes_cancel(void) {
 }
 void book_notes_reset(void) { if(!s)return;book_notes_cancel();free(s);s=NULL; }
 bool book_notes_active(void) {return s&&s->mode!=CLOSED;}
+bool book_notes_footnote_active(void) {return s&&s->mode==FOOTNOTE;}
 bool book_notes_open_list(size_t page) {
     if(!s)return false;
     book_notes_cancel();s->mode=LIST;s->list_at=0;s->page=page;
@@ -187,8 +188,9 @@ static void underline(void *ctx,size_t a,size_t b,EpdRect r) {
  * A NULL framebuffer counts every line instead of drawing one page.
  * Wrap at the last space so Vietnamese words stay whole; a spaceless row (CJK, long token) breaks per glyph. */
 static unsigned definition_draw(uint8_t *fb,const char *t,int x,int y) {
-    size_t at=0;unsigned line=0,first=(unsigned)s->definition_page*DEFINITION_LINES;
-    while(t[at]&&(!fb||line<first+DEFINITION_LINES)) {
+    unsigned page_lines=s->mode==FOOTNOTE?s->footnote_page_lines:DEFINITION_LINES;
+    size_t at=0;unsigned line=0,first=(unsigned)s->definition_page*page_lines;
+    while(t[at]&&(!fb||line<first+page_lines)) {
         char row[192];size_t used=0,cut_used=0,cut_at=0;int width=0;
         while(t[at]&&t[at]!='\n'&&used+5<sizeof(row)) {
             size_t end=ui_text_edit_next(t,at),n=end-at;char glyph[5]={0};
@@ -214,7 +216,7 @@ static EpdRect footnote_button(int index) {
     EpdRect p=s->footnote_panel;
     return (EpdRect){p.x+12+index*190,p.y+p.height-FOOTNOTE_BUTTON_H-14,index==2?p.width-24-380:178,FOOTNOTE_BUTTON_H};
 }
-static bool footnote_paged(void) {return s->footnote_lines>DEFINITION_LINES;}
+static bool footnote_paged(void) {return s->footnote_lines>s->footnote_page_lines;}
 // 引用表按正文顺序；二分找包含该字节的链接。/ References are in text order; binary-search the one containing the byte.
 static size_t link_find(size_t at) {
     size_t lo=0,hi=s->link_count;
@@ -226,24 +228,41 @@ static size_t link_find(size_t at) {
     }
     return SIZE_MAX;
 }
-typedef struct {int x,y,best,glyph_y;size_t link;bool on_body_text;} link_pick_t;
+// 纯文字[1]没有href时也消费点击并说明缺失，不能误当翻页。
+// Consume taps on plain [1] markers too, explaining missing links instead of turning pages.
+static bool reference_marker(size_t start,size_t *end) {
+    if(start>=s->length||s->text[start]!='[')return false;
+    size_t at=start+1;
+    while(at<s->length&&at-start<=6&&s->text[at]>='0'&&s->text[at]<='9')++at;
+    if(at==start+1||at>=s->length||s->text[at]!=']')return false;
+    *end=at+1;return true;
+}
+static bool page_has_reference_marker(size_t first,size_t end) {
+    size_t at=first>7?first-7:0;
+    for(;at<end&&at<s->length;++at){size_t last;if(reference_marker(at,&last)&&last>first)return true;}
+    return false;
+}
+typedef struct {int x,y,best,glyph_y;size_t link,start,end;bool on_body_text;} link_pick_t;
 static void link_pick(void *ctx,size_t a,size_t b,EpdRect r) {
     (void)b;link_pick_t *p=ctx;
     size_t i=link_find(a);
+    size_t start=SIZE_MAX,end=0;
     if(i==SIZE_MAX) {
-        if(hit(r,p->x,p->y))p->on_body_text=true;
-        return;
-    }
+        for(size_t back=0;back<=7&&back<=a;++back) {
+            if(reference_marker(a-back,&end)&&a<end){start=a-back;break;}
+        }
+        if(start==SIZE_MAX){if(hit(r,p->x,p->y))p->on_body_text=true;return;}
+    } else {start=s->links[i].start;end=s->links[i].end;}
     int dx=p->x<r.x?r.x-p->x:p->x>=r.x+r.width?p->x-r.x-r.width+1:0;
     int dy=p->y<r.y?r.y-p->y:p->y>=r.y+r.height?p->y-r.y-r.height+1:0;
     if(dx>FOOTNOTE_SLOP||dy>FOOTNOTE_SLOP)return;
     int d=dx*dx+dy*dy;
-    if(p->link==SIZE_MAX||d<p->best){p->best=d;p->link=i;p->glyph_y=r.y;}
+    if(p->start==SIZE_MAX||d<p->best){p->best=d;p->link=i;p->start=start;p->end=end;p->glyph_y=r.y;}
 }
 // 弹窗避开被点的引用：引用在上半屏就放下方，否则放上方；高度随行数收缩。
 // Keep the popup clear of the tapped reference: below it in the upper half, above otherwise; height follows the lines.
 static bool footnote_open(size_t page,EpdRect body,int px,int x,int y) {
-    if(!s->link_count||!s->footnote_load||book_layout_vertical())return false;
+    if(!s->footnote_load||book_layout_vertical()||body.height<172)return false;
     const size_t first=book_layout_page_start_offset(page);
     const size_t end=page+1<book_layout_page_count()?book_layout_page_start_offset(page+1):s->length;
     size_t lo=0,hi=s->link_count;
@@ -253,37 +272,46 @@ static bool footnote_open(size_t page,EpdRect body,int px,int x,int y) {
         else hi=mid;
     }
     // Chương có chú thích ở trang khác không cần duyệt lại chữ của trang đang chạm.
-    if(lo==s->link_count||s->links[lo].start>=end)return false;
-    link_pick_t p={.x=x,.y=y,.link=SIZE_MAX};
-    if(!book_layout_visit_page(page,body,px,link_pick,&p)||p.link==SIZE_MAX)return false;
+    if((lo==s->link_count||s->links[lo].start>=end)&&!page_has_reference_marker(first,end))return false;
+    link_pick_t p={.x=x,.y=y,.link=SIZE_MAX,.start=SIZE_MAX};
+    if(!book_layout_visit_page(page,body,px,link_pick,&p)||p.start==SIZE_MAX)return false;
     // Dung sai chỉ áp dụng ở khoảng trống, không lấn vào chữ bên cạnh.
     if(p.best!=0&&p.on_body_text)return false;
     char *text=NULL;size_t length=0;
-    if(s->footnote_load(s->links[p.link].href,&text,&length)!=ESP_OK||!text||!length){free(text);return false;}
+    s->message[0]=0;
+    if(p.link==SIZE_MAX) {
+        snprintf(s->message,sizeof(s->message),"Ký hiệu này không có liên kết chú thích trong sách.");
+    } else if(s->footnote_load(s->links[p.link].href,&text,&length)!=ESP_OK||!text||!length){
+        free(text);text=NULL;
+        snprintf(s->message,sizeof(s->message),"Không tải được chú thích. Đóng và chạm lại để thử.");
+    }
     free(s->footnote);s->footnote=text;
     s->definition_page=0;
-    s->footnote_lines=definition_draw(NULL,text,0,0);
-    unsigned lines=s->footnote_lines<DEFINITION_LINES?s->footnote_lines:DEFINITION_LINES;
+    s->footnote_lines=definition_draw(NULL,text?text:s->message,0,0);
+    s->footnote_page_lines=(unsigned)(body.height-16-112)/DEFINITION_LINE_H;
+    if(s->footnote_page_lines>DEFINITION_LINES)s->footnote_page_lines=DEFINITION_LINES;
+    unsigned lines=s->footnote_lines<s->footnote_page_lines?s->footnote_lines:s->footnote_page_lines;
     if(!lines)lines=1;
     int height=24+(int)lines*DEFINITION_LINE_H+16+FOOTNOTE_BUTTON_H+14;
     int top=p.glyph_y<body.y+body.height/2?body.y+body.height-height-8:body.y+8;
-    s->footnote_panel=(EpdRect){36,top,612,height};
-    s->start=s->links[p.link].start;s->end=s->links[p.link].end;
-    s->mode=FOOTNOTE;s->page=page;s->generation=book_layout_generation();s->message[0]=0;
+    int left=body.width>684?body.x+(body.width-612)/2:36;
+    s->footnote_panel=(EpdRect){left,top,612,height};
+    s->start=p.start;s->end=p.end;
+    s->mode=FOOTNOTE;s->page=page;s->generation=book_layout_generation();
     return true;
 }
 static void footnote_draw(uint8_t *fb) {
     EpdRect p=s->footnote_panel;
     ui_fill_round_rect(fb,p,16,0xff);
     ui_draw_control_frame(fb,p,16,0x00);
-    definition_draw(fb,s->footnote,FOOTNOTE_TEXT_X,p.y+24);
+    definition_draw(fb,s->footnote?s->footnote:s->message,p.x+26,p.y+24);
     if(footnote_paged()){button(fb,footnote_button(0),"Trang trước");button(fb,footnote_button(1),"Trang sau");}
     button(fb,footnote_button(2),"Đóng");
 }
 static void footnote_gesture(const ui_gesture_event_t *ev,app_redraw_t *redraw) {
     int x=ev->x0,y=ev->y0;
     if(!hit(s->footnote_panel,x,y)||hit(footnote_button(2),x,y)){book_notes_cancel();*redraw=APP_REDRAW_PAGE;return;}
-    unsigned pages=(s->footnote_lines+DEFINITION_LINES-1)/DEFINITION_LINES;
+    unsigned pages=(s->footnote_lines+s->footnote_page_lines-1)/s->footnote_page_lines;
     if(footnote_paged()&&hit(footnote_button(0),x,y)&&s->definition_page){s->definition_page--;*redraw=APP_REDRAW_PAGE;}
     else if(footnote_paged()&&hit(footnote_button(1),x,y)&&(unsigned)s->definition_page+1<pages){s->definition_page++;*redraw=APP_REDRAW_PAGE;}
 }

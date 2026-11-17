@@ -1005,6 +1005,15 @@ bool book_cover_list_cache_dimensions(const char *p,const char *t,const char *a,
     char canonical[256],path[120];cover_cache_header_t key,found;
     if(book_title_from_path(p,canonical,sizeof(canonical)))t=canonical;
     if(!cover_cache_key(p,t,a,path,sizeof(path),&key))return false;
+#if DPREADER_BOARD_METALIO47
+    metalio_cover_key_t ram = ram_key(&key, 1);
+    metalio_cover_meta_t meta;
+    if (metalio_cover_cache_get(&ram, NULL, 0, &meta) && meta.width && meta.height &&
+        meta.width <= BOOK_COVER_W && meta.height <= BOOK_COVER_H) {
+        *w = meta.width; *h = meta.height;
+        return true;
+    }
+#endif
     char *suffix=strrchr(path,'.');if(!suffix)return false;strcpy(suffix,"-list.bin");
     FILE *f=fopen(path,"rb");if(!f)return false;
     bool ok=fread(&found,1,sizeof(found),f)==sizeof(found)&&found.magic==key.magic&&found.schema==key.schema&&

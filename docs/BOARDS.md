@@ -523,3 +523,70 @@ bash tools/run_wifi_idle_diagnostics_tests.sh
 
 Các kiểm thử này không thay thế nghiệm thu Wi-Fi/remote, dòng điện, dấu chữ
 và chu kỳ ngủ/thức trên thiết bị.
+
+## Tối ưu sách và cache bìa (1.5.7)
+
+S31 tái sử dụng bộ đệm dò cuối ZIP để đọc tuần tự thư mục khi mở EPUB,
+kể cả khi lấy bìa cho Trang chủ/Tủ sách. Bộ đệm này được giải phóng sau khi
+mở; giới hạn thư mục, tên trùng, header, phương thức nén và CRC vẫn được
+kiểm tra. CRC dùng bảng 16 phần tử thay vòng lặp từng bit. Bìa danh sách
+lấy kích thước từ cache RAM đã đối chiếu danh tính sách; thiếu cache vẫn đọc
+thẻ như trước.
+
+Lưu tiến độ tại vị trí không đổi không ghi lại nếu lần lưu trước đã hoàn tất.
+Mở mới, đổi vị trí/cỡ chữ, hoặc còn lỗi ghi tiến độ/đường dẫn gần nhất vẫn
+thực hiện ghi và thử lại. Không trì hoãn ghi vị trí mới để đổi lấy tốc độ.
+
+Deep Sleep đóng tệp sách và phông trước khi đồng bộ/tháo thẻ. Lỗi ở bước
+chuẩn bị trả qua luồng phục hồi tệp, không tiếp tục ngủ với thẻ chưa đóng.
+Chính sách khóa thường vẫn giữ RAM bằng Light Sleep, sau đó tắt nguồn theo
+thời gian cài đặt. Wi-Fi không tự kết nối lại khi mở khóa; Bluetooth giữ
+thiết bị đã ghép và phục hồi theo cài đặt sau khi thức. Cần đo dòng điện và
+thời gian mở/đóng trên thiết bị để xác nhận mức cải thiện thực tế.
+
+Kiểm thử tái lập:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/book-performance-host
+cd build/book-performance-host
+mkdir -p build
+python3 tools/book_performance_host_test.py
+python3 tools/metalio_deep_sleep_host_test.py
+python3 tools/wifi_sleep_gate_host_test.py
+python3 tools/ble_sleep_gate_host_test.py
+python3 tools/metalio_sleep_io_host_test.py
+python3 tools/cover_jobs_host_test.py
+python3 tools/list_cover_cache_host_test.py
+python3 tools/cover_disk_cache_host_test.py
+python3 tools/home_cover_cache_host_test.py
+python3 tools/gen_book_fixtures.py
+python3 tools/test_zip_reader.py
+python3 tools/test_book_epub.py
+```
+
+## Chạm chú thích EPUB (1.5.8)
+
+Chạm liên kết chú thích mở hộp thoại trước khi xử lý lật trang, kể cả khi tải
+chú thích lỗi hoặc rỗng. Đóng hộp thoại rồi chạm lại để thử đọc. Nếu sách chỉ
+in ký hiệu số dạng `[1]` mà không có liên kết EPUB tương ứng, hộp thoại giải
+thích thiếu liên kết; không suy đoán nội dung từ một số giống nhau ở nơi khác.
+Các ký hiệu này được nhận diện tối đa sáu chữ số. Văn bản thường và các chữ
+trong ngoặc như `[abc]` giữ thao tác đọc thông thường.
+
+Hỗ trợ noteref/biblioref, các lớp noteref/footnote-ref/citation, nhãn chữ trên
+và nhãn số; liên kết không có fragment chỉ được nhận là chú thích khi có ngữ
+nghĩa rõ ràng. Giới hạn href sau giải mã XML là 511 byte, ID sau giải mã URI
+là 127 byte; địa chỉ ngoài sách hoặc vượt thư mục gốc vẫn bị từ chối. Nội dung
+popup tối đa 1500 byte UTF-8 (thêm dấu rút gọn khi cần), không truy cập mạng.
+
+Popup giữ hướng đọc dọc/ngang và phân trang theo chiều cao vùng nội dung.
+Chọn chữ, từ điển và biên tập ghi chú vẫn dùng bố cục dọc; chữ xếp cột dọc
+không thuộc luồng chạm chú thích này. Xem trực tiếp trên máy để xác nhận vùng
+chạm và độ rõ của chữ; host tests không thay thế nghiệm thu cảm ứng.
+
+Trong host view S31, chạy `tools/test_book_epub.py` và biên dịch
+`tools/html_text_host_test.c` với `main/book/html_text.c`, stubs
+`tools/html_text_stubs`, ASan/UBSan. `tools/book_notes_ui_host_test.py` kiểm tra
+chạm số, tải lỗi/rỗng, thiếu hyperlink, đọc ngang/phân trang và cổng chọn chữ.
+Nếu không có libcjson trên host, đặt `CJSON_DIR` tới thư mục chứa `cJSON.c`
+của thành phần cJSON trong nguồn build ESP-IDF.

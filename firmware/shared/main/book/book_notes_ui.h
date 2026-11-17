@@ -11,6 +11,8 @@ void book_notes_bind_links(const html_link_t *links,size_t count,book_notes_foot
 void book_notes_reset(void);
 void book_notes_cancel(void);
 bool book_notes_active(void);
+/// 脚注弹窗可保留当前阅读方向。/ Footnote dialogs can retain the current reader orientation.
+bool book_notes_footnote_active(void);
 bool book_notes_open_list(size_t page);
 size_t book_notes_page(size_t fallback);
 /* Event calls and draw must share the reader font lock. */

@@ -2022,9 +2022,22 @@ esp_err_t book_epub_note(book_epub_t *book, size_t chapter, const char *href, ch
     if (!book || chapter >= book->count || !href || !utf8 || !len) return ESP_ERR_INVALID_ARG;
     *utf8 = NULL; *len = 0;
     const char *hash = strchr(href, '#');
-    if (!hash || !hash[1] || strlen(hash + 1) >= 128) return ESP_ERR_NOT_FOUND;
-    char anchor[128];
-    strcpy(anchor, hash + 1);
+    char anchor[128] = "";
+    if (hash && hash[1]) {
+        size_t used = 0;
+        for (const char *p = hash + 1; *p; ++p) {
+            unsigned char c = (unsigned char)*p;
+            if (c == '%') {
+                if (!p[1] || !p[2]) return ESP_ERR_INVALID_ARG;
+                int a = hex(p[1]), b = hex(p[2]);
+                if (a < 0 || b < 0) return ESP_ERR_INVALID_ARG;
+                c = (unsigned char)((a << 4) | b); p += 2;
+            }
+            if (!c || used + 1 >= sizeof(anchor)) return ESP_ERR_INVALID_ARG;
+            anchor[used++] = (char)c;
+        }
+        anchor[used] = 0;
+    }
     char path[EPUB_PATH_CAP];
     if (!resolve_path(zip_entry_name(book->zip, book->chapters[chapter].zip_index), href, path)) return ESP_ERR_INVALID_ARG;
     char *html; size_t html_len;
@@ -2032,7 +2045,11 @@ esp_err_t book_epub_note(book_epub_t *book, size_t chapter, const char *href, ch
     if (err != ESP_OK) return err;
     html_text_t note = {0};
     size_t start = 0, end = 0;
-    err = html_to_blocks_note(html, html_len, anchor, &start, &end, &note);
+    if (anchor[0]) err = html_to_blocks_note(html, html_len, anchor, &start, &end, &note);
+    else {
+        err = html_to_blocks(html, html_len, &note);
+        end = note.len;
+    }
     free(html);
     if (err != ESP_OK) return err;
     size_t a = start, b = end;

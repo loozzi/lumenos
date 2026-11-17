@@ -18,7 +18,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="zip-reader-") as temp:
         work = Path(temp)
         exe = work / "test"
-        subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-g",
+        subprocess.run(["cc", "-std=c11", "-D_DEFAULT_SOURCE", "-Wall", "-Wextra", "-Werror", "-g",
                         "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
                         "-I" + str(ROOT / "tools/zip_host_stubs"), "-I" + str(ROOT / "main/book"),
                         str(ROOT / "tools/zip_reader_host_test.c"), str(ROOT / "main/book/zip_reader.c"),

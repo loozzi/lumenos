@@ -24,7 +24,7 @@ typedef struct {int x,y,width,height;} EpdRect;
 typedef int esp_err_t;
 #define ESP_OK 0
 #define ESP_FAIL -1
-typedef struct {size_t start,end;char href[128];} html_link_t;
+typedef struct {size_t start,end;char href[512];} html_link_t;
 typedef esp_err_t (*book_notes_footnote_fn)(const char *href,char **utf8,size_t *len);
 void book_notes_bind_links(const html_link_t *links,size_t count,book_notes_footnote_fn load);
 typedef struct {int64_t now_ms;uint8_t *fb;} app_ctx_t;
@@ -39,7 +39,7 @@ static int writes,icon_calls,panel_frames,definition_lines,geometry_visits;
 static size_t page_start,page_end=SIZE_MAX;
 static int definition_ys[10];
 static char definition_texts[10][192];
-static int glyph_y=300;
+static int glyph_y=300,glyph_x=40;
 typedef enum {UI_ICON_SEARCH,UI_ICON_HIGHLIGHTER,UI_ICON_PENCIL,UI_ICON_SAVE,UI_ICON_LIST,UI_ICON_CHEVRON_LEFT,UI_ICON_CHEVRON_RIGHT,UI_ICON_X,UI_ICON_REFRESH_CW} ui_icon_t;
 static void ui_draw_icon(uint8_t *fb,int x,int y,int size,ui_icon_t icon,uint8_t color){(void)fb;(void)x;(void)y;(void)size;(void)icon;(void)color;++icon_calls;}
 static const char *test_text="apple banana carrot";
@@ -48,7 +48,7 @@ static uint32_t book_layout_generation(void){return generation;}
 static size_t book_layout_page_for_offset(size_t off){(void)off;return 0;}
 static size_t book_layout_page_count(void){return 2;}
 static size_t book_layout_page_start_offset(size_t page){return page?page_end:page_start;}
-static bool book_layout_visit_page(size_t page,EpdRect body,int px,book_layout_glyph_fn fn,void *ctx){(void)page;(void)body;(void)px;++geometry_visits;for(size_t i=0;i<strlen(test_text);i++)fn(ctx,i,i+1,(EpdRect){(int)i*20+40,glyph_y,20,30});return true;}
+static bool book_layout_visit_page(size_t page,EpdRect body,int px,book_layout_glyph_fn fn,void *ctx){(void)page;(void)body;(void)px;++geometry_visits;for(size_t i=0;i<strlen(test_text);i++)fn(ctx,i,i+1,(EpdRect){(int)i*20+glyph_x,glyph_y,20,30});return true;}
 static void ui_gesture_enable_held_drag(bool on){held=on;}
 static void ui_keyboard_end(void){}
 static void ui_keyboard_begin(ui_text_edit_t *e,bool a){(void)e;(void)a;}
@@ -61,7 +61,7 @@ static void ui_text_input_draw(uint8_t *f,ui_text_edit_t *e,EpdRect r,int p,bool
 static void ui_text_input_tap(ui_text_edit_t *e,EpdRect r,int p,bool m,void *s,int x,int y){(void)e;(void)r;(void)p;(void)m;(void)s;(void)x;(void)y;}
 static void ui_fill_round_rect(uint8_t *f,EpdRect r,int radius,int c){(void)f;(void)r;(void)radius;(void)c;}
 static void ui_draw_control_frame(uint8_t *f,EpdRect r,int radius,int c){(void)f;if(r.y==240){assert(radius==16&&c==0&&((r.x==36&&r.width==612&&r.height==650)||(r.x==24&&r.width==636&&r.height==700)));++panel_frames;}}
-static void ui_text_box(uint8_t *f,EpdRect r,int px,const char *t,enum EpdFontFlags a,bool inv){(void)f;(void)t;(void)a;(void)inv;if(px==32){assert(r.x==62&&r.width==560&&r.height==44&&r.y+r.height<=720);assert(definition_lines<10);snprintf(definition_texts[definition_lines],192,"%s",t);definition_ys[definition_lines++]=r.y;}}
+static void ui_text_box(uint8_t *f,EpdRect r,int px,const char *t,enum EpdFontFlags a,bool inv){(void)f;(void)t;(void)a;(void)inv;if(px==32){assert(r.x>=62&&r.width==560&&r.height==44&&r.y+r.height<=1216);assert(definition_lines<10);snprintf(definition_texts[definition_lines],192,"%s",t);definition_ys[definition_lines++]=r.y;}}
 static void ui_fill_rect_fast(EpdRect r,int c,uint8_t *f){(void)f;(void)r;(void)c;}
 static void epd_fill_rect(EpdRect r,int c,uint8_t *f){(void)f;(void)r;(void)c;writes++;}
 static int ttf_text_width_px(int p,const char *t){(void)p;(void)t;return 12;}
@@ -78,19 +78,42 @@ adapter=r'''
 #define UI_LOCK_WIDTH 684
 #define UI_LOCK_HEIGHT 1216
 static int s_view=1,s_reader_panel=0,s_px=24;
-enum {READING=1,READER_PANEL_NONE=0};
+enum {READING=1,TOC=2,READER_PANEL_NONE=0,READER_PANEL_TOOLS=1};
+typedef int reader_panel_t;
+static bool landscape;
+static bool reader_landscape_active(void){return landscape;}
+static bool reader_choice_visible(void){return false;}
+static bool reader_panel_viewport_allowed(reader_panel_t p){(void)p;return false;}
 static const char *s_text="bound";
 static bool s_toolbar,s_clear_confirm,s_zoom_active,s_notes_frame_pending;
 static struct {bool pending;} s_reader_tap;
 static size_t s_page;
 static EpdRect s_area;
-static EpdRect body_rect(void){return (EpdRect){20,80,640,1080};}
+static EpdRect reader_body={20,80,640,1080};
+static EpdRect body_rect(void){return reader_body;}
 static void lock_draw(void){}
 static void unlock_draw(void){}
 static void invalidate_prep(void){}
 static void render(app_ctx_t *ctx,uint8_t *fb){(void)ctx;book_notes_draw(fb,s_page,body_rect(),s_px);}
 '''
+adapter+=function('app_book_landscape_ready',root/'main/apps/app_book.c')+'\n'
 adapter+=function('reader_notes_gesture',root/'main/apps/app_book.c')+'\n'
+adapter+=r'''
+static int epd_get_rotation(void){return landscape?1:0;}
+#define EPD_ROT_LANDSCAPE 1
+static void reader_viewport_release(void){}
+static void book_layout_set_image_bleed_width(int w){(void)w;}
+static void reader_zoom_reset(void){}
+static size_t reader_page_offset(size_t p){return p*100;}
+static bool reader_build_current_layout(int px){(void)px;++generation;return true;}
+static size_t s_jump_page,s_jump_offset;
+static void free_book(void){assert(0);}
+enum {SHELF=0};
+static char s_message[128];
+static void copy_text(char *d,size_t n,const char *t){snprintf(d,n,"%s",t);}
+'''
+adapter+=function('app_book_orientation_changed',root/'main/apps/app_book.c')+'\n'
+
 unit=adapter+r'''
 #include <assert.h>
 #include <unistd.h>
@@ -233,7 +256,43 @@ int main(void){
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);
  assert(strlen(definition_texts[0])==46&&strlen(definition_texts[1])==14);
  book_notes_cancel();
- note_body=NULL;assert(!event(UI_GESTURE_TAP,170,710)&&!book_notes_active()); // Load failure.
+ note_body=NULL;assert(event(UI_GESTURE_TAP,170,710)&&book_notes_active()&&s->mode==FOOTNOTE);
+ assert(redraw==APP_REDRAW_PAGE&&!s->footnote&&strstr(s->message,"Không tải được"));
+ definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines>0);
+ close=footnote_button(2);assert(event(UI_GESTURE_TAP,close.x+2,close.y+2)&&!book_notes_active());
+ note_body="";assert(event(UI_GESTURE_TAP,170,710)&&book_notes_active()&&!s->footnote);book_notes_cancel();
+ note_body="Note text";assert(event(UI_GESTURE_TAP,170,710)&&s->footnote&&!s->message[0]);book_notes_cancel();
+ const char *original_text=test_text;
+ test_text="Text [1] tail";book_notes_bind("plain.epub",0,test_text,strlen(test_text));
+ static const html_link_t numbered_link[]={{5,8,"notes.xhtml#n1"}};
+ book_notes_bind_links(numbered_link,1,note_load);glyph_y=700;s->valid=false;
+ note_body="Numbered citation content";
+ assert(event(UI_GESTURE_TAP,170,710)&&book_notes_footnote_active()&&s->footnote);
+ assert(!strcmp(s->footnote,note_body));book_notes_cancel();
+ note_body=NULL;s_reader_tap.pending=true;
+ assert(event(UI_GESTURE_TAP,170,710)&&book_notes_footnote_active()&&!s->footnote);
+ assert(redraw==APP_REDRAW_PAGE&&!s_reader_tap.pending&&strstr(s->message,"Không tải được"));book_notes_cancel();
+ book_notes_bind_links(NULL,0,note_load);
+ assert(event(UI_GESTURE_TAP,170,710)&&book_notes_footnote_active()&&!s->footnote);
+ assert(strstr(s->message,"không có liên kết"));book_notes_cancel();
+ assert(!event(UI_GESTURE_TAP,50,710)&&!book_notes_active());
+ test_text="Text [abc] tail";book_notes_bind("plain.epub",0,test_text,strlen(test_text));
+ book_notes_bind_links(NULL,0,note_load);assert(!event(UI_GESTURE_TAP,170,710));
+ test_text=original_text;book_notes_bind("notes.epub",0,test_text,strlen(test_text));book_notes_bind_links(links,1,note_load);
+ landscape=true;reader_body=(EpdRect){20,70,1176,540};glyph_x=800;glyph_y=300;
+ note_body="1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11";
+ assert(app_book_landscape_ready());
+ assert(!event(UI_GESTURE_LONG_PRESS,970,310)&&!book_notes_active());
+ assert(event(UI_GESTURE_TAP,970,310)&&book_notes_footnote_active()&&app_book_landscape_ready());
+ assert(s->footnote_page_lines==9&&s->footnote_panel.x==302&&s->footnote_panel.y>=reader_body.y);
+ assert(s->footnote_panel.y+s->footnote_panel.height<=reader_body.y+reader_body.height);
+ definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==9);
+ next=footnote_button(1);assert(event(UI_GESTURE_TAP,next.x+2,next.y+2)&&s->definition_page==1);
+ definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==2);
+ close=footnote_button(2);assert(event(UI_GESTURE_TAP,close.x+2,close.y+2)&&!book_notes_active());
+ assert(event(UI_GESTURE_TAP,970,310)&&book_notes_footnote_active());
+ app_book_orientation_changed();assert(!book_notes_active()&&!s->footnote);
+ landscape=false;reader_body=(EpdRect){20,80,640,1080};glyph_x=40;glyph_y=700;
  note_body="Note text";vertical=true;assert(!event(UI_GESTURE_TAP,170,710));vertical=false;
  book_notes_reset();assert(!s);
  /* RC3..5 migration: copy old snapshots once, preserve originals and generation. */

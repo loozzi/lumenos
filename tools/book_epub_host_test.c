@@ -26,6 +26,24 @@ int main(int argc, char **argv) {
             printf("epub rejection passed: %s\n", argv[a]); continue;
         }
         assert(book_epub_open(argv[a], &book) == ESP_OK && book);
+        if (strstr(argv[a], "good_citation_dialog")) {
+            html_text_t text = {0};
+            assert(book_epub_load(book, 0, &text) == ESP_OK && text.link_count == 3);
+            const char *expected[] = {"Whole document citation", "Encoded citation", "Same chapter citation"};
+            for (size_t i = 0; i < text.link_count; ++i) {
+                char *note = NULL; size_t length = 0;
+                assert(book_epub_note(book, 0, text.links[i].href, &note, &length) == ESP_OK);
+                assert(note && length && strstr(note, expected[i])); free(note);
+            }
+            const char *bad[] = {"notes.xhtml#missing", "notes.xhtml#bad%", "notes.xhtml#%00", "https://example.com/#note", "../../../../escape.xhtml#note"};
+            for (size_t i = 0; i < sizeof(bad) / sizeof(*bad); ++i) {
+                char *note = NULL; size_t length = 0;
+                assert(book_epub_note(book, 0, bad[i], &note, &length) != ESP_OK && !note && !length);
+            }
+            html_text_free(&text); book_epub_close(book);
+            puts("EPUB citation: semantic/document references, XML entities, URI anchors, same chapter and invalid target checks PASS");
+            continue;
+        }
         if (strstr(argv[a], "good_bounded_cover")) {
             book_epub_close(book);
             uint8_t *cover = NULL; size_t size = 0; bool png = false;

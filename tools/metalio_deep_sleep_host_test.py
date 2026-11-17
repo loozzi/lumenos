@@ -79,12 +79,13 @@ static int ble_pt_suspend_for_sleep(void){return ble_failed?-1:ESP_OK;}
 static int app_sync_time_to_pmu(void){return ESP_OK;}
 static void app_font_begin_lock(app_lock_font_t *font){assert(!font_closed);font->reading=true;}
 static void app_font_end_lock(const app_lock_font_t *font){assert(font->reading);font_closed=0;restored++;}
-static int ttf_font_suspend_io(void){return 0;}
+static bool book_closed;static int book_error;
+static int ttf_font_suspend_io(void){assert(book_closed);return 0;}
 typedef struct{bool mounted;}read_pico_sd_info_t;
 static int read_pico_sd_get_info(read_pico_sd_info_t *i){i->mounted=!sd_closed;return 0;}
-static int book_suspend_io(void){return 0;}
+static int book_suspend_io(void){if(book_error)return book_error;book_closed=true;return 0;}
 static void metalio_haptic_stop(void){}
-static int lock_resume_media_io(unsigned wait){assert(wait==15000||wait==500);s_lock_io_pending=false;return 0;}
+static int lock_resume_media_io(unsigned wait){assert(wait==15000||wait==500);s_lock_io_pending=false;book_closed=false;return 0;}
 static int cst836u_set_mode(void *t,int mode){assert(t&&mode==3);if(hardware_error==1)return -3;deep_touch=true;return 0;}
 static int cst836u_wake(void *t){assert(t);deep_touch=false;return 0;}
 static int metalio_prepare_light_sleep_pins(void){deep_pins=true;return hardware_error==2?-3:0;}
@@ -93,7 +94,7 @@ static int metalio_sleep_cut_rails(uint16_t *saved,bool switch_vout){assert(swit
 static int metalio_sleep_restore_rails(uint16_t saved,bool switch_vout){assert(switch_vout);assert(saved==123);deep_rails=false;return 0;}
 static void read_pico_epd_restore_lcd(void){lcd_deinit=0;}
 static int ttf_font_open_builtin(void){font_closed++;return ESP_OK;}
-static int read_pico_sd_sync(void){if(!sd_error)sd_closed++;return sd_error;}
+static int read_pico_sd_sync(void){assert(book_closed);if(!sd_error)sd_closed++;return sd_error;}
 static void metalio_frontlight(unsigned b,unsigned w){assert(!b&&w==50);}
 static void epd_poweroff(void){}
 static unsigned off_calls, resumes, ble_resumes;
@@ -105,7 +106,7 @@ static void metalio_haptic_resume(void){++resumes;}
 static void metalio_poweroff(void){++off_calls;}
 static void epd_lcd_deinit(void){++lcd_deinit;}
 static void metalio_hold_for_deep_sleep(void){++hold_calls;}
-static void esp_deep_sleep_start(void){++sleep_calls;assert(wake_source&&paused&&font_closed&&sd_closed&&hold_calls&&lcd_deinit&&deep_pins&&deep_rails);deep_success=true;longjmp(deep,1);}
+static void esp_deep_sleep_start(void){++sleep_calls;assert(book_closed&&wake_source&&paused&&font_closed&&sd_closed&&hold_calls&&lcd_deinit&&deep_pins&&deep_rails);deep_success=true;longjmp(deep,1);}
 static int app_light_sleep_wait_timed(void *acc,unsigned ms){assert(!acc&&ms==0);return ++waits<=wait_timeouts?APP_WAKE_TIMEOUT:APP_WAKE_KEY;}
 '''
 for name in ('metalio_io_read','metalio_prepare_key_wake','metalio_restore_key_io'):
@@ -113,8 +114,8 @@ for name in ('metalio_io_read','metalio_prepare_key_wake','metalio_restore_key_i
 for name in ('lock_restore_key_wake','lock_prepare_key_wake','lock_power_off','app_enter_host_sleep','lock_wait_for_unlock'):
     unit+=function(name,root/'main/sleep.c')+'\n'
 unit+=r'''
-static void reset(void){wake_buttons=gpio_wake=0;ai_level=1;io_calls=io_fail_at=io_taken=delay_ms=irq_low=key_low=font_closed=sd_closed=sd_error=restored=hold_calls=lcd_deinit=wake_source=sleep_calls=0;paused=usb=transfer_busy=ble_failed=deep_success=false;config[0]=0xc0;config[1]=0xe3;latches[0]=outputs[0];latches[1]=outputs[1];waits=wait_timeouts=0;s_lock_sleep_touch=NULL;s_lock_io_pending=deep_pins=deep_rails=deep_touch=late_usb=false;hardware_error=0;}
-static void intact(void){assert(!font_closed&&!sd_closed&&!hold_calls&&!lcd_deinit&&!sleep_calls&&!paused&&!deep_pins&&!deep_rails&&!deep_touch&&!s_lock_io_pending);assert(config[0]==0xc0&&config[1]==0xe3&&latches[0]==0x20&&latches[1]==0x14);}
+static void reset(void){wake_buttons=gpio_wake=0;ai_level=1;io_calls=io_fail_at=io_taken=delay_ms=irq_low=key_low=font_closed=sd_closed=sd_error=restored=hold_calls=lcd_deinit=wake_source=sleep_calls=0;paused=usb=transfer_busy=ble_failed=deep_success=false;config[0]=0xc0;config[1]=0xe3;latches[0]=outputs[0];latches[1]=outputs[1];waits=wait_timeouts=0;s_lock_sleep_touch=NULL;s_lock_io_pending=deep_pins=deep_rails=deep_touch=late_usb=false;hardware_error=0;book_closed=false;book_error=0;}
+static void intact(void){assert(!book_closed&&!font_closed&&!sd_closed&&!hold_calls&&!lcd_deinit&&!sleep_calls&&!paused&&!deep_pins&&!deep_rails&&!deep_touch&&!s_lock_io_pending);assert(config[0]==0xc0&&config[1]==0xe3&&latches[0]==0x20&&latches[1]==0x14);}
 int main(void){
  reset();assert(app_enter_host_sleep(99)==ESP_ERR_INVALID_ARG);intact();
  reset();online=true;assert(app_enter_host_sleep(APP_SLEEP_DEEP)==ESP_ERR_NOT_FINISHED);intact();online=false;
@@ -135,6 +136,7 @@ int main(void){
  reset();usb=true;app_enter_host_sleep(APP_SLEEP_DEEP);assert(!io_calls);intact();
  reset();transfer_busy=true;app_enter_host_sleep(APP_SLEEP_DEEP);assert(!io_calls);intact();
  reset();ble_failed=true;app_enter_host_sleep(APP_SLEEP_DEEP);assert(!io_calls);intact();
+ reset();book_error=-3;assert(app_enter_host_sleep(APP_SLEEP_DEEP)==-3);intact();
  reset();sd_error=-1;app_enter_host_sleep(APP_SLEEP_DEEP);assert(restored==1);intact();
  reset();s_lock_sleep_touch=(void*)1;sd_error=-1;
  unsigned keep_ble=ble_resumes,keep_net=network_resumes;
