@@ -109,6 +109,7 @@ METALIO_TAIL_ICONS = (
     "moon",              # 快捷设置·深色 / quick settings, dark mode
     "rotate-ccw-square", # 快捷设置·横竖屏 / quick settings, orientation
     "sparkles",          # 快捷设置·全屏刷新 / quick settings, full refresh
+    "settings",          # 底栏·圆形设置键 / nav round settings button
 )
 
 def icons_for_board(board):

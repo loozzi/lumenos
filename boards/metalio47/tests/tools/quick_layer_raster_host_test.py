@@ -97,6 +97,10 @@ for name in ('epd_draw_circle',):code+=function('components/epdiy/src/epdiy.c',n
 code+=function('main/ui/ui_kit.c','ui_inset_rect')+function('main/ui/ui_kit.c','ui_draw_control_frame')
 code+='static uint8_t pixel(const uint8_t *fb,int x,int y){return ui_read_pixel(fb,x,y)*17u;}\n'
 code+=body('main/ui/ui_quick_brightness.h').replace('#pragma once','')
+nav_source=(root/'main/ui/ui_nav.c').read_text()
+code+='static int ui_text_fixed_width_px(int px,const char *text){return (int)strlen(text)*px/2;}\n'
+code+=re.search(r'^static const char \*const s_nav_labels\[\][^\n]*\n',nav_source,re.M).group(0)
+code+=nav_source[nav_source.index('#define NAV_BAR_Y'):nav_source.index('void ui_nav_draw(uint8_t *fb, int active) {\n    static')]
 code+=function('main/ui/ui_nav.c','ui_nav_hit')
 code+=body('main/ui/ui_glass.c')+body('main/ui/ui_quick_menu.c')+body('main/ui/ui_click_feedback.c')
 code+='#define UI_NAV_BACK_ICON_PX 48\n#define READER_SHEET_BACK_PX 52\n'
@@ -219,15 +223,15 @@ int main(void){
  assert(ui_click_feedback_press(frame,85,1188,&r));ui_click_feedback_begin(frame);assert(!live&&!ui_click_feedback_release(frame,&r));
  // 三种主页模式的底栏共用灰底：按压不能改外沿、文字、横条或相邻图标。
  // All three main modes share a gray footer: presses must preserve its perimeter, labels, marker and neighboring icons.
- static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER_OPEN,UI_ICON_SLIDERS_HORIZONTAL};
+ static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER,UI_ICON_SETTINGS};
  for(int tab=0;tab<4;++tab)for(int policy=0;policy<3;++policy)for(int edge=0;edge<2;++edge){
   fast=policy==1;memset(frame,0xee,BYTES);
-  int cx=(tab*2+1)*684/8;
+  EpdRect t=ui_nav_tab_rect(tab);int cx=t.x+30,cy=t.y+30;
   epd_fill_rect((EpdRect){0,1097,684,5},0,frame);
   epd_fill_rect((EpdRect){0,1170,684,2},0x70,frame);
-  ui_draw_icon(frame,cx,1141,44,tabs[tab],0);
+  ui_draw_icon(frame,cx,cy,40,tabs[tab],0);
   memcpy(saved,frame,BYTES);ui_click_feedback_begin(frame);
-  ui_click_feedback_register(frame,(EpdRect){cx-30,1111,60,60},UI_CLICK_NAV,tabs[tab]);
+  ui_click_feedback_register(frame,t,UI_CLICK_NAV,tabs[tab]);
   assert(!ui_click_feedback_press(frame,cx,UI_NAV_TOUCH_TOP-1,&r));
   assert(!ui_click_feedback_press(frame,cx,1216,&r));
   assert(!ui_click_feedback_press(frame,-1,UI_NAV_TOUCH_TOP,&r));
@@ -235,10 +239,10 @@ int main(void){
   assert(ui_click_feedback_press(frame,cx,edge?UI_NAV_TOUCH_TOP:1188,&r));
   assert(!ui_click_feedback_cancel_at(cx,edge?UI_NAV_TOUCH_TOP+12:1188));
   for(int y=0;y<1216;++y)for(int x=0;x<684;++x){
-   if(x<cx-25||x>=cx+25||y<1118||y>=1168)assert(pixel(frame,x,y)==pixel(saved,x,y));
+   if(x<cx-25||x>=cx+25||y<cy-25||y>=cy+28)assert(pixel(frame,x,y)==pixel(saved,x,y));
   }
   if(policy==0)memcpy(again,frame,BYTES);else assert(!memcmp(frame,again,BYTES));
-  assert(r.y>=UI_NAV_MARKER_SCAN_END&&r.y+r.height<=1170);
+  assert(r.y>=UI_NAV_MARKER_SCAN_END&&r.y+r.height<=NAV_BAR_Y+NAV_BAR_H);
   EpdRect pressed=r;
   assert(ui_click_feedback_release(frame,&r)&&!memcmp(&r,&pressed,sizeof(r))&&!live&&!memcmp(frame,saved,BYTES));
  }
@@ -248,12 +252,12 @@ int main(void){
  // The original 50px enlarged pose appears immediately and settles after 65ms without navigation.
  for(int policy=0;policy<3;++policy)for(int tab=0;tab<4;++tab){
   fast=policy==1;memset(frame,0xee,BYTES);ui_click_feedback_begin(frame);
-  for(int i=0;i<4;++i){int cx=(i*2+1)*684/8;ui_draw_icon(frame,cx,1141,44,tabs[i],0);
-   ui_click_feedback_register(frame,(EpdRect){cx-30,1111,60,60},UI_CLICK_NAV,tabs[i]);}
+  for(int i=0;i<4;++i){EpdRect t=ui_nav_tab_rect(i);ui_draw_icon(frame,t.x+30,t.y+30,40,tabs[i],0);
+   ui_click_feedback_register(frame,t,UI_CLICK_NAV,tabs[i]);}
   memcpy(saved,frame,BYTES);int before=allocs;
   ui_click_feedback_nav_request(tab);assert(allocs==before&&!live&&!memcmp(saved,frame,BYTES));
   assert(ui_click_feedback_nav_tick(frame,100,&r)&&live==1&&ui_click_feedback_active());
-  assert(r.y>=UI_NAV_MARKER_SCAN_END&&r.y+r.height<=1170);
+  assert(r.y>=UI_NAV_MARKER_SCAN_END&&r.y+r.height<=NAV_BAR_Y+NAV_BAR_H);
   assert(!ui_click_feedback_nav_tick(frame,164,&r));
   assert(ui_click_feedback_nav_tick(frame,165,&r)&&!live&&!ui_click_feedback_nav_pending()&&!memcmp(frame,saved,BYTES));
   assert(!ui_click_feedback_nav_tick(frame,1000,&r));
@@ -276,9 +280,9 @@ int main(void){
  epd_fill_rect((EpdRect){0,0,684,1000},0xa0,frame);
  epd_fill_rect((EpdRect){0,UI_NAV_TOP,684,1216-UI_NAV_TOP},0xdd,frame);
  for(int tab=0;tab<4;++tab){
-  int center=(tab*2+1)*684/8;
-  ui_draw_icon(frame,center,1141,44,tabs[tab],0);
-  ui_click_feedback_register(frame,(EpdRect){center-30,1111,60,60},UI_CLICK_NAV,tabs[tab]);
+  EpdRect t=ui_nav_tab_rect(tab);
+  ui_draw_icon(frame,t.x+30,t.y+30,40,tabs[tab],0);
+  ui_click_feedback_register(frame,t,UI_CLICK_NAV,tabs[tab]);
  }
  memcpy(saved,frame,BYTES);
  assert(ui_click_feedback_nav_tick(frame,200,&r)&&live==1&&memcmp(frame,saved,BYTES));
@@ -287,7 +291,7 @@ int main(void){
  // 加载中底栏还没有完成注册，同样给到即时反馈；不等待下一页。
  // Loading before footer registration still gives immediate feedback without waiting for a new page.
  memset(frame,0xee,BYTES);ui_click_feedback_begin(frame);
- for(int i=0;i<4;++i)ui_draw_icon(frame,(i*2+1)*684/8,1141,44,tabs[i],0);
+ for(int i=0;i<4;++i){EpdRect t=ui_nav_tab_rect(i);ui_draw_icon(frame,t.x+30,t.y+30,40,tabs[i],0);}
  memcpy(saved,frame,BYTES);
  ui_click_feedback_nav_request(2);assert(ui_click_feedback_nav_tick(frame,0,&r)&&live==1);
  assert(ui_click_feedback_nav_tick(frame,65,&r)&&!live&&!memcmp(frame,saved,BYTES));
@@ -299,10 +303,10 @@ int main(void){
  // Two-tab hitboxes and animated poses follow actual simple navigation geometry.
  simple=true;
  for(int fallback=0;fallback<2;++fallback)for(int slot=0;slot<2;++slot){
-  int tab=slot?3:0,cx=slot?513:171;
+  int tab=slot?3:0,cx=ui_nav_tab_rect(tab).x+30;
   memset(frame,0xee,BYTES);ui_click_feedback_begin(frame);
-  if(!fallback)for(int i=0;i<2;++i){int center=i?513:171;
-   ui_click_feedback_register(frame,(EpdRect){center-30,1111,60,60},UI_CLICK_NAV,tabs[i?3:0]);}
+  if(!fallback)for(int i=0;i<2;++i)
+   ui_click_feedback_register(frame,ui_nav_tab_rect(i?3:0),UI_CLICK_NAV,tabs[i?3:0]);
   memcpy(saved,frame,BYTES);ui_click_feedback_nav_request(tab);
   assert(ui_click_feedback_nav_tick(frame,0,&r));
   assert(r.x>=cx-30&&r.x+r.width<=cx+30);

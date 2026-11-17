@@ -44,4 +44,6 @@ void ui_nav_wifi_icon(uint8_t *fb, int cx, int cy, int size, uint8_t gray);
 void ui_nav_back(uint8_t *fb, int x, int y);
 /// 四栏整列热区向上扩16px，互不重叠；不改变画面和刷新区域。/ Four nonoverlapping full-column hits extend 16px upward, without changing paint or refresh bounds.
 int ui_nav_hit(uint16_t x, uint16_t y);
+/// 当前布局下某一栏图标的点击反馈框；不存在时返回空矩形。/ Icon feedback box of a tab in the current layout; empty when absent.
+EpdRect ui_nav_tab_rect(int tab);
 void ui_nav_request(app_ctx_t *ctx, int index);

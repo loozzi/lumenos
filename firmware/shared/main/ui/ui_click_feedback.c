@@ -171,8 +171,10 @@ bool ui_click_feedback_nav_finish(uint8_t *fb,EpdRect *area) {
 static void nav_pose(uint8_t *fb) {
     EpdRect r=s_active.area;
     int cx=r.x+r.width/2,cy=r.y+r.height/2;
+    // 选中药丸/圆键是深底，按压图标改用白墨。/ Dark selected pills and keys take a white pressed icon.
+    const uint8_t ink=s_pixels[0]<0x80?UI_GRAY_WHITE:UI_GRAY_BLACK;
     epd_fill_rect((EpdRect){cx-25,cy-23,50,50},s_pixels[0],fb);
-    ui_draw_icon(fb,cx,cy+(s_nav.accent?1:2),s_nav.accent?48:50,s_active.icon,UI_GRAY_BLACK);
+    ui_draw_icon(fb,cx,cy+(s_nav.accent?1:2),s_nav.accent?48:50,s_active.icon,ink);
 }
 bool ui_click_feedback_nav_tick(uint8_t *fb,int64_t now_ms,EpdRect *area) {
     if(!ui_click_feedback_nav_pending()||fb!=s_frame)return false;
@@ -184,9 +186,16 @@ bool ui_click_feedback_nav_tick(uint8_t *fb,int64_t now_ms,EpdRect *area) {
         }
         // 书架正等待封面时新帧尚未注册底栏；按稳定公共布局反馈，不能等待目标页出现。
         // While shelf covers load, the new frame may lack registrations; use the stable common footer immediately.
+#if DPREADER_BOARD_METALIO47
+        static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER,UI_ICON_SETTINGS};
+#else
         static const ui_icon_t tabs[]={UI_ICON_HOUSE,UI_ICON_LIBRARY_BIG,UI_ICON_FOLDER_OPEN,UI_ICON_SLIDERS_HORIZONTAL};
-        int center=app_settings_simple_ui()?(s_nav.tab==0?UI_LOCK_WIDTH/4:UI_LOCK_WIDTH*3/4):(s_nav.tab*2+1)*UI_LOCK_WIDTH/8;
-        s_active=control?*control:(click_control_t){(EpdRect){center-30,UI_NAV_TOP+15,60,60},UI_CLICK_NAV,tabs[s_nav.tab]};
+#endif
+        s_active=control?*control:(click_control_t){ui_nav_tab_rect(s_nav.tab),UI_CLICK_NAV,tabs[s_nav.tab]};
+        if(s_active.area.width<=0) {
+            *area=s_nav.dirty;s_nav.tab=-1;s_nav.dirty=(EpdRect){0};
+            return area->width>0;
+        }
         EpdRect r=s_active.area;
         s_pixels=heap_caps_malloc((size_t)r.width*r.height,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
         if(!s_pixels) {

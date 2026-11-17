@@ -167,7 +167,7 @@ static void fit_status_title(char *text, int width) {
     if (len && len + sizeof("…") <= 96) strcat(text, "…");
 }
 
-static const char *const labels[] = {"Trang chủ", "Kệ sách", "Tệp tin", "Cài đặt"};
+static const char *const s_nav_labels[] = {"Trang chủ", "Kệ sách", "Tệp tin", "Cài đặt"};
 static int s_power_signature=-1000;
 static int power_signature(void) {
     const pmu_snapshot_t *pmu=read_pico_pmu_get();
@@ -206,6 +206,7 @@ void ui_nav_wifi_icon(uint8_t *fb, int cx, int cy, int size, uint8_t gray) {
     ui_draw_icon(fb, cx, cy, size, UI_ICON_WIFI, gray);
 }
 
+#if !DPREADER_BOARD_METALIO47
 static void icon(uint8_t *fb, int tab, int cx, int y) {
     // 四个底栏图标固定用 Lucide 细线原图，线宽与状态栏一致；y 是图标盒顶边。
     // The four bar icons stay on upstream Lucide line art at the status-bar stroke weight; y is the box top.
@@ -217,23 +218,130 @@ static void icon(uint8_t *fb, int tab, int cx, int y) {
     ui_click_feedback_register(fb, (EpdRect){cx - 30, y - 12, 60, 60}, UI_CLICK_NAV, tabs[tab]);
     ui_draw_icon(fb, cx, y + 18, UI_NAV_TAB_ICON_PX, tabs[tab], UI_GRAY_BLACK);
 }
+#endif
+
+#if DPREADER_BOARD_METALIO47
+/* ---- S31 胶囊底栏 / S31 capsule navigation ---- */
+// 用户2026-11-17修订：左侧描边胶囊放首页/书架/文件，选中项为带图标和文字的深色药丸；设置为右侧独立圆键。
+// User revision 2026-11-17: an outlined capsule holds Home/Shelf/Files with the selection as a dark icon+label pill; Settings is a separate round button.
+// 左右与页面卡片同为36列；上下与卡片底(1080)及屏幕下沿各留22行。
+// Sides align with the 36-column page cards; 22 rows separate the bar from the card bottom (1080) and the screen edge.
+#define NAV_BAR_Y (UI_NAV_TOP + 6)
+#define NAV_BAR_H 92
+#define NAV_MARGIN 36
+#define NAV_GAP 14
+#define NAV_BORDER 3
+#define NAV_INSET 7
+#define NAV_GEAR_X (UI_LOCK_WIDTH - NAV_MARGIN - NAV_BAR_H)
+#define NAV_CAPSULE_W (NAV_GEAR_X - NAV_GAP - NAV_MARGIN)
+#define NAV_ICON_PX 40
+#define NAV_GEAR_ICON_PX 44
+#define NAV_LABEL_PX 30
+// 选中药丸内：左内边距、图标、图标与文字间距、右内边距。/ Selected pill: left pad, icon, icon-label gap, right pad.
+#define NAV_PILL_PAD_L 26
+#define NAV_PILL_GAP 12
+#define NAV_PILL_PAD_R 30
+#define NAV_IDLE_MIN_W 110
+
+typedef struct { EpdRect rect; int tab; } nav_slot_t;
+// 上次绘制的选中项与药丸宽度；命中与点击反馈沿用同一几何。/ Last painted selection and pill width; hits and feedback reuse that geometry.
+static int s_nav_active = -1, s_nav_wide = 0;
+
+static const char *nav_label(int tab) {
+    return app_settings_simple_ui() && tab == 0 ? "Đọc tiếp" : s_nav_labels[tab];
+}
+static EpdRect nav_inner(void) {
+    return (EpdRect){NAV_MARGIN + NAV_INSET, NAV_BAR_Y + NAV_INSET,
+                     NAV_CAPSULE_W - 2 * NAV_INSET, NAV_BAR_H - 2 * NAV_INSET};
+}
+static int nav_wide_width(int active) {
+    if (active < 0 || active > 2 || app_settings_simple_ui()) return 0;
+    const int inner = nav_inner().width;
+    int width = NAV_PILL_PAD_L + NAV_ICON_PX + NAV_PILL_GAP +
+                ui_text_fixed_width_px(NAV_LABEL_PX, nav_label(active)) + NAV_PILL_PAD_R;
+    const int max = inner - 2 * NAV_IDLE_MIN_W;
+    return width < 200 ? 200 : width > max ? max : width;
+}
+static int nav_slots(nav_slot_t slots[4]) {
+    const EpdRect inner = nav_inner();
+    int n = 0;
+    if (app_settings_simple_ui()) {
+        slots[n++] = (nav_slot_t){inner, 0};
+    } else {
+        const int wide = s_nav_active >= 0 && s_nav_active <= 2 ? s_nav_wide : 0;
+        const int idle = (inner.width - wide) / (wide ? 2 : 3);
+        int x = inner.x;
+        for (int tab = 0; tab < 3; ++tab) {
+            int width = tab == 2 ? inner.x + inner.width - x : tab == s_nav_active && wide ? wide : idle;
+            slots[n++] = (nav_slot_t){{x, inner.y, width, inner.height}, tab};
+            x += width;
+        }
+    }
+    slots[n++] = (nav_slot_t){{NAV_GEAR_X, NAV_BAR_Y, NAV_BAR_H, NAV_BAR_H}, 3};
+    return n;
+}
+// 图标中心：选中药丸及精简首页靠左排文字，其余居中。/ Icon centre: left-aligned beside a label, otherwise centred.
+static int nav_icon_cx(const nav_slot_t *slot, bool labelled) {
+    if (!labelled) return slot->rect.x + slot->rect.width / 2;
+    if (slot->tab == s_nav_active && !app_settings_simple_ui())
+        return slot->rect.x + NAV_PILL_PAD_L + NAV_ICON_PX / 2;
+    const int group = NAV_ICON_PX + NAV_PILL_GAP + ui_text_fixed_width_px(NAV_LABEL_PX, nav_label(slot->tab));
+    return slot->rect.x + (slot->rect.width - group) / 2 + NAV_ICON_PX / 2;
+}
+
+EpdRect ui_nav_tab_rect(int tab) {
+    nav_slot_t slots[4];
+    const int n = nav_slots(slots);
+    for (int i = 0; i < n; ++i) {
+        if (slots[i].tab != tab) continue;
+        const bool labelled = tab != 3 && (tab == s_nav_active || app_settings_simple_ui());
+        const int cx = tab == 3 ? slots[i].rect.x + slots[i].rect.width / 2 : nav_icon_cx(&slots[i], labelled);
+        return (EpdRect){cx - 30, NAV_BAR_Y + NAV_BAR_H / 2 - 30, 60, 60};
+    }
+    return (EpdRect){0};
+}
 
 void ui_nav_draw(uint8_t *fb, int active) {
-#if DPREADER_BOARD_METALIO47
-    // White backing and a single selected tile share the page card material.
+    static const ui_icon_t tabs[4] = {UI_ICON_HOUSE, UI_ICON_LIBRARY_BIG, UI_ICON_FOLDER, UI_ICON_SETTINGS};
+    s_nav_active = active;
+    s_nav_wide = nav_wide_width(active);
     ui_fill_rect_fast((EpdRect){0,UI_NAV_REFRESH_END,UI_LOCK_WIDTH,UI_LOCK_HEIGHT-UI_NAV_REFRESH_END},UI_GRAY_WHITE,fb);
-    const int count=app_settings_simple_ui()?2:4;
-    for(int slot=0;slot<count;++slot) {
-        const int i=count==2?(slot?3:0):slot;
-        const int center=(slot*2+1)*UI_LOCK_WIDTH/(count*2);
-        if(i==active) {
-            const EpdRect selected={center-70,UI_NAV_TOP+10,140,104};
-            ui_draw_soft_card(fb,selected,20,true);
+    // 深色外框用实心填充再内缩填白，保证黑白快刷后线宽一致。/ Fill dark then inset white so the frame survives BW refresh at a constant weight.
+    const EpdRect capsule = {NAV_MARGIN, NAV_BAR_Y, NAV_CAPSULE_W, NAV_BAR_H};
+    ui_fill_round_rect(fb, capsule, NAV_BAR_H / 2, UI_GRAY_BLACK);
+    ui_fill_round_rect(fb, ui_inset_rect(capsule, NAV_BORDER), NAV_BAR_H / 2 - NAV_BORDER, UI_GRAY_WHITE);
+    nav_slot_t slots[4];
+    const int n = nav_slots(slots);
+    const int cy = NAV_BAR_Y + NAV_BAR_H / 2;
+    for (int i = 0; i < n; ++i) {
+        const nav_slot_t *slot = &slots[i];
+        const bool selected = slot->tab == active;
+        if (slot->tab == 3) {
+            ui_fill_round_rect(fb, slot->rect, NAV_BAR_H / 2, UI_GRAY_BLACK);
+            if (!selected)
+                ui_fill_round_rect(fb, ui_inset_rect(slot->rect, NAV_BORDER), NAV_BAR_H / 2 - NAV_BORDER, UI_GRAY_WHITE);
+        } else if (selected) {
+            ui_fill_round_rect(fb, slot->rect, slot->rect.height / 2, UI_GRAY_BLACK);
         }
-        icon(fb,i,center,UI_NAV_TOP+27);
-        ui_text(fb,center,UI_NAV_TOP+74,17,app_settings_simple_ui()&&i==0?"Đọc tiếp":labels[i],EPD_DRAW_ALIGN_CENTER,false);
+        const bool labelled = slot->tab != 3 && (selected || app_settings_simple_ui());
+        const int cx = slot->tab == 3 ? slot->rect.x + slot->rect.width / 2 : nav_icon_cx(slot, labelled);
+        const int px = slot->tab == 3 ? NAV_GEAR_ICON_PX : NAV_ICON_PX;
+        ui_click_feedback_register(fb, (EpdRect){cx - 30, cy - 30, 60, 60}, UI_CLICK_NAV, tabs[slot->tab]);
+        ui_draw_icon(fb, cx, cy, px, tabs[slot->tab], selected ? UI_GRAY_WHITE : UI_GRAY_BLACK);
+        if (labelled)
+            ui_text_fixed_vc(fb, cx + NAV_ICON_PX / 2 + NAV_PILL_GAP, cy, NAV_LABEL_PX,
+                             nav_label(slot->tab), EPD_DRAW_ALIGN_LEFT, selected);
     }
+}
 #else
+EpdRect ui_nav_tab_rect(int tab) {
+    if (tab < 0 || tab > 3) return (EpdRect){0};
+    const int center = app_settings_simple_ui() ? (tab == 0 ? UI_LOCK_WIDTH / 4 : UI_LOCK_WIDTH * 3 / 4)
+                                                : (tab * 2 + 1) * UI_LOCK_WIDTH / 8;
+    return (EpdRect){center - 30, UI_NAV_TOP + 15, 60, 60};
+}
+
+void ui_nav_draw(uint8_t *fb, int active) {
     ui_fill_rect_fast((EpdRect){0, UI_NAV_TOP, UI_LOCK_WIDTH, UI_LOCK_HEIGHT - UI_NAV_TOP}, 0xe0, fb);
     ui_hairline(fb, UI_NAV_TOP, 0, UI_LOCK_WIDTH, UI_GRAY_LIGHT);
     ui_fill_rect_fast((EpdRect){0, UI_NAV_REFRESH_END, UI_LOCK_WIDTH, UI_NAV_TOP - UI_NAV_REFRESH_END}, 0xf0, fb);
@@ -248,7 +356,7 @@ void ui_nav_draw(uint8_t *fb, int active) {
         int center = (slot * 2 + 1) * UI_LOCK_WIDTH / (count * 2);
         if (i == active) ui_fill_rect_fast((EpdRect){center - 28, UI_NAV_TOP + 1, 56, 5}, UI_GRAY_BLACK, fb);
         icon(fb, i, center, UI_NAV_TOP + 27);
-        ui_text(fb, center, UI_NAV_TOP + 74, 17, app_settings_simple_ui() && i == 0 ? "Đọc tiếp" : labels[i], EPD_DRAW_ALIGN_CENTER, false);
+        ui_text(fb, center, UI_NAV_TOP + 74, 17, app_settings_simple_ui() && i == 0 ? "Đọc tiếp" : s_nav_labels[i], EPD_DRAW_ALIGN_CENTER, false);
     }
 #endif
 }
@@ -363,9 +471,22 @@ void ui_nav_reader_status(uint8_t *fb) { draw_status(fb, true); }
 
 int ui_nav_hit(uint16_t x, uint16_t y) {
     if (x >= UI_LOCK_WIDTH || y < UI_NAV_TOUCH_TOP || y >= UI_LOCK_HEIGHT) return -1;
+#if DPREADER_BOARD_METALIO47
+    // 整列命中：胶囊内各段延伸到屏幕左缘，最后一段与设置圆键在间隙中点分界。
+    // Full-height columns: capsule slots reach the left edge, and the last one meets the round Settings key mid-gap.
+    nav_slot_t slots[4];
+    const int n = nav_slots(slots);
+    for (int i = 0; i < n - 1; ++i) {
+        int right = slots[i].rect.x + slots[i].rect.width;
+        if (i == n - 2) right += (NAV_GEAR_X - right) / 2;
+        if (x < right) return slots[i].tab;
+    }
+    return 3;
+#else
     if (app_settings_simple_ui()) return x < UI_LOCK_WIDTH / 2 ? 0 : 3;
     int tab = x * 4 / UI_LOCK_WIDTH;
     return tab < 4 ? tab : -1;
+#endif
 }
 
 void ui_nav_request(app_ctx_t *ctx, int index) {
