@@ -7,14 +7,14 @@
 **Firmware đọc sách tiếng Việt cho Metalio E-ink 4 Plus 4.7 inch, ESP32-S31.**
 LumenOS là nhánh cá nhân phát triển từ dpReader, dùng logo PNG trắng đen do người dùng cung cấp và tiếp tục duy trì mã nguồn cùng các giấy phép của dự án gốc.
 
-Bản hiện tại: **Full `1.5.10`** và **Love Book `1.5.10-love`** — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
+Bản hiện tại: **Full `1.5.11`** và **Love Book `1.5.11-love`** — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
 Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Love Book thêm hậu tố `-love`.
 
 [Cài đặt và sử dụng](docs/CAI_DAT.md) · [Thay đổi theo phiên bản](docs/CHANGELOG.md) · [Hai bản firmware](docs/FIRMWARE_EDITIONS.md) · [Build cho S31](docs/BOARDS.md)
 
 ## Giao diện
 
-Ảnh khởi động dưới đây được dựng bằng **mã C vẽ màn khởi động của firmware**, dùng đúng logo đóng gói trong bản 1.5.0. Các ảnh còn lại là **minh họa bố cục với dữ liệu sách mẫu**, dùng phông chữ và biểu tượng trong kho mã; không phải ảnh chụp thiết bị hay phép đo chất lượng màn E-ink.
+Ảnh khởi động dưới đây được dựng bằng **mã C vẽ màn khởi động của firmware**, dùng đúng logo đóng gói trong bản 1.5.0. Các ảnh còn lại là **minh họa bố cục với dữ liệu sách mẫu**, dùng phông chữ và biểu tượng trong kho mã (chú cú trên Trang chủ được vẽ bằng chính mã C của firmware); không phải ảnh chụp thiết bị hay phép đo chất lượng màn E-ink.
 
 | Khởi động LumenOS | Trình đọc TXT/EPUB |
 | :---: | :---: |
@@ -22,7 +22,7 @@ Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Lov
 
 | Trang chủ Full | Tủ sách Full |
 | :---: | :---: |
-| <img src="docs/screenshots/lumenos/home.png" width="300" alt="Minh họa Trang chủ với thẻ Đọc tiếp và lịch đọc trong tháng"> | <img src="docs/screenshots/lumenos/library.png" width="300" alt="Minh họa Tủ sách lưới ba cột, bìa và thông tin tệp"> |
+| <img src="docs/screenshots/lumenos/home.png" width="300" alt="Minh họa Trang chủ với thẻ Đọc tiếp có cú Cú Lém trích câu, thẻ thú cưng và dải đọc 7 ngày"> | <img src="docs/screenshots/lumenos/library.png" width="300" alt="Minh họa Tủ sách dạng danh sách với ô tìm kiếm, tab trạng thái có số đếm và tiến độ từng cuốn"> |
 
 | Tệp tin | Cài đặt |
 | :---: | :---: |
@@ -36,7 +36,7 @@ Hai bản dùng chung trình đọc, phông chữ, tiến độ đọc và phầ
 
 | | Full | Love Book |
 | --- | --- | --- |
-| Phiên bản hiện tại | `1.5.10` | `1.5.10-love` |
+| Phiên bản hiện tại | `1.5.11` | `1.5.11-love` |
 | Trang chủ | Chọn Đầy đủ hoặc I Love Book | Cố định I Love Book |
 | Mở sách | Tủ sách, lịch sử và trình quản lý tệp | Trình chọn TXT/EPUB theo thư mục |
 | Quản lý kệ sách, kiểu kệ, khóa ghép bìa | Có | Lược bỏ |
@@ -51,6 +51,8 @@ Chi tiết: [Full và Love Book](docs/FIRMWARE_EDITIONS.md), [chức năng Love 
 
 - **Đọc TXT/EPUB tiếng Việt:** dàn trang theo từ, mục lục, dấu trang, tìm kiếm, lưu tiến độ và tùy chỉnh phông, cỡ chữ, độ đậm, căn lề, giãn dòng.
 - **Giao diện thẻ xám:** Trang chủ, Tủ sách, Tệp tin và Cài đặt dùng bố cục thống nhất; công cụ đọc và các trang thiết lập tiếp nối cùng kiểu hiển thị.
+- **Thú cưng Cú Lém (Full):** chú cú trên Trang chủ đổi cảm xúc theo thói quen đọc (ngủ gật, nhớ bạn, ngóng, đang đọc, vui sướng, học giả), lên cấp theo số phút đọc 30 ngày gần nhất và trích câu trong chương đang đọc. Chạm vào thẻ để cú nói câu khác.
+- **Tủ sách dạng danh sách:** ô tìm kiếm luôn hiện, tab trạng thái có số đếm, mỗi trang 5 cuốn với bìa, tác giả, tiến độ và nơi lưu.
 - **Điều khiển khi đọc:** phím cảm ứng, nút âm lượng và thao tác vuốt; hỗ trợ điều khiển lật trang Bluetooth. Các phím có thể gán thao tác phù hợp.
 - **Truyền sách:** dùng Wi-Fi cùng mạng, điểm phát riêng hoặc USB. Web Portal quản lý tệp, cấu hình OPDS/KOSync và tải log đã xuất.
 - **OPDS và KOSync:** duyệt, tải sách từ kho OPDS; đồng bộ tiến độ với KOReader Sync. Máy chủ và tài khoản có thể thay đổi trong cài đặt.

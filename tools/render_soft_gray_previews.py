@@ -32,11 +32,82 @@ def shell(active,title=None):
  text(img,(595,21),'92%',32,anchor='rt')
  d=ImageDraw.Draw(img);d.rounded_rectangle((606,29,645,51),6,outline=0,width=2);d.rectangle((610,33,639,47),fill=0);d.rectangle((648,36,652,43),fill=0)
  if title:text(img,(36,91),title,52)
- for i,(name,label) in enumerate([('HOUSE','Trang chủ'),('LIBRARY_BIG','Kệ sách'),('FOLDER_OPEN','Tệp tin'),('SLIDERS_HORIZONTAL','Cài đặt')]):
-  cx=(2*i+1)*W//8
-  if i==active:card(img,(cx-70,1106,140,104),20,True)
-  icon(img,name,cx,1141,44);text(img,(cx,1170),label,17,anchor='mt')
+ navigation(img,active)
  return img
+
+def navigation(img,active):
+ # Theo ui_nav_draw (S31): viên nang Trang chủ/Kệ sách/Tệp tin và nút Cài đặt tròn riêng.
+ # Mirrors ui_nav_draw (S31): an outlined capsule for Home/Shelf/Files plus a separate round Settings key.
+ d=ImageDraw.Draw(img)
+ top,h,margin,gap,border,inset=1102,92,36,14,3,7
+ gear_x=W-margin-h;capsule_w=gear_x-gap-margin
+ d.rounded_rectangle((margin,top,margin+capsule_w-1,top+h-1),h//2,fill=0)
+ d.rounded_rectangle((margin+border,top+border,margin+capsule_w-1-border,top+h-1-border),h//2-border,fill=255)
+ tabs=[('HOUSE','Trang chủ'),('LIBRARY_BIG','Kệ sách'),('FOLDER','Tệp tin')]
+ ix,iy,iw,ih=margin+inset,top+inset,capsule_w-2*inset,h-2*inset
+ wide=0
+ if 0<=active<=2:
+  wide=26+40+12+int(font(30).getlength(tabs[active][1]))+30
+  wide=max(200,min(wide,iw-2*110))
+ idle=(iw-wide)//(2 if wide else 3);x=ix;cy=top+h//2
+ for t,(name,label) in enumerate(tabs):
+  w=ix+iw-x if t==2 else wide if t==active and wide else idle
+  if t==active:
+   d.rounded_rectangle((x,iy,x+w-1,iy+ih-1),ih//2,fill=0)
+   cx=x+26+20;icon(img,name,cx,cy,40,255);text(img,(cx+20+12,cy),label,30,255,anchor='lm')
+  else:icon(img,name,x+w//2,cy,40)
+  x+=w
+ d.ellipse((gear_x,top,gear_x+h-1,top+h-1),fill=0)
+ if active!=3:d.ellipse((gear_x+border,top+border,gear_x+h-1-border,top+h-1-border),fill=255)
+ icon(img,'SETTINGS',gear_x+h//2,cy,44,255 if active==3 else 0)
+
+OWL_HARNESS = r"""
+#include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+typedef struct {int x,y,width,height;} EpdRect;
+enum EpdFontFlags {EPD_DRAW_ALIGN_CENTER};
+static int W,H;
+static void px(int x,int y,uint8_t c,uint8_t*fb){if(x>=0&&y>=0&&x<W&&y<H)fb[y*W+x]=c;}
+static void ui_fill_rect_fast(EpdRect r,uint8_t c,uint8_t*fb){for(int y=r.y;y<r.y+r.height;y++)for(int x=r.x;x<r.x+r.width;x++)px(x,y,c,fb);}
+static void epd_fill_circle(int cx,int cy,int r,uint8_t c,uint8_t*fb){for(int y=-r;y<=r;y++)for(int x=-r;x<=r;x++)if(x*x+y*y<=r*r)px(cx+x,cy+y,c,fb);}
+static void epd_draw_circle(int cx,int cy,int r,uint8_t c,uint8_t*fb){for(int a=0;a<4000;a++){float t=a*6.2831853f/4000;px(cx+lroundf(r*cosf(t)),cy+lroundf(r*sinf(t)),c,fb);}}
+static float side(float ax,float ay,float bx,float by,float cx,float cy){return (ax-cx)*(by-cy)-(bx-cx)*(ay-cy);}
+static void epd_fill_triangle(int x0,int y0,int x1,int y1,int x2,int y2,uint8_t c,uint8_t*fb){
+ for(int y=0;y<H;y++)for(int x=0;x<W;x++){float a=side(x,y,x0,y0,x1,y1),b=side(x,y,x1,y1,x2,y2),d=side(x,y,x2,y2,x0,y0);
+  if(!(((a<0)||(b<0)||(d<0))&&((a>0)||(b>0)||(d>0))))px(x,y,c,fb);}}
+static void label(uint8_t*fb,int x,int y,int p,const char*t,enum EpdFontFlags a,uint8_t g){(void)fb;(void)x;(void)y;(void)p;(void)t;(void)a;(void)g;}
+#include "owl.inc"
+int main(int argc,char**argv){
+ int size=atoi(argv[1]),mood=atoi(argv[2]),wink=atoi(argv[3]),bg=atoi(argv[4]);
+ W=size+8;H=size*124/120+8;uint8_t*fb=malloc(W*H);for(int i=0;i<W*H;i++)fb[i]=bg;
+ pet_owl_draw(fb,4,4,size,(pet_mood_t)mood,wink,false);
+ fwrite(fb,1,W*H,stdout);return 0;}
+"""
+PET_SOURCE = Path(__file__).resolve().parents[1]/'firmware/full/ui/pet.inc'
+OWL_MOODS = {'sleep':0,'miss':1,'wait':2,'reading':3,'happy':4,'proud':5}
+
+def owl(size, mood='reading', wink=False, bg=255):
+ """Draw the owl with the firmware's own C drawing code (firmware/full/ui/pet.inc)."""
+ import subprocess, tempfile
+ source = PET_SOURCE.read_text()
+ part = source[source.index('typedef enum { PET_SLEEP'):source.index('/* ---- 心情与文案')]
+ with tempfile.TemporaryDirectory() as tmp:
+  tmp = Path(tmp)
+  (tmp/'owl.inc').write_text(part)
+  (tmp/'owl.c').write_text(OWL_HARNESS)
+  subprocess.run(['cc','-O1','-o',str(tmp/'owl'),str(tmp/'owl.c'),'-lm'],check=True)
+  raw = subprocess.run([str(tmp/'owl'),str(size),str(OWL_MOODS[mood]),str(int(wink)),str(bg)],check=True,capture_output=True).stdout
+ return Image.frombytes('L',(size+8,size*124//120+8),raw)
+
+def bubble(img,rect,tail_y,tail_right):
+ x,y,w,h=rect;d=ImageDraw.Draw(img)
+ d.rounded_rectangle((x,y,x+w-1,y+h-1),20,fill=255,outline=32,width=2)
+ edge=x+w-2 if tail_right else x+1;tip=edge+14 if tail_right else edge-14
+ d.polygon([(edge,tail_y-10),(tip,tail_y+4),(edge,tail_y+10)],fill=255)
+ d.line([(edge,tail_y-10),(tip,tail_y+4),(edge,tail_y+10)],fill=32,width=2)
 
 def home():
  img=shell(0)
@@ -46,53 +117,91 @@ def home():
  d.ellipse((588,88,648,148),fill=238);text(img,(618,99),'L',30,anchor='mt')
  card(img,(36,184,612,378))
  text(img,(60,204),'Đọc tiếp',26)
+ # Góc thẻ: cú nhỏ trích câu trong chương đang đọc. / Corner owl quoting the current chapter.
+ bubble(img,(192,194,354,72),230,True)
+ text(img,(206,214),'“Trăm năm trong cõi người ta, chữ',18,48,anchor='lm')
+ text(img,(206,246),'tài chữ mệnh khéo là ghét nhau.”',18,48,anchor='lm')
+ img.paste(owl(72,'reading',bg=221),(562,188))
  cover(img,0,(60,278,176,240))
  text(img,(264,292),'Truyện Kiều',40)
  text(img,(264,350),'Nguyễn Du',25,85)
  text(img,(264,465),'Đã đọc 42%',30)
  text(img,(622,466),'Đọc tiếp ›',28,anchor='rt')
  d.rounded_rectangle((264,514,622,518),2,fill=204);d.rounded_rectangle((264,511,414,520),5,fill=0)
- # Sample month: minutes read on 1..15 November 2026 against a 30-minute goal.
+ # Sample: minutes read on 1..15 November 2026 against a 30-minute goal.
  minutes=[35,0,42,31,12,0,50,33,0,38,45,31,40,36,28]
- card(img,(36,590,612,490))
- text(img,(60,610),'Tháng 11',28);text(img,(622,614),'Mục tiêu 30 phút/ngày',19,85,anchor='rt')
- for i,name in enumerate(['T2','T3','T4','T5','T6','T7','CN']):text(img,(60+(i*564+282)//7,664),name,18,85,anchor='mt')
- for day in range(1,31):
-  cell=6+day-1;cx=60+(cell%7*564+282)//7;cy=722+cell//7*50
-  read=minutes[day-1] if day<=15 else 0;gray=0 if day<=15 else 150
+ total30=sum(minutes)
+ card(img,(36,590,612,300))
+ text(img,(60,626),'Cú Lém',28,anchor='lm')
+ text(img,(622,626),'Cấp 4 · Mọt sách',19,64,anchor='rm')
+ img.paste(owl(150,'reading',bg=221),(54,682))
+ bubble(img,(236,656,388,136),728,False)
+ text(img,(254,707),'Thêm 2 phút nữa là đạt mục',22,16,anchor='lm')
+ text(img,(254,741),'tiêu!',22,16,anchor='lm')
+ text(img,(236,818),'Kinh nghiệm 30 ngày',17,64,anchor='lm')
+ text(img,(624,818),f'{total30} / 600',17,48,anchor='rm')
+ d.rounded_rectangle((236,834,623,843),5,fill=204)
+ d.rounded_rectangle((236,834,236+388*(total30-300)//300,843),5,fill=0)
+ text(img,(236,866),'1 phút đọc = 1 điểm · Chuỗi 5 ngày',16,96,anchor='lm')
+ card(img,(36,910,612,170))
+ text(img,(60,944),'Tuần này',24,anchor='lm')
+ week=minutes[8:15]
+ text(img,(622,944),f'{sum(week)} phút · Cả tháng ›',18,64,anchor='rm')
+ for i,name in enumerate(['T2','T3','T4','T5','T6','T7','CN']):
+  cx=60+(i*564+282)//7;cy=1036;day=9+i;read=week[i];gray=0
+  text(img,(cx,988),name,18,96,anchor='mm')
   if read>=30:d.ellipse((cx-20,cy-20,cx+20,cy+20),fill=32);gray=255
   elif read:d.ellipse((cx-20,cy-20,cx+20,cy+20),outline=96,width=2)
   if day==15:d.ellipse((cx-25,cy-25,cx+25,cy+25),outline=48,width=3)
-  text(img,(cx,cy-12),str(day),21,gray,anchor='mt')
- d.line((60,1004,623,1004),fill=176)
- for i,(value,caption) in enumerate([('28 phút','Hôm nay'),('5 ngày','Chuỗi hiện tại'),('10 ngày','Đạt mục tiêu')]):
-  text(img,(154+i*188,1016),value,26,anchor='mt');text(img,(154+i*188,1050),caption,17,85,anchor='mt')
+  text(img,(cx,cy),str(day),21,gray,anchor='mm')
  return img
 
 def library():
  img=shell(1,'Tủ sách');d=ImageDraw.Draw(img)
  icon(img,'CHEVRON_DOWN',263,120,26)
- for i,name in enumerate(['SEARCH','TEXT_ALIGN_START','PENCIL',None]):
-  x=416+i*60;d.ellipse((x,94,x+51,145),fill=221)
-  if name:icon(img,name,x+26,120,28)
-  else:d.rectangle((x+15,119,x+36,121),fill=0);d.rectangle((x+25,109,x+27,130),fill=0)
- x=36
- for i,label in enumerate(['Tất cả','Đang đọc','Chưa đọc','Đã xong','Yêu thích']):
-  w=int(font(18).getlength(label))+30
-  d.rounded_rectangle((x,160,x+w-1,199),20,fill=0 if i==0 else 221)
-  text(img,(x+w//2,169),label,18,255 if i==0 else 0,anchor='mt');x+=w+9
- for i in range(9):
-  title,percent=(BOOKS[i][0],[42,100,0,17,0,73][i]) if i<6 else [('Lão Hạc',100),('Bỉ Vỏ',5),('Vang bóng một thời',0)][i-6]
-  x=46+(i%3)*214;y=212+(i//3)*262
-  cover(img,i%6,(x,y,164,214))
-  while font(19).getlength(title)>164:title=title[:-2]+'…'
-  text(img,(x,y+230),title,19,anchor='lm')
-  d.rounded_rectangle((x,y+247,x+109,y+252),3,fill=208)
-  if percent:d.rounded_rectangle((x,y+247,x+max(6,110*percent//100)-1,y+252),3,fill=0)
-  text(img,(x+164,y+250),'Xong' if percent==100 else f'{percent}%' if percent else 'Mới',15,80,anchor='rm')
- icon(img,'CHEVRON_LEFT',190,1031,26)
- text(img,(342,1020),'9 cuốn · 01/01',20,anchor='mt')
- icon(img,'CHEVRON_RIGHT',494,1031,26)
+ d.rounded_rectangle((412,92,579,147),28,fill=255,outline=0,width=2)
+ d.rectangle((434,119,453,121),fill=0);d.rectangle((443,110,445,129),fill=0)
+ text(img,(464,120),'Nhập sách',19,anchor='lm')
+ d.ellipse((592,92,647,147),fill=221)
+ for k in (-1,0,1):d.ellipse((617+k*13,117,622+k*13,122),fill=0)
+ d.rounded_rectangle((36,160,503,215),28,fill=221)
+ icon(img,'SEARCH',70,188,24,64);text(img,(96,188),'Tìm theo tên sách, tác giả…',19,96,anchor='lm')
+ d.rounded_rectangle((516,160,647,215),28,fill=221)
+ icon(img,'TEXT_ALIGN_START',546,188,24);text(img,(566,188),'Gần đây',17,anchor='lm')
+ tabs=[('Tất cả','9'),('Đang đọc','3'),('Chưa đọc','3'),('Đã xong','3'),('Yêu thích','2')]
+ widths=[font(19).getlength(n)+6+font(15).getlength(c) for n,c in tabs]
+ gap=(612-sum(widths))/4;x=36;cy=250
+ d.line((36,275,647,275),fill=144)
+ for i,((name,count),w) in enumerate(zip(tabs,widths)):
+  text(img,(x,cy),name,19,0 if i==0 else 64,anchor='lm')
+  text(img,(x+w,cy),count,15,96,anchor='rm')
+  if i==0:d.rounded_rectangle((x,272,x+w,275),2,fill=0)
+  x+=w+gap
+ rows=[('Truyện Kiều','Nguyễn Du',42,'EPUB · Máy',0),('Dế Mèn phiêu lưu ký','Tô Hoài',17,'EPUB · Thẻ nhớ',3),
+       ('Chí Phèo','Nam Cao',73,'TXT · Thẻ nhớ',5),('Tắt Đèn','Ngô Tất Tố',0,'EPUB · Máy',2),
+       ('Số Đỏ','Vũ Trọng Phụng',100,'EPUB · Thẻ nhớ',1)]
+ for r,(title,author,pct,source,c) in enumerate(rows):
+  top=284+r*144
+  cover(img,c,(36,top+8,96,128))
+  lines=[title]
+  if font(24).getlength(title)>492:
+   words=title.split();first=''
+   while words and font(24).getlength((first+' '+words[0]).strip())<=492:first=(first+' '+words.pop(0)).strip()
+   second=' '.join(words)
+   while font(24).getlength(second)>492:second=second[:-2]+'…'
+   lines=[first,second]
+  two=len(lines)==2
+  for i,line in enumerate(lines):text(img,(156,top+(26 if two else 34)+30*i),line,24,anchor='lm')
+  text(img,(156,top+(88 if two else 70)),author,18,80,anchor='lm')
+  my=top+(118 if two else 106)
+  d.rounded_rectangle((156,my-4,355,my+3),4,fill=208)
+  if pct:d.rounded_rectangle((156,my-4,156+max(8,200*pct//100)-1,my+3),4,fill=0)
+  text(img,(370,my),'Đã xong' if pct==100 else f'{pct}%' if pct else 'Chưa đọc',16,anchor='lm')
+  text(img,(648,my),source,16,96,anchor='rm')
+  if r<4:d.line((36,top+143,647,top+143),fill=144)
+ icon(img,'PAGER_CHEVRON_FIRST',72,1053,36,170);icon(img,'CHEVRON_LEFT',160,1053,36,170)
+ text(img,(342,1053),'9 cuốn · 01/02',21,anchor='mm')
+ icon(img,'CHEVRON_RIGHT',524,1053,36);icon(img,'PAGER_CHEVRON_LAST',612,1053,36)
  return img
 
 def pager(img):

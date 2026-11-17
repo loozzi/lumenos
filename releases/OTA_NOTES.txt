@@ -1,1 +1,1 @@
-LumenOS 1.5.10: Tủ sách dạng Danh sách mới: ô tìm kiếm luôn hiện, nút Nhập sách rõ chữ, tab lọc kèm số sách, 5 cuốn mỗi trang với tác giả, tiến độ và nơi lưu. Lần đầu nâng cấp tự chuyển sang kiểu này.
+LumenOS 1.5.11: Trang chủ có thú cưng Cú Lém: cú trích câu đang đọc, đổi cảm xúc theo thói quen đọc và lên cấp theo phút đọc. Lịch tháng thu thành dải Tuần này, chạm để xem cả tháng.

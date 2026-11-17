@@ -2,6 +2,7 @@
 
 - `startup.png`: kết quả của mã C vẽ màn khởi động, chạy bằng host harness `tools/metalio_startup_host_test.py` trong cây kiểm thử Metalio47. Logo lấy từ asset 4bpp nhúng; không phải ảnh chụp thiết bị.
 - `home.png`, `library.png`, `files.png`, `settings.png`: minh họa bố cục Full bằng `tools/render_soft_gray_previews.py`.
+- Chú cú Cú Lém trong `home.png` được vẽ bằng chính hàm C `pet_owl_draw` trong `firmware/full/ui/pet.inc` (biên dịch kèm harness nhỏ), nên giống bố cục trên máy; phần chữ còn lại vẫn là minh họa.
 - `reader.png`: minh họa trình đọc bằng `tools/render_glass_previews.py`.
 
 Các minh họa dùng phông và icon trong kho, với sách Truyện Kiều của Nguyễn Du cùng dữ liệu mẫu về tiến độ, giờ, mạng và dung lượng. Bìa là hình dựng minh họa. Chúng không xác nhận đầu ra quang học, hiệu năng, trạng thái phần cứng hoặc việc đã nạp thiết bị. Ảnh ngoài thư mục này giữ lịch sử dpReader cũ.

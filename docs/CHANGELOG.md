@@ -1,3 +1,10 @@
+## LumenOS 1.5.11 / 1.5.11-love · Phát hành chính thức · 2026-11-17
+
+- Trang chủ Full có thú cưng **Cú Lém**: chú cú ngồi góc thẻ **Đọc tiếp** trích câu trong chương đang đọc; thẻ riêng của cú có bong bóng nói, cấp độ (7 cấp, từ Cú con tới Đại hiền triết) và thanh kinh nghiệm theo số phút đọc 30 ngày gần nhất (1 phút = 1 điểm).
+- Cú có 6 cảm xúc theo thói quen đọc: Ngủ gật (khuya), Nhớ bạn (3 ngày không đọc), Ngóng (chưa đọc hôm nay), Đang đọc, Vui sướng (đạt mục tiêu) và Học giả đeo kính (đạt mục tiêu với chuỗi từ 7 ngày). Chạm vào thẻ để cú nói câu khác; chỉ làm mới vùng thẻ.
+- Lịch tháng trên Trang chủ thu thành dải **Tuần này** (thứ Hai tới Chủ nhật, kèm tổng phút); chạm để mở lịch cả tháng như trước.
+- Love Book: chỉ đồng bộ số phiên bản, giao diện không đổi.
+
 ## LumenOS 1.5.10 / 1.5.10-love · Phát hành chính thức · 2026-11-17
 
 - Tủ sách kiểu **Danh sách** làm lại: tiêu đề có nút **Nhập sách** ghi rõ chữ và nút **⋯** (Quản lý); ô tìm kiếm luôn hiện cạnh nút sắp xếp (Gần đây/Theo tên); hàng tab Tất cả, Đang đọc, Chưa đọc, Đã xong, Yêu thích kèm số sách. Mỗi trang 5 cuốn: bìa, tên sách tối đa 2 dòng, tác giả, thanh tiến độ và định dạng · nơi lưu (Máy/Thẻ nhớ).

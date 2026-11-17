@@ -613,7 +613,12 @@ static void refresh_days(void) {
     s_recent_days_valid=s_reading_days_valid&&book_ticket_recent_days(s_recent_days);
 #endif
 }
-static EpdRect home_calendar_rect(void){return(EpdRect){36,590,612,490};}
+// Full首页：本周七天条与宠物卡。/ Full Home: this week's strip and the pet card.
+static EpdRect home_calendar_rect(void){return(EpdRect){36,910,612,170};}
+#if !DPREADER_LOVE_BOOK
+static EpdRect home_pet_card_rect(void){return(EpdRect){36,590,612,300};}
+static unsigned s_pet_tap;
+#endif
 #if !DPREADER_LOVE_BOOK
 // 首页日历卡：连续达标天数取最近30天，可跨月。/ Home calendar card: the streak spans the last 30 days across months.
 static unsigned home_streak_days(unsigned goal) {
@@ -1497,6 +1502,10 @@ static app_redraw_t on_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
     }else {
         int tab=ui_nav_hit(x,y);if(tab>=0){ui_nav_request(ctx,tab);return APP_REDRAW_NONE;}
         // 日历卡与目标环进入同一月记录页。/ The calendar card and goal ring open the same monthly record.
+#if !DPREADER_LOVE_BOOK
+        // 点按宠物卡换一句话，只局刷该卡。/ Tapping the pet card swaps its line and refreshes only that card.
+        if(hit(home_pet_card_rect(),x,y)){++s_pet_tap;s_area=home_pet_card_rect();return APP_REDRAW_AREA;}
+#endif
         if(hit((EpdRect){510,88,60,60},x,y)||(!DPREADER_LOVE_BOOK&&hit(home_calendar_rect(),x,y))){refresh_days();s_goal_draft=app_settings_home_goal_minutes();s_view=HOME_GOAL;s_save_error=false;return APP_REDRAW_PAGE;}
         if(hit(continue_card_hit_rect(),x,y)) {
             home_book_t *b=featured();
