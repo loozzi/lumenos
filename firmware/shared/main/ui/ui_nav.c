@@ -358,8 +358,8 @@ void ui_nav_draw(uint8_t *fb, int active) {
         icon(fb, i, center, UI_NAV_TOP + 27);
         ui_text(fb, center, UI_NAV_TOP + 74, 17, app_settings_simple_ui() && i == 0 ? "Đọc tiếp" : s_nav_labels[i], EPD_DRAW_ALIGN_CENTER, false);
     }
-#endif
 }
+#endif
 
 static time_t status_time(void) {
     time_t now = time(NULL);
