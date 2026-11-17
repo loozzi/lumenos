@@ -1614,7 +1614,7 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
         back_header(fb,"Kiểu hiển thị Tủ sách");
         settings_line(fb, 36, 207, 23, "Chọn giao diện và cách sắp xếp Tủ sách", EPD_DRAW_ALIGN_LEFT, false);
         static const char *const styles[] = {"Thanh kệ tối màu", "Lưới tối giản", "Danh sách"};
-        static const char *const descriptions[] = {"9 cuốn mỗi trang", "6 cuốn · Tên sách & dung lượng", "Tác giả & tiến độ · 4 cuốn mỗi trang"};
+        static const char *const descriptions[] = {"9 cuốn mỗi trang", "6 cuốn · Tên sách & dung lượng", "Tìm nhanh & tiến độ · 5 cuốn mỗi trang"};
         for (int i = 0; i < 3; ++i) {
             int y = 263 + i * 253 - s_style_scroll;
             if (y + 230 < 242 || y >= settings_viewport_end()) continue;

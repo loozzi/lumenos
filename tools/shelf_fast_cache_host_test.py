@@ -159,7 +159,7 @@ int main(void) {
     invalidate_covers();style=5;rows=4;
     for(int i=0;i<4;++i){seed_gray(i);s_covers[i].width=i==0?176:i==1?70:160;s_covers[i].height=i==0?100:i==1?240:160;}
     prepare_fast_covers();assert(allocated_bytes==4u*4494);
-    for(int row=0;row<4;++row){EpdRect image=shelf_cover_image(row);assert(image.width<=120&&image.height<=156&&image.width>0&&image.height>0);assert(fast_cover_matches(row,image));assert(!s_covers[row].gray);assert(image.x==71&&image.width==120&&image.height==156);}
+    for(int row=0;row<4;++row){EpdRect image=shelf_cover_image(row);assert(image.width<=96&&image.height<=128&&image.width>0&&image.height>0);assert(fast_cover_matches(row,image));assert(!s_covers[row].gray);assert(image.x==36&&image.width==96&&image.height==128);}
     invalidate_covers();style=2;rows=9;
     app_ctx_t ctx={0};strcpy(s_shelf[0].path,"/test.epub");s_shelf[0].size=100;s_shelf[0].recent=42;
     for(int i=0;i<80;++i)refresh_cached_progress(&ctx);

@@ -1,1 +1,1 @@
-LumenOS 1.5.9: Thanh điều hướng mới dạng khung bo tròn, nút Cài đặt tròn riêng; mở EPUB và lấy bìa nhanh hơn; chạm chú thích ưu tiên trước lật trang, mở được khi đọc ngang.
+LumenOS 1.5.10: Tủ sách dạng Danh sách mới: ô tìm kiếm luôn hiện, nút Nhập sách rõ chữ, tab lọc kèm số sách, 5 cuốn mỗi trang với tác giả, tiến độ và nơi lưu. Lần đầu nâng cấp tự chuyển sang kiểu này.

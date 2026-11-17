@@ -1,3 +1,9 @@
+## LumenOS 1.5.10 / 1.5.10-love · Phát hành chính thức · 2026-11-17
+
+- Tủ sách kiểu **Danh sách** làm lại: tiêu đề có nút **Nhập sách** ghi rõ chữ và nút **⋯** (Quản lý); ô tìm kiếm luôn hiện cạnh nút sắp xếp (Gần đây/Theo tên); hàng tab Tất cả, Đang đọc, Chưa đọc, Đã xong, Yêu thích kèm số sách. Mỗi trang 5 cuốn: bìa, tên sách tối đa 2 dòng, tác giả, thanh tiến độ và định dạng · nơi lưu (Máy/Thẻ nhớ).
+- Lần đầu nâng cấp lên bản này, Tủ sách tự chuyển sang kiểu Danh sách; sau đó vẫn chọn lại được Lưới tối giản hoặc Thanh kệ tối màu trong Cài đặt.
+- Love Book: chỉ đồng bộ số phiên bản, giao diện không đổi.
+
 ## LumenOS 1.5.9 / 1.5.9-love · Phát hành chính thức · 2026-11-17
 
 - Thanh điều hướng dưới cùng làm mới: Trang chủ, Tủ sách và Tệp tin nằm trong một khung bo tròn, mục đang mở là khối đen có biểu tượng và tên; Cài đặt là nút tròn riêng bên phải với biểu tượng bánh răng. Thanh thẳng mép với các thẻ nội dung.

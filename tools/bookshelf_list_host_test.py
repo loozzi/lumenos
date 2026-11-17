@@ -79,11 +79,17 @@ static unsigned s_cover_pending_mask;
 #define SHELF_FAST_COVER_STRIDE 21
 #define SHELF_FAST_COVER_WIDTH 164
 static struct {uint8_t *gray,*fast_bits;unsigned width,height;bool fast_white_edge;} s_covers[4];
-typedef struct {char name[256],author[128];bool has_progress,favorite;unsigned pct;} shelf_entry_t;
+typedef struct {char name[256],author[128];bool has_progress,favorite;unsigned pct;bool is_flash;char path[64];} shelf_entry_t;
 static shelf_entry_t *s_shelf;
 static int s_visible_count=4;
-static int shelf_rows(void){return 4;}
 static int app_settings_shelf_style(void){return style;}
+#define SHELF_LIST_ROWS 5
+#define SHELF_LIST_TOP 284
+#define SHELF_LIST_ROW_H 144
+#define SHELF_LIST_TEXT_X 156
+static bool shelf_list_style(void){return style==5;}
+static int shelf_rows(void){return SHELF_LIST_ROWS;}
+static int ttf_em_height_px(int px){return px;}
 static bool app_settings_main_fast_refresh(void){return false;}
 static bool fast_cover_matches(int row,EpdRect r){(void)row;(void)r;return false;}
 static int ui_content_width(void){return 612;}
@@ -98,7 +104,7 @@ static void ui_hairline(uint8_t *fb,int y,int x,int w,uint8_t c){epd_draw_hline(
 static void copy_text(char *d,size_t n,const char *v){snprintf(d,n,"%s",v);}
 static void fit_text(char *v,int px,int w){while(*v&&ui_text_fixed_width_px(px,v)>w){size_t n=strlen(v)-1;while(n&&((unsigned char)v[n]&0xc0)==0x80)--n;v[n]=0;}}
 '''
- for n in ('row_rect','shelf_cover_image','shelf_cover_frame_ready','draw_favorite_icon','draw_shelf_favorite_icon','cover_favorite_needs_white_edge','draw_shelf_cover','paint_list_cover_feedback','draw_list_title','draw_list_row'):
+ for n in ('row_rect','shelf_cover_image','shelf_cover_frame_ready','draw_favorite_icon','draw_shelf_favorite_icon','cover_favorite_needs_white_edge','draw_shelf_cover','paint_list_cover_feedback','draw_list_title','shelf_list_source','draw_list_row'):
   unit+=function(n,ROOT/'main/apps/app_book.c')+'\n'
  unit+=r'''
 static void save(const char *path,uint8_t *frame){FILE *f=fopen(path,"wb");assert(f);for(int y=0;y<1216;++y)for(int x=0;x<684;++x){uint8_t v=(pixel(frame,x,y)>>4)*17;assert(fwrite(&v,1,1,f)==1);}assert(!fclose(f));}
@@ -111,12 +117,12 @@ int main(int argc,char **argv){
  ui_text_fixed_vc(fb,36,122,52,"书架",EPD_DRAW_ALIGN_LEFT,false);
  ui_fill_round_rect(fb,(EpdRect){442,94,97,54},18,255);ui_draw_round_rect(fb,(EpdRect){442,94,97,54},18,0x70);ui_text_fixed_vc(fb,490,121,20,"管理",EPD_DRAW_ALIGN_CENTER,false);
  ui_fill_round_rect(fb,(EpdRect){551,94,97,54},18,255);ui_draw_round_rect(fb,(EpdRect){551,94,97,54},18,0x70);ui_text_fixed_vc(fb,599,121,20,"+ 导入",EPD_DRAW_ALIGN_CENTER,false);
- epd_fill_rect((EpdRect){36,195,612,2},0x60,fb);ui_fill_round_rect(fb,(EpdRect){36,184,612,788},20,255);ui_draw_control_frame(fb,(EpdRect){36,184,612,788},20,0x50);
+ ui_fill_rect_fast((EpdRect){0,SHELF_LIST_TOP,684,SHELF_LIST_ROWS*SHELF_LIST_ROW_H},255,fb);
  shelf_entry_t items[4]={{"我与地坛","史铁生",true,true,42},{"十八岁出门远行","余华",true,false,18},{"夏天、烟火和我的尸体","乙一",false,true,0},{"活山","娜恩 · 谢泼德",true,false,100}};
  s_shelf=items;app_ctx_t ctx={.fb=fb};
  for(int i=0;i<4;++i){char path[1024];snprintf(path,sizeof(path),"%s/%d.raw",argv[2],i);FILE *f=fopen(path,"rb");assert(f);assert(fread(&s_covers[i].width,4,1,f)==1&&fread(&s_covers[i].height,4,1,f)==1);unsigned bytes=s_covers[i].width*s_covers[i].height;assert(bytes<=176*240);s_covers[i].gray=malloc(bytes);assert(s_covers[i].gray&&fread(s_covers[i].gray,1,bytes,f)==bytes);fclose(f);
- EpdRect r=shelf_cover_image(i);assert(r.x>=64&&r.x+r.width<=198&&r.y>=184+i*197&&r.y+r.height<=184+(i+1)*197);
- assert(r.x==71&&r.width==120&&r.height==156);
+ EpdRect r=shelf_cover_image(i);assert(r.x>=36&&r.x+r.width<=SHELF_LIST_TEXT_X&&r.y>=SHELF_LIST_TOP+i*SHELF_LIST_ROW_H&&r.y+r.height<=SHELF_LIST_TOP+(i+1)*SHELF_LIST_ROW_H);
+ assert(r.x==36&&r.width==96&&r.height==128);
  book_crop_t crop=book_cover_crop(s_covers[i].width,s_covers[i].height,r.width,r.height);
  assert(crop.width&&crop.height&&crop.x+crop.width<=s_covers[i].width&&crop.y+crop.height<=s_covers[i].height);
  assert(abs((int)crop.width*r.height-(int)crop.height*r.width)<=r.height);
@@ -126,7 +132,7 @@ int main(int argc,char **argv){
  uint8_t *before=malloc(684*1216/2);assert(before);memcpy(before,fb,684*1216/2);
  s_pressed_control=i;EpdRect area=paint_list_cover_feedback(&ctx,i);
  assert(area.x==r.x&&area.y==r.y-8&&area.width==r.width&&area.height==r.height+8);
- assert(area.y>=184+i*197&&area.y+area.height<184+(i+1)*197);
+ assert(area.y>=SHELF_LIST_TOP+i*SHELF_LIST_ROW_H&&area.y+area.height<SHELF_LIST_TOP+(i+1)*SHELF_LIST_ROW_H);
  assert(((area.y&3)==(r.y&3)));
  for(int y=0;y<1216;++y)for(int x=0;x<684;++x)
   if(x<area.x||x>=area.x+area.width||y<area.y||y>=area.y+area.height)
@@ -134,8 +140,7 @@ int main(int argc,char **argv){
  assert(pixel(fb,r.x+20,r.y+r.height-1)==240);
  s_pressed_control=-1;paint_list_cover_feedback(&ctx,i);assert(!memcmp(before,fb,684*1216/2));
  free(before);free(s_covers[i].gray);}
- for(int row=0;row<3;++row)for(int yy=0;yy<2;++yy)assert(pixel(fb,300,184+row*197+196+yy)<128);
- assert(pixel(fb,36,260)<128&&pixel(fb,37,260)<128&&pixel(fb,38,260)>=240);
+ for(int row=0;row<3;++row)assert(pixel(fb,300,SHELF_LIST_TOP+(row+1)*SHELF_LIST_ROW_H-1)<240);
  ui_text_fixed_vc(fb,342,1060,17,"15本书 · 01/04",EPD_DRAW_ALIGN_CENTER,false);
  ui_text_fixed_vc(fb,226,1060,22,"<",EPD_DRAW_ALIGN_CENTER,false);ui_text_fixed_vc(fb,458,1060,22,">",EPD_DRAW_ALIGN_CENTER,false);
  epd_draw_hline(0,1096,684,0x90,fb);epd_fill_rect((EpdRect){224,1097,54,4},0,fb);

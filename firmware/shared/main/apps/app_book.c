@@ -878,12 +878,21 @@ static EpdRect reader_footer_bar_rect(void) {
     const int inset = READER_FOOTER_SIDE_WIDTH + READER_FOOTER_BAR_GAP;
     return (EpdRect){r.x + inset, r.y + (r.height - 16) / 2, r.width - 2 * inset, 16};
 }
+// 用户2026-11-17选定列表方案B：题头带导入/更多键，搜索框与排序一行，状态标签带计数，每页5行。
+// User 2026-11-17 chose list design B: header import/more keys, a search field with sort, counted status tabs and 5 rows per page.
+#define SHELF_LIST_ROWS 5
+#define SHELF_LIST_TOP 284
+#define SHELF_LIST_ROW_H 144
+#define SHELF_LIST_TEXT_X 156
+#define SHELF_LIST_PAGER_TOP 1028
+static bool shelf_list_style(void) { return app_settings_shelf_style() == 5; }
 static int shelf_rows(void) {
     if(s_view==SHELF) {
-        if(app_settings_shelf_style()==5)return 4;
+        if(shelf_list_style())return SHELF_LIST_ROWS;
     }
     return BOOK_GRID_ROWS;
 }
+static int shelf_pager_top(void) { return shelf_list_style() ? SHELF_LIST_PAGER_TOP : 1006; }
 // 极简网格行距紧，抽出量减小以免压住上一行进度条。/ The compact minimal grid lifts less so a book never covers the caption above.
 #define SHELF_BOOK_LIFT_PX (app_settings_shelf_style()==2?10:16)
 #define SHELF_LIST_BOUNCE_PX 8
@@ -932,8 +941,8 @@ static void draw_shelf_guard(uint8_t *fb,EpdRect rect,int slot) {
     } else for(int y=0;y<p.height;++y)memcpy(fb+(size_t)(p.y+y)*stride+p.x/2,output+(size_t)y*span,span);
 }
 static EpdRect row_rect(int row) {
-    if (s_view == SHELF && app_settings_shelf_style() == 5)
-        return (EpdRect){36, 184 + row * 197, 612, 197};
+    if (s_view == SHELF && shelf_list_style())
+        return (EpdRect){36, SHELF_LIST_TOP + row * SHELF_LIST_ROW_H, 612, SHELF_LIST_ROW_H};
     if(s_view==SHELF && app_settings_shelf_style()==2)
         // 用户2026-11-15：极简网格改为3×3，封面尺寸不变，下方一行书名加进度条。
         // User 2026-11-15: the minimal grid is 3x3 with unchanged cover size and a one-line title plus progress bar.
@@ -950,7 +959,7 @@ static EpdRect shelf_cover_image(int row) {
     if (s_view != SHELF || app_settings_shelf_style() != 5)
         return (EpdRect){card.x + (card.width - 164) / 2, card.y, 164, 214};
     // 列表所有封面统一尺寸；原图按比例铺满并居中裁切。/ Uniform list boxes use aspect fill and center crop.
-    return (EpdRect){71, card.y + (197-156)/2, 120, 156};
+    return (EpdRect){36, card.y + 8, 96, 128};
 }
 static unsigned s_cover_generation;
 #if DPREADER_BOARD_METALIO47
@@ -1395,45 +1404,65 @@ static EpdRect paint_list_cover_feedback(app_ctx_t *ctx, int row) {
         draw_shelf_cover(ctx->fb, card, row, s_shelf[index].name, s_shelf[index].favorite);
     return area;
 }
-static void draw_list_title(uint8_t *fb, const char *name, int top) {
+// 书名最多两行，返回实际行数；第二行仍超宽时截短。/ Wrap titles to at most two lines and return the count; overflow on line two is truncated.
+static int draw_list_title(uint8_t *fb, const char *name, int top, int px, int width, int pitch) {
     char lines[2][128] = {{0}};
-    int px = ttf_em_height_px(27);
     const unsigned char *at = (const unsigned char *)name;
+    int count = 0;
     for (int line = 0; line < 2 && *at; ++line) {
         size_t used = 0;
         while (*at && used < sizeof(lines[line])-5) {
             unsigned n = *at < 128 ? 1 : (*at & 0xe0)==0xc0 ? 2 : (*at & 0xf0)==0xe0 ? 3 : 4;
             if (strlen((const char *)at) < n) break;
             memcpy(lines[line]+used, at, n); lines[line][used+n] = 0;
-            if (ui_text_fixed_width_px(px, lines[line]) > 378) { lines[line][used] = 0; break; }
+            if (ui_text_fixed_width_px(px, lines[line]) > width) { lines[line][used] = 0; break; }
             used += n; at += n;
         }
-        if (line == 1 && *at) fit_text(lines[line], px, 352);
-        ui_text_fixed_vc(fb, 244, top + line*35, px, lines[line], EPD_DRAW_ALIGN_LEFT, false);
+        if (line == 1 && *at) fit_text(lines[line], px, width - 26);
+        ui_text_fixed_vc(fb, SHELF_LIST_TEXT_X, top + line*pitch, px, lines[line], EPD_DRAW_ALIGN_LEFT, false);
+        ++count;
     }
+    return count ? count : 1;
 }
+static void shelf_list_source(char *out, size_t size, const shelf_entry_t *item) {
+    const char *dot = strrchr(item->path, '.');
+    const char *kind = dot && !strcasecmp(dot, ".epub") ? "EPUB" : dot && !strcasecmp(dot, ".txt") ? "TXT" : "";
+    snprintf(out, size, "%s%s%s", kind, kind[0] ? " · " : "", item->is_flash ? "Máy" : "Thẻ nhớ");
+}
+// 方案B一行：封面、两行书名、作者、进度条与百分比，右侧格式·存储位置。
+// Design B row: cover, two-line title, author, progress bar with percent, and format · storage on the right.
 static void draw_list_row(uint8_t *fb, int row, const shelf_entry_t *item) {
     EpdRect card = row_rect(row);
-    draw_list_title(fb, item->name, card.y + 42);
+    const int title_px = ttf_em_height_px(24), author_px = ttf_em_height_px(18), meta_px = ttf_em_height_px(16);
+    const int text_width = 648 - SHELF_LIST_TEXT_X;
+    char display[256]; copy_text(display, sizeof(display), item->name);
+    char *dot = strrchr(display, '.');
+    if (dot && (!strcasecmp(dot, ".epub") || !strcasecmp(dot, ".txt"))) *dot = 0;
+    const bool two = ui_text_fixed_width_px(title_px, display) > text_width;
+    const int title_top = card.y + (two ? 26 : 34);
+    draw_list_title(fb, display, title_top, title_px, text_width, 30);
+    const int author_y = card.y + (two ? 88 : 70);
     char author[128]; copy_text(author, sizeof(author), item->author[0] ? item->author : "Chưa rõ tác giả");
-    int author_px = ttf_em_height_px(21), progress_px = ttf_em_height_px(19);
-    fit_text(author, author_px, 378);
-    int author_y = ui_text_fixed_width_px(ttf_em_height_px(27), item->name) > 378 ? 106 : 83;
-    ui_text_fixed_ink_vc(fb, 244, card.y + author_y, author_px, author, EPD_DRAW_ALIGN_LEFT, 0x60);
+    fit_text(author, author_px, text_width);
+    ui_text_fixed_ink_vc(fb, SHELF_LIST_TEXT_X, author_y, author_px, author, EPD_DRAW_ALIGN_LEFT, 0x50);
     unsigned progress = item->has_progress ? item->pct : 0;
     if (progress > 100) progress = 100;
-    char label[48]; snprintf(label, sizeof(label), progress == 100 ? "Đã đọc xong · %u%%" :
-                              progress ? "Đã đọc %u%%" : "Chưa đọc · %u%%", progress);
-    ui_text_fixed_vc(fb, 244, card.y + 143, progress_px, label, EPD_DRAW_ALIGN_LEFT, false);
-    EpdRect bar = {244, card.y + 163, 378, 11};
-    ui_fill_round_rect(fb, bar, 5, 0xd0);
+    const int meta_y = card.y + (two ? 118 : 106);
+    EpdRect bar = {SHELF_LIST_TEXT_X, meta_y - 4, 200, 8};
+    ui_fill_round_rect(fb, bar, 4, 0xd0);
     if (progress) {
-        EpdRect fill = bar; fill.width = bar.width * progress / 100;
-        if (fill.width < 1) fill.width = 1;
-        ui_fill_round_rect(fb, fill, 5, 0x40);
+        EpdRect fill = bar; fill.width = bar.width * (int)progress / 100;
+        if (fill.width < 8) fill.width = 8;
+        ui_fill_round_rect(fb, fill, 4, UI_GRAY_BLACK);
     }
-    ui_draw_control_frame(fb, bar, 5, 0x50);
-    if (row < 3) ui_draw_separator(fb, card.y + 196, 50, 584, 0x60);
+    char label[24];
+    if (progress >= 100) snprintf(label, sizeof(label), "Đã xong");
+    else if (progress) snprintf(label, sizeof(label), "%u%%", progress);
+    else snprintf(label, sizeof(label), "Chưa đọc");
+    ui_text_fixed_vc(fb, bar.x + bar.width + 14, meta_y, meta_px, label, EPD_DRAW_ALIGN_LEFT, false);
+    char source[32]; shelf_list_source(source, sizeof(source), item);
+    ui_text_fixed_ink_vc(fb, 648, meta_y, meta_px, source, EPD_DRAW_ALIGN_RIGHT, 0x60);
+    if (row < SHELF_LIST_ROWS - 1) ui_hairline(fb, card.y + card.height - 1, 36, 612, 0x90);
 }
 static void draw_grid_caption(uint8_t *fb,int row,const shelf_entry_t *item) {
     EpdRect image=shelf_cover_image(row);
@@ -1487,10 +1516,53 @@ static int leaves(void) {
 // 用户2026-11-15：题头四个圆形图标（搜索、排序、管理、导入）取代两个文字按钮。
 // User 2026-11-15: four round header icons (search, sort, manage, import) replace the two text buttons.
 #define SHELF_HEADER_CONTROL 120
-static EpdRect shelf_header_rect(int i) { return (EpdRect){416 + i * 60, 94, 52, 52}; }
+// 0搜索 1排序 2管理 3导入。列表方案B：导入为文字胶囊、管理为“⋯”，搜索框与排序键另起一行。
+// 0 search, 1 sort, 2 manage, 3 import. List design B: a labelled import pill, "⋯" for manage, and a search field row with sort.
+#define SHELF_LIST_SORT_W 132
+static EpdRect shelf_header_rect(int i) {
+    if (shelf_list_style()) {
+        static const EpdRect list[] = {{36, 160, 612 - SHELF_LIST_SORT_W - 12, 56},
+                                       {648 - SHELF_LIST_SORT_W, 160, SHELF_LIST_SORT_W, 56},
+                                       {592, 92, 56, 56}, {412, 92, 168, 56}};
+        return list[i];
+    }
+    return (EpdRect){416 + i * 60, 94, 52, 52};
+}
 static EpdRect shelf_manage_rect(void) { return shelf_header_rect(2); }
 static EpdRect shelf_import_rect(void) { return shelf_header_rect(3); }
+static void draw_shelf_list_header_button(uint8_t *fb, int i) {
+    EpdRect r = shelf_header_rect(i);
+    const bool pressed = s_pressed_control == SHELF_HEADER_CONTROL + i;
+    const int cy = r.y + r.height / 2 + (pressed ? 2 : 0);
+    if (i == 3) {
+        ui_fill_round_rect(fb, r, 28, pressed ? 0xd0 : UI_GRAY_WHITE);
+        ui_draw_control_frame(fb, r, 28, UI_GRAY_BLACK);
+        ui_draw_control_frame(fb, (EpdRect){r.x + 1, r.y + 1, r.width - 2, r.height - 2}, 27, UI_GRAY_BLACK);
+        ui_fill_rect_fast((EpdRect){r.x + 22, cy - 1, 20, 3}, UI_GRAY_BLACK, fb);
+        ui_fill_rect_fast((EpdRect){r.x + 31, cy - 10, 3, 20}, UI_GRAY_BLACK, fb);
+        ui_text_fixed_vc(fb, r.x + 52, cy, ttf_em_height_px(19), "Nhập sách", EPD_DRAW_ALIGN_LEFT, false);
+        return;
+    }
+    ui_draw_soft_card(fb, r, 28, pressed);
+    if (pressed) ui_draw_pressed_round_rect(fb, r, 28);
+    if (i == 2) {
+        for (int k = -1; k <= 1; ++k)
+            ui_fill_round_rect(fb, (EpdRect){r.x + 25 + k * 13, cy - 3, 6, 6}, 3, UI_GRAY_BLACK);
+    } else if (i == 1) {
+        ui_draw_icon(fb, r.x + 30, cy, 24, UI_ICON_TEXT_ALIGN_START, UI_GRAY_BLACK);
+        ui_text_fixed_vc(fb, r.x + 50, cy, ttf_em_height_px(17), s_recent_sort ? "Gần đây" : "Theo tên",
+                         EPD_DRAW_ALIGN_LEFT, false);
+    } else {
+        ui_draw_icon(fb, r.x + 34, cy, 24, UI_ICON_SEARCH, s_query[0] ? UI_GRAY_BLACK : 0x40);
+        char text[80];
+        copy_text(text, sizeof(text), s_query[0] ? s_query : "Tìm theo tên sách, tác giả…");
+        const int px = ttf_em_height_px(19);
+        fit_text(text, px, r.width - 82);
+        ui_text_fixed_ink_vc(fb, r.x + 60, cy, px, text, EPD_DRAW_ALIGN_LEFT, s_query[0] ? UI_GRAY_BLACK : 0x60);
+    }
+}
 static void draw_shelf_header_button(uint8_t *fb, int i) {
+    if (shelf_list_style()) { draw_shelf_list_header_button(fb, i); return; }
     EpdRect r = shelf_header_rect(i);
     bool pressed = s_pressed_control == SHELF_HEADER_CONTROL + i;
     bool active = i == 0 && s_query[0];
@@ -1504,12 +1576,48 @@ static void draw_shelf_header_button(uint8_t *fb, int i) {
     } else ui_draw_icon(fb, cx, cy, 28, i == 0 ? UI_ICON_SEARCH : i == 1 ? UI_ICON_TEXT_ALIGN_START : UI_ICON_PENCIL,
                         active ? UI_GRAY_WHITE : UI_GRAY_BLACK);
 }
-// 阅读状态筛选仅在极简网格显示并生效。/ Reading-status chips are shown and applied in the minimal grid only.
+// 阅读状态筛选在极简网格（胶囊）与列表（带计数下划线标签）显示并生效。
+// Reading-status filters show and apply in the minimal grid (chips) and the list (counted underline tabs).
 #define SHELF_CHIP_COUNT 5
 #define SHELF_CHIP_CONTROL 130
+#define SHELF_TAB_TOP 228
+#define SHELF_TAB_H 48
 static const char *const s_shelf_chip_names[SHELF_CHIP_COUNT] = {"Tất cả", "Đang đọc", "Chưa đọc", "Đã xong", "Yêu thích"};
-static bool shelf_chips_visible(void) { return s_view == SHELF && app_settings_shelf_style() == 2; }
+static void shelf_status_counts(int counts[SHELF_CHIP_COUNT]);
+static bool shelf_chips_visible(void) {
+    return s_view == SHELF && (app_settings_shelf_style() == 2 || shelf_list_style());
+}
+static int shelf_tab_label_width(int i, const char *count) {
+    return ui_text_fixed_width_px(ttf_em_height_px(19), s_shelf_chip_names[i]) + 6 +
+           ui_text_fixed_width_px(ttf_em_height_px(15), count);
+}
+// 标签宽度含计数，剩余空间均分到四个间隔；点击区为整段标签高度。
+// Tab widths include counts; leftover width is shared across the four gaps, and hits span the full tab height.
+static void shelf_tab_layout(EpdRect rects[SHELF_CHIP_COUNT], char counts[SHELF_CHIP_COUNT][8]) {
+    int values[SHELF_CHIP_COUNT];
+    shelf_status_counts(values);
+    int widths[SHELF_CHIP_COUNT], total = 0;
+    for (int i = 0; i < SHELF_CHIP_COUNT; ++i) {
+        snprintf(counts[i], 8, "%u", (unsigned)(values[i] > 999 ? 999 : values[i] < 0 ? 0 : values[i]) % 1000u);
+        widths[i] = shelf_tab_label_width(i, counts[i]);
+        total += widths[i];
+    }
+    int gap = (612 - total) / (SHELF_CHIP_COUNT - 1);
+    if (gap < 8) gap = 8;
+    int x = 36;
+    for (int i = 0; i < SHELF_CHIP_COUNT; ++i) {
+        const int start = i == 0 ? 36 : x - gap / 2;
+        const int end = i == SHELF_CHIP_COUNT - 1 ? 648 : x + widths[i] + gap / 2;
+        rects[i] = (EpdRect){start, SHELF_TAB_TOP, end - start, SHELF_TAB_H};
+        x += widths[i] + gap;
+    }
+}
 static EpdRect shelf_chip_rect(int i) {
+    if (shelf_list_style()) {
+        EpdRect rects[SHELF_CHIP_COUNT]; char counts[SHELF_CHIP_COUNT][8];
+        shelf_tab_layout(rects, counts);
+        return rects[i];
+    }
     int x = 36, width = 0;
     for (int k = 0; k <= i; ++k) {
         x += width ? width + 9 : 0;
@@ -1517,7 +1625,26 @@ static EpdRect shelf_chip_rect(int i) {
     }
     return (EpdRect){x, 160, width, 40};
 }
+static void draw_shelf_tabs(uint8_t *fb) {
+    EpdRect rects[SHELF_CHIP_COUNT]; char counts[SHELF_CHIP_COUNT][8];
+    shelf_tab_layout(rects, counts);
+    const int label_px = ttf_em_height_px(19), count_px = ttf_em_height_px(15);
+    const int cy = SHELF_TAB_TOP + SHELF_TAB_H / 2 - 2;
+    ui_hairline(fb, SHELF_TAB_TOP + SHELF_TAB_H - 1, 36, 612, 0x90);
+    for (int i = 0; i < SHELF_CHIP_COUNT; ++i) {
+        const bool selected = s_status_filter == i;
+        const int width = shelf_tab_label_width(i, counts[i]);
+        int x = i == 0 ? 36 : i == SHELF_CHIP_COUNT - 1 ? 648 - width : rects[i].x + (rects[i].width - width) / 2;
+        if (s_pressed_control == SHELF_CHIP_CONTROL + i)
+            ui_fill_round_rect(fb, (EpdRect){x - 8, SHELF_TAB_TOP + 4, width + 16, SHELF_TAB_H - 10}, 10, 0xd0);
+        ui_text_fixed_ink_vc(fb, x, cy, label_px, s_shelf_chip_names[i], EPD_DRAW_ALIGN_LEFT,
+                             selected ? UI_GRAY_BLACK : 0x40);
+        ui_text_fixed_ink_vc(fb, x + width, cy, count_px, counts[i], EPD_DRAW_ALIGN_RIGHT, 0x60);
+        if (selected) ui_fill_round_rect(fb, (EpdRect){x, SHELF_TAB_TOP + SHELF_TAB_H - 4, width, 4}, 2, UI_GRAY_BLACK);
+    }
+}
 static void draw_shelf_chips(uint8_t *fb) {
+    if (shelf_list_style()) { draw_shelf_tabs(fb); return; }
     for (int i = 0; i < SHELF_CHIP_COUNT; ++i) {
         EpdRect r = shelf_chip_rect(i);
         bool selected = s_status_filter == i;
@@ -1527,7 +1654,7 @@ static void draw_shelf_chips(uint8_t *fb) {
     }
 }
 static EpdRect shelf_page_arrow_rect(int direction) {
-    return ui_pager_rect(direction<0?UI_PAGER_PREVIOUS:UI_PAGER_NEXT);
+    return ui_pager_rect_at(direction<0?UI_PAGER_PREVIOUS:UI_PAGER_NEXT,shelf_pager_top());
 }
 static void draw_shelf_pager(uint8_t *fb, int count, int page, int pages) {
     char label[64];
@@ -1535,12 +1662,12 @@ static void draw_shelf_pager(uint8_t *fb, int count, int page, int pages) {
     int pressed=s_shelf_key_mode&&s_shelf_key_pressed?
         (s_shelf_key_pressed<0?UI_PAGER_PREVIOUS:UI_PAGER_NEXT):UI_PAGER_NONE;
     if(s_pressed_control>=116&&s_pressed_control<=119)pressed=s_pressed_control-116;
-    ui_pager_draw(fb,label,page,pages,s_shelf_key_mode,pressed);
+    ui_pager_draw_at(fb,label,page,pages,s_shelf_key_mode,pressed,shelf_pager_top());
 }
 // 只推分页小区；按压不重绘封面，翻页在下一轮输入后执行，可被切页打断。
 // Update only the pager; presses do not redraw covers. Page work follows on the next input tick and is cancellable by navigation.
 static app_redraw_t shelf_key_paint(app_ctx_t *ctx) {
-    s_area=ui_pager_area();
+    s_area=ui_pager_area_at(shelf_pager_top());
     ui_fill_rect_fast(s_area,UI_GRAY_WHITE,ctx->fb);
     draw_shelf_pager(ctx->fb,s_visible_count,ctx->leaf,leaves());
     s_shelf_key_paint_pending=true;
@@ -4535,17 +4662,14 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
     ui_nav_status(fb);
     char category_title[BOOK_STORE_PATH_MAX];
     copy_text(category_title,sizeof(category_title),s_category_selected ? shelf_category_name(s_category_selected) : "Tủ sách");
-    fit_text(category_title,52,326);
+    // 列表题头右侧为导入胶囊与“⋯”，书名区相应收窄。/ The list header holds the import pill and "⋯", so the title area narrows.
+    fit_text(category_title,52,shelf_list_style()?300:326);
     ui_text(fb, 36, 90, 52, category_title, EPD_DRAW_ALIGN_LEFT, false);
     int title_width=ui_text_fixed_width_px(ui_text_effective_px(52),category_title);
     ui_draw_icon(fb,36+title_width+27,120,26,
                  s_category_menu ? UI_ICON_CHEVRON_UP : UI_ICON_CHEVRON_DOWN,UI_GRAY_BLACK);
     for (int i = 0; i < 4; ++i) draw_shelf_header_button(fb, i);
     if (shelf_chips_visible()) draw_shelf_chips(fb);
-    if (app_settings_shelf_style() == 5) {
-        ui_fill_round_rect(fb, (EpdRect){36,184,612,788}, 20, UI_GRAY_WHITE);
-        ui_draw_control_frame(fb, (EpdRect){36,184,612,788}, 20, 0x50);
-    }
     for (int row = 0; row < shelf_rows(); ++row) {
         int i = ctx->leaf * shelf_rows() + row;
         if (i >= s_visible_count) break;
@@ -4554,14 +4678,21 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
         // 封面抽出只改变书本位置，层板及触摸目标保持原位。
         // Lifting changes the book position only; shelf furniture and touch targets stay put.
         if (s_pressed_control == row)
-            r.y -= app_settings_shelf_style() == 5 ? SHELF_LIST_BOUNCE_PX : SHELF_BOOK_LIFT_PX;
+            r.y -= shelf_list_style() ? SHELF_LIST_BOUNCE_PX : SHELF_BOOK_LIFT_PX;
         draw_shelf_cover(fb, r, row, name, s_shelf[i].favorite);
-        if (app_settings_shelf_style() == 5) draw_list_row(fb, row, &s_shelf[i]);
+        if (shelf_list_style()) draw_list_row(fb, row, &s_shelf[i]);
         if (app_settings_shelf_style() == 2) draw_grid_caption(fb,row,&s_shelf[i]);
     }
     draw_shelf_furniture(fb);
     // 提示画在封面之后；3×3末行说明占到此处，先留白。/ Messages follow the covers; clear the strip the 3x3 last-row captions reach.
-    if (s_message[0] || s_shelf_warning[0]) {
+    if (shelf_list_style() && (s_message[0] || s_shelf_warning[0])) {
+        // 列表提示位于末行与分页之间。/ List messages sit between the last row and the pager.
+        ui_fill_rect_fast((EpdRect){36, 1006, 612, 22}, UI_GRAY_WHITE, fb);
+        ui_text_vc(fb, UI_MARGIN, 1017, 17, s_message[0] ? s_message : s_shelf_warning, EPD_DRAW_ALIGN_LEFT, false);
+    } else if (shelf_list_style() && !s_visible_count && (s_status_filter || s_query[0])) {
+        ui_text_vc(fb, 342, 600, 24, s_query[0] ? "Không có sách nào khớp với tìm kiếm" : "Không có sách nào trong bộ lọc này",
+                   EPD_DRAW_ALIGN_CENTER, false);
+    } else if (s_message[0] || s_shelf_warning[0]) {
         if (shelf_chips_visible()) ui_fill_rect_fast((EpdRect){36, 980, 612, 26}, UI_GRAY_WHITE, fb);
         ui_text(fb, UI_MARGIN, 991, 17, s_message[0] ? s_message : s_shelf_warning,
                 EPD_DRAW_ALIGN_LEFT, false);
@@ -4570,7 +4701,7 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
     if(app_settings_main_refresh_mode()==APP_MAIN_REFRESH_NORMAL){
         // 32列对齐后的封面/书架区；顶部状态栏、题头和下方分页不做黑色强整理。
         // Aligned cover/furniture area; status, title and lower pagination never enter the dark settling pass.
-        const EpdRect artwork={0,192,UI_LOCK_WIDTH,800};
+        const EpdRect artwork=shelf_list_style()?(EpdRect){0,288,UI_LOCK_WIDTH,736}:(EpdRect){0,192,UI_LOCK_WIDTH,800};
 #if DPREADER_BOARD_METALIO47
         display_main_transition_cover_bands(&artwork,1);
 #else
@@ -5843,9 +5974,9 @@ static void draw_category_menu(uint8_t *fb) {
         ui_draw_icon(fb,box.x+box.width-48,y,28,UI_ICON_CHEVRON_RIGHT,0);
     }
 }
-static bool shelf_status_matches(const shelf_entry_t* item) {
+static bool shelf_status_is(const shelf_entry_t* item, int status) {
     unsigned pct = item->has_progress ? item->pct : 0;
-    switch (app_settings_shelf_style() == 2 ? s_status_filter : 0) {
+    switch (status) {
     case 1: return pct > 0 && pct < 100;
     case 2: return pct == 0;
     case 3: return pct >= 100;
@@ -5853,8 +5984,23 @@ static bool shelf_status_matches(const shelf_entry_t* item) {
     default: return true;
     }
 }
+static bool shelf_status_matches(const shelf_entry_t* item) {
+    return shelf_status_is(item, app_settings_shelf_style() == 2 || shelf_list_style() ? s_status_filter : 0);
+}
+static bool shelf_scope_matches(const shelf_entry_t* item) {
+    return shelf_category_matches(item->path) && item->search_match && (s_filter == 0 || (s_filter == 1 && !item->is_flash) || (s_filter == 2 && item->is_flash));
+}
+// 标签计数沿用当前分类、搜索与来源，不受状态筛选影响。/ Tab counts follow category, search and source, ignoring the status filter.
+static void shelf_status_counts(int counts[SHELF_CHIP_COUNT]) {
+    memset(counts, 0, sizeof(int) * SHELF_CHIP_COUNT);
+    for (int i = 0; i < s_count; ++i) {
+        if (!shelf_scope_matches(&s_shelf[i])) continue;
+        for (int status = 0; status < SHELF_CHIP_COUNT; ++status)
+            if (shelf_status_is(&s_shelf[i], status)) ++counts[status];
+    }
+}
 static bool shelf_matches(const shelf_entry_t* item) {
-    return shelf_status_matches(item) && shelf_category_matches(item->path) && item->search_match && (s_filter == 0 || (s_filter == 1 && !item->is_flash) || (s_filter == 2 && item->is_flash));
+    return shelf_status_matches(item) && shelf_scope_matches(item);
 }
 static int compare_books(const void* a, const void* b) {
     const shelf_entry_t* x = a;
@@ -7862,7 +8008,7 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
         if (s_view == SHELF) {
             int tab = ui_nav_hit(x, y);
             if (tab >= 0) { ui_nav_request(ctx, tab); return APP_REDRAW_NONE; }
-            int pager=ui_pager_hit(x,y);
+            int pager=ui_pager_hit_at(x,y,shelf_pager_top());
             if(pager>=0)return shelf_turn_page(ctx,ui_pager_target(pager,ctx->leaf,leaves())-ctx->leaf);
         }
         if (shelf_chips_visible()) for (int i = 0; i < SHELF_CHIP_COUNT; ++i) if (ui_rect_hit(shelf_chip_rect(i), x, y)) {
@@ -8224,7 +8370,7 @@ static int control_at(app_ctx_t* ctx, uint16_t x, uint16_t y, EpdRect* rect) {
     }
     if (s_view == SHELF) {
         for (int i = UI_PAGER_FIRST; i <= UI_PAGER_LAST; ++i) {
-            *rect = i==UI_PAGER_PREVIOUS?shelf_page_arrow_rect(-1):i==UI_PAGER_NEXT?shelf_page_arrow_rect(1):ui_pager_rect(i);
+            *rect = i==UI_PAGER_PREVIOUS?shelf_page_arrow_rect(-1):i==UI_PAGER_NEXT?shelf_page_arrow_rect(1):ui_pager_rect_at(i,shelf_pager_top());
             if (ui_rect_hit(*rect, x, y)) return 116 + i;
         }
     }
@@ -8239,7 +8385,7 @@ static int control_at(app_ctx_t* ctx, uint16_t x, uint16_t y, EpdRect* rect) {
 }
 static app_redraw_t paint_control(app_ctx_t* ctx, EpdRect rect) {
     if(s_view==SHELF)for(int i=UI_PAGER_FIRST;i<=UI_PAGER_LAST;++i){
-        EpdRect r=ui_pager_rect(i);
+        EpdRect r=ui_pager_rect_at(i,shelf_pager_top());
         if(!memcmp(&rect,&r,sizeof(r)))return shelf_key_paint(ctx);
     }
     if (s_view == SHELF && app_settings_shelf_style() == 5) {

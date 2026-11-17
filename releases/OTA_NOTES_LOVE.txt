@@ -1,1 +1,1 @@
-LumenOS 1.5.9 Love Book: Thanh điều hướng mới dạng khung bo tròn, nút Cài đặt tròn riêng; mở EPUB nhanh hơn; chạm chú thích ưu tiên trước lật trang, mở được khi đọc ngang.
+LumenOS 1.5.10 Love Book: Đồng bộ phiên bản với bản Full; không thay đổi giao diện Love Book.

@@ -341,7 +341,7 @@ static bool s_book_footer_pct = true;
 static uint8_t s_auto_lock_minutes = 5;
 static uint8_t s_wifi_timeout_minutes = 3;
 static uint8_t s_ble_timeout_minutes = 10;
-static uint8_t s_shelf_style = 2;
+static uint8_t s_shelf_style = 5;
 static char s_books_dir[MEDIA_DIR_MAX] = "/sdcard/books";
 static char s_fonts_dir[MEDIA_DIR_MAX] = "/sdcard/fonts";
 static void nvs_put_u8(const char* key, uint8_t value);
@@ -819,19 +819,21 @@ void app_settings_init(void) {
     if(nvs_get_u8(h,NVS_KEY_BOOK_PARA,&para)==ESP_OK){if(para==100)s_book_para=75;else if(app_settings_book_paragraph_value(app_settings_book_paragraph_level(para))==para)s_book_para=para;}
     if (nvs_get_u8(h, NVS_KEY_BOOK_MARGIN, &margin) == ESP_OK && margin <= 60)
         s_book_margin = margin > 48 ? 48 : margin;
-    uint8_t shelf_style = 2;
+    uint8_t shelf_style = 5;
     if (nvs_get_u8(h, NVS_KEY_SHELF_STYLE, &shelf_style) == ESP_OK && shelf_style >= 1 && shelf_style <= 5)
         s_shelf_style = shelf_style == 3 || shelf_style == 4 ? 2 : shelf_style;
+    // 用户2026-11-17选定列表方案B：升级时一次性切到列表（标记值2），之后尊重手动选择。
+    // User 2026-11-17 chose list design B: switch to the list once on upgrade (marker 2), then keep manual choices.
     uint8_t shelf_v22 = 0;
-    bool migrate_shelf = nvs_get_u8(h, NVS_KEY_SHELF_V22, &shelf_v22) != ESP_OK || shelf_v22 != 1;
+    bool migrate_shelf = nvs_get_u8(h, NVS_KEY_SHELF_V22, &shelf_v22) != ESP_OK || shelf_v22 != 2;
     bool retired_shelf = shelf_style == 3 || shelf_style == 4;
-    if (migrate_shelf) s_shelf_style = 2;
+    if (migrate_shelf) s_shelf_style = 5;
     // 固定媒体根目录；忽略旧版自定义目录键。/ Fixed media roots ignore retired custom-directory keys.
     nvs_close(h);
     if ((migrate_shelf || retired_shelf) && backup_nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
-        // 首次刷入此版只切换书架外观；随后尊重用户手动选择。/ Set acrylic once on upgrade, then preserve manual choices.
-        esp_err_t saved = backup_nvs_set_u8(h, NVS_KEY_SHELF_STYLE, 2);
-        if (saved == ESP_OK) saved = backup_nvs_set_u8(h, NVS_KEY_SHELF_V22, 1);
+        // 首次刷入此版只切换书架外观；随后尊重用户手动选择。/ Switch the shelf look once on upgrade, then preserve manual choices.
+        esp_err_t saved = backup_nvs_set_u8(h, NVS_KEY_SHELF_STYLE, s_shelf_style);
+        if (saved == ESP_OK && migrate_shelf) saved = backup_nvs_set_u8(h, NVS_KEY_SHELF_V22, 2);
         if (saved == ESP_OK) (void)settings_backup_commit(h);
         nvs_close(h);
     }
