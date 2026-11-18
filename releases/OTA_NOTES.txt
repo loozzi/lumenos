@@ -1,1 +1,1 @@
-LumenOS 1.5.11: Trang chủ có thú cưng Cú Lém: cú trích câu đang đọc, đổi cảm xúc theo thói quen đọc và lên cấp theo phút đọc. Lịch tháng thu thành dải Tuần này, chạm để xem cả tháng.
+LumenOS 1.5.12: Kho sách OPDS mở ngay khi chạm, danh mục tải ở nền với dòng Đang tải… và tự hiện khi xong; vẫn có thể quay lại hoặc rời trang trong lúc tải.

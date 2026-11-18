@@ -1,1 +1,1 @@
-LumenOS 1.5.11 Love Book: Đồng bộ phiên bản với bản Full; không thay đổi giao diện Love Book.
+LumenOS 1.5.12 Love Book: Kho sách OPDS mở ngay khi chạm, danh mục tải ở nền và tự hiện khi xong; vẫn có thể quay lại hoặc rời trang trong lúc tải.

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.5.11",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.10",
+  "notes": "LumenOS 1.5.11: Trang chủ có thú cưng Cú Lém: cú trích câu đang đọc, đổi cảm xúc theo thói quen đọc và lên cấp theo phút đọc. Lịch tháng thu thành dải Tuần này, chạm để xem cả tháng.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5",
+      "md5": "a865d71c2d6db481384bdd719fbfc2d9"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "b7b8361eaf8754fe5c1fa280120b38df66bdea8731e94b621e192a2ea2748d08",
+      "md5": "544471562f20f5c7d171ec53849168e0"
+    }
+  },
+  "clean_image": {
+    "sha256": "93670279c889953d95523d506a9c8e6828bf2d1cf3447770f19110ce675f0eb3",
+    "md5": "eb46c80759a5c6fcfb5f4cd30f0f2ee2"
+  },
+  "size": 4987152,
+  "sha256": "6ca28a07627dfeccaaef9ab385e9101ae453a092d6350f401ab8a1efd727e1b3",
+  "md5": "9b8c06fa100e2cd49278132fd0ec3e0f"
+}
