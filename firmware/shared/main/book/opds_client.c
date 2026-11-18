@@ -27,18 +27,31 @@
 static const char *TAG = "opds";
 // UI线程持有浏览会话；每个HTTP请求仍独立保护实际I/O。
 // UI owns the browsing session; each HTTP request independently guards actual I/O.
+// 后台目录任务也会读写会话标志，用自旋锁保证结束会话与释放WiFi不交错。
+// The background feed worker also touches session flags; a spinlock keeps end/release from interleaving.
+static portMUX_TYPE s_session_lock=portMUX_INITIALIZER_UNLOCKED;
 static bool s_session_active,s_session_owns_wifi;
-void opds_session_begin(void) { s_session_active=true; }
+void opds_session_begin(void) { portENTER_CRITICAL(&s_session_lock);s_session_active=true;portEXIT_CRITICAL(&s_session_lock); }
 bool opds_session_active(void) { return s_session_active; }
 void opds_session_end(void) {
+    portENTER_CRITICAL(&s_session_lock);
     bool stop=s_session_owns_wifi;
     s_session_active=false;s_session_owns_wifi=false;
+    portEXIT_CRITICAL(&s_session_lock);
     if(stop)read_pico_transfer_network_request_stop();
 }
 static void (*s_network_observer)(void *);
 static void *s_network_context;
 void opds_set_network_observer(void (*observer)(void *),void *context) {
     s_network_observer=observer;s_network_context=context;
+}
+// 观察者会画屏，只能在UI线程调用；后台任务只置标志，由 opds_fetch_async_poll 转交。
+// The observer draws, so it runs on the UI thread only; the worker sets a flag forwarded by opds_fetch_async_poll.
+static TaskHandle_t s_async_task;
+static volatile bool s_async_network_changed;
+static void opds_notify_network(void) {
+    if(s_async_task && xTaskGetCurrentTaskHandle()==s_async_task){s_async_network_changed=true;return;}
+    if(s_network_observer)s_network_observer(s_network_context);
 }
 
 
@@ -375,7 +388,7 @@ static esp_err_t opds_acquire_network(bool *started_by_us, char *msg, size_t msg
         return err;
     }
     *started_by_us = true;
-    if(s_network_observer)s_network_observer(s_network_context);
+    opds_notify_network();
     // Allow the STA service to finish trying the saved profiles.
     int64_t deadline = esp_timer_get_time() + 30000000LL;
     while (esp_timer_get_time() < deadline) {
@@ -399,8 +412,11 @@ static esp_err_t opds_acquire_network(bool *started_by_us, char *msg, size_t msg
 
 static void opds_release_network(bool started_by_us) {
     if (started_by_us) {
-        if(s_session_active)s_session_owns_wifi=true;
-        else read_pico_transfer_stop();
+        portENTER_CRITICAL(&s_session_lock);
+        bool keep=s_session_active;
+        if(keep)s_session_owns_wifi=true;
+        portEXIT_CRITICAL(&s_session_lock);
+        if(!keep)read_pico_transfer_stop();
     }
 }
 
@@ -435,7 +451,7 @@ esp_err_t opds_fetch_feed(const char *url, opds_feed_t *out_feed, char *message,
     bool started_wifi = false;
     esp_err_t err = opds_acquire_network(&started_wifi, message, message_cap);
     if (err != ESP_OK) return err;
-    if(s_network_observer)s_network_observer(s_network_context);
+    opds_notify_network();
 
     size_t xml_cap = 131072; /* 128 KB trong PSRAM cho Atom XML */
     char *xml_buf = heap_caps_malloc(xml_cap, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -544,7 +560,7 @@ esp_err_t opds_download_book(const opds_entry_t *entry, char *saved_path, size_t
     bool started_wifi = false;
     esp_err_t err = opds_acquire_network(&started_wifi, message, message_cap);
     if (err != ESP_OK) return err;
-    if(s_network_observer)s_network_observer(s_network_context);
+    opds_notify_network();
 
     esp_http_client_config_t cfg = {
         .url = entry->href,
@@ -650,4 +666,115 @@ esp_err_t opds_download_book(const opds_entry_t *entry, char *saved_path, size_t
                  filename, (unsigned)((received + 1023) / 1024));
     }
     return ESP_OK;
+}
+
+/* ---- 后台目录加载 / Background feed fetch ---- */
+// UI立即显示加载状态，网络与解析在独立任务完成；只有最新请求的结果会交给UI。
+// The UI shows a loading state immediately; network and parsing run in a worker and only the latest request's result is handed back.
+// 网络/TLS任务按 PSRAM_TASKS.md 保留内部栈，与 KoSync 自动同步相同。
+// Network/TLS workers keep internal stacks per PSRAM_TASKS.md, like KoSync auto-sync.
+#define OPDS_ASYNC_STACK 12288
+static portMUX_TYPE s_async_lock=portMUX_INITIALIZER_UNLOCKED;
+static uint32_t s_async_latest,s_async_running_id,s_async_result_id;
+static bool s_async_pending,s_async_ready;
+static char s_async_pending_url[256],s_async_running_url[256];
+static opds_feed_t *s_async_result;
+static esp_err_t s_async_err;
+static char s_async_message[128];
+
+static void opds_async_task(void *arg) {
+    (void)arg;
+    portENTER_CRITICAL(&s_async_lock);s_async_task=xTaskGetCurrentTaskHandle();portEXIT_CRITICAL(&s_async_lock);
+    opds_feed_t *feed=heap_caps_calloc(1,sizeof(*feed),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    char message[128]={0};
+    esp_err_t err=ESP_ERR_NO_MEM;
+    if(feed)err=opds_fetch_feed(s_async_running_url,feed,message,sizeof(message));
+    else snprintf(message,sizeof(message),"Không đủ bộ nhớ PSRAM");
+    portENTER_CRITICAL(&s_async_lock);
+    opds_feed_t *stale=s_async_result;
+    s_async_result=feed;s_async_err=err;s_async_result_id=s_async_running_id;s_async_ready=true;
+    memcpy(s_async_message,message,sizeof(s_async_message));
+    s_async_task=NULL;
+    portEXIT_CRITICAL(&s_async_lock);
+    free(stale);
+    vTaskDelete(NULL);
+}
+
+static bool opds_async_launch(void) {
+    // 只在UI线程调用，且不得持有 s_async_lock。/ UI thread only; never call while holding s_async_lock.
+    portENTER_CRITICAL(&s_async_lock);
+    bool start=!s_async_task&&s_async_pending;
+    if(start){
+        s_async_pending=false;s_async_running_id=s_async_latest;
+        memcpy(s_async_running_url,s_async_pending_url,sizeof(s_async_running_url));
+    }
+    portEXIT_CRITICAL(&s_async_lock);
+    if(!start)return true;
+    TaskHandle_t task=NULL;
+    // 先占住句柄，避免任务在 xTaskCreate 返回前结束时与标志竞争。
+    // Mark the worker as running before creation so a fast exit cannot race the handle.
+    portENTER_CRITICAL(&s_async_lock);s_async_task=(TaskHandle_t)1;portEXIT_CRITICAL(&s_async_lock);
+    if(xTaskCreate(opds_async_task,"opds_feed",OPDS_ASYNC_STACK,NULL,2,&task)!=pdPASS){
+        portENTER_CRITICAL(&s_async_lock);
+        s_async_task=NULL;s_async_pending=true;
+        portEXIT_CRITICAL(&s_async_lock);
+        ESP_LOGW(TAG,"feed worker deferred: no task memory");
+        return false;
+    }
+    portENTER_CRITICAL(&s_async_lock);
+    if(s_async_task==(TaskHandle_t)1)s_async_task=task;
+    portEXIT_CRITICAL(&s_async_lock);
+    return true;
+}
+
+bool opds_fetch_feed_async(const char *url) {
+    portENTER_CRITICAL(&s_async_lock);
+    ++s_async_latest;s_async_pending=true;
+    strlcpy(s_async_pending_url,url?url:"",sizeof(s_async_pending_url));
+    portEXIT_CRITICAL(&s_async_lock);
+    return opds_async_launch();
+}
+
+void opds_fetch_async_cancel(void) {
+    portENTER_CRITICAL(&s_async_lock);
+    ++s_async_latest;s_async_pending=false;
+    opds_feed_t *stale=s_async_ready?s_async_result:NULL;
+    if(stale){s_async_result=NULL;s_async_ready=false;}
+    portEXIT_CRITICAL(&s_async_lock);
+    free(stale);
+    s_async_network_changed=false;
+}
+
+bool opds_fetch_async_busy(void) {
+    portENTER_CRITICAL(&s_async_lock);bool busy=s_async_task!=NULL;portEXIT_CRITICAL(&s_async_lock);
+    return busy;
+}
+
+opds_async_state_t opds_fetch_async_poll(opds_feed_t *out_feed, esp_err_t *out_err,
+                                         char *message, size_t message_cap) {
+    if(s_async_network_changed){
+        s_async_network_changed=false;
+        if(s_network_observer)s_network_observer(s_network_context);
+    }
+    portENTER_CRITICAL(&s_async_lock);
+    bool ready=s_async_ready;
+    opds_feed_t *result=ready?s_async_result:NULL;
+    bool current=ready&&s_async_result_id==s_async_latest;
+    esp_err_t err=s_async_err;
+    char text[128];
+    if(ready){memcpy(text,s_async_message,sizeof(text));s_async_result=NULL;s_async_ready=false;}
+    bool waiting=s_async_task!=NULL||s_async_pending;
+    portEXIT_CRITICAL(&s_async_lock);
+    // 过期结果丢弃，并启动排队中的最新请求。/ Drop stale results and start a queued newer request.
+    if(ready&&!current){free(result);result=NULL;ready=false;}
+    (void)opds_async_launch();
+    if(!ready)return waiting?OPDS_ASYNC_LOADING:OPDS_ASYNC_IDLE;
+    if(out_err)*out_err=err;
+    if(message&&message_cap)strlcpy(message,text,message_cap);
+    if(out_feed){
+        if(result)memcpy(out_feed,result,sizeof(*out_feed));
+        else memset(out_feed,0,sizeof(*out_feed));
+    }
+    free(result);
+    return OPDS_ASYNC_DONE;
 }

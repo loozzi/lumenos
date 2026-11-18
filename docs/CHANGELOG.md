@@ -1,3 +1,9 @@
+## LumenOS 1.5.12 / 1.5.12-love · Phát hành chính thức · 2026-11-18
+
+- Kho sách **OPDS** mở ngay khi chạm: trang hiện tức thì với dòng **Đang tải…**, danh mục tải ở nền rồi tự hiện khi xong; áp dụng cho mở kho, vào danh mục con, Quay lại và Làm mới.
+- Trong lúc tải vẫn có thể Quay lại, dùng phím cứng hoặc thanh điều hướng để rời trang; kết quả cũ bị bỏ qua nên không ghi đè trang mới. Tải sách vẫn hiện hộp tiến độ như trước.
+- Áp dụng cho cả Full và Love Book.
+
 ## LumenOS 1.5.11 / 1.5.11-love · Phát hành chính thức · 2026-11-17
 
 - Trang chủ Full có thú cưng **Cú Lém**: chú cú ngồi góc thẻ **Đọc tiếp** trích câu trong chương đang đọc; thẻ riêng của cú có bong bóng nói, cấp độ (7 cấp, từ Cú con tới Đại hiền triết) và thanh kinh nghiệm theo số phút đọc 30 ngày gần nhất (1 phút = 1 điểm).

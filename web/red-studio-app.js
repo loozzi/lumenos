@@ -39,7 +39,7 @@ function automaticLayoutSelected() {
 function syncInstallationGuide() {
   const automatic = automaticLayoutSelected();
   const version = document.getElementById("release-version")?.value ||
-    (editionSelect?.value === "love-book" ? "1.5.11-love" : "1.5.11");
+    (editionSelect?.value === "love-book" ? "1.5.12-love" : "1.5.12");
   const archivedTransition = /^1\.4\.2(?:-love)?-vn$/.test(version);
   document.getElementById("flash-modes").hidden = archivedTransition;
   document.getElementById("legacy-downloads").hidden = automatic;

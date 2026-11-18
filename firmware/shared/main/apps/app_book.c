@@ -2032,6 +2032,12 @@ static char s_opds_url[256];
 static CPU_STATE_RAM char s_opds_history[6][256];
 static int s_opds_depth;
 static char s_opds_status[128];
+// 目录在后台加载；加载期间列表不可点，完成后按请求类型写状态。
+// Feeds load in the background; rows are inert while loading and the status follows the request kind.
+typedef enum { OPDS_LOAD_ROOT, OPDS_LOAD_BACK, OPDS_LOAD_REFRESH, OPDS_LOAD_CHILD } opds_load_kind_t;
+static bool s_opds_loading;
+static opds_load_kind_t s_opds_load_kind;
+static char s_opds_load_title[128];
 
 static void opds_network_status_changed(void *context) {
     app_ctx_t *ctx=context;
@@ -2039,31 +2045,62 @@ static void opds_network_status_changed(void *context) {
     ui_nav_status(ctx->fb);
     guard_draw_result(ctx->hl,update_display_area_diff_with(ctx->hl,&E0470_WAVEFORM,MODE_GL16,ui_nav_status_area()));
 }
-static void opds_open_notice(app_ctx_t *ctx) {
-    EpdRect box={72,464,540,176};
-    ui_fill_round_rect(ctx->fb,box,24,UI_GRAY_WHITE);
-    ui_draw_control_frame(ctx->fb,box,24,UI_GRAY_BLACK);
-    ui_text_box(ctx->fb,(EpdRect){96,508,492,88},30,"Đang mở thư viện",EPD_DRAW_ALIGN_CENTER,false);
-    guard_draw_result(ctx->hl,update_display_area_diff_with(ctx->hl,&E0470_WAVEFORM,MODE_GL16,box));
+static void opds_start_load(opds_load_kind_t kind, const char *title) {
+    s_opds_load_kind = kind;
+    copy_text(s_opds_load_title, sizeof(s_opds_load_title), title ? title : "");
+    s_opds_page = 0;
+    s_opds_loading = true;
+    snprintf(s_opds_status, sizeof(s_opds_status), "Đang tải danh mục OPDS...");
+    (void)opds_fetch_feed_async(s_opds_url);
+}
+static void opds_stop_load(void) {
+    if (s_opds_loading) opds_fetch_async_cancel();
+    s_opds_loading = false;
+}
+// 完成时把结果写入当前列表；失败保留后台返回的提示。
+// Install the finished feed; on failure keep the worker's message.
+static bool opds_poll_load(void) {
+    if (!s_opds_loading) return false;
+    esp_err_t err = ESP_FAIL;
+    char message[128];
+    opds_async_state_t st = opds_fetch_async_poll(s_opds_feed, &err, message, sizeof(message));
+    if (st == OPDS_ASYNC_LOADING) return false;
+    s_opds_loading = false;
+    if (st != OPDS_ASYNC_DONE) return true;
+    copy_text(s_opds_status, sizeof(s_opds_status), message);
+    if (err != ESP_OK || !s_opds_feed) return true;
+    unsigned count = (unsigned)s_opds_feed->count;
+    switch (s_opds_load_kind) {
+    case OPDS_LOAD_ROOT:
+        snprintf(s_opds_status, sizeof(s_opds_status), "Có %u mục · %.72s", count, app_settings_opds_url());
+        break;
+    case OPDS_LOAD_BACK:
+        snprintf(s_opds_status, sizeof(s_opds_status), "Có %u mục", count);
+        break;
+    case OPDS_LOAD_REFRESH:
+        snprintf(s_opds_status, sizeof(s_opds_status), "Đã làm mới · %u mục", count);
+        break;
+    case OPDS_LOAD_CHILD:
+        snprintf(s_opds_status, sizeof(s_opds_status), "%.72s · %u mục", s_opds_load_title, count);
+        break;
+    }
+    return true;
 }
 static void opds_open_catalog(app_ctx_t *ctx) {
+    (void)ctx;
     opds_session_begin();
-    if(app_settings_simple_ui())opds_open_notice(ctx);
     if (!s_opds_feed) {
         s_opds_feed = heap_caps_calloc(1, sizeof(opds_feed_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     }
     s_opds_page = 0;
     s_opds_depth = 0;
     copy_text(s_opds_url, sizeof(s_opds_url), app_settings_opds_url());
-    copy_text(s_opds_status, sizeof(s_opds_status), "Đang tải danh mục OPDS...");
     s_view = OPDS;
     if (s_opds_feed) {
         s_opds_feed->count = 0;
-        if (opds_fetch_feed(s_opds_url, s_opds_feed, s_opds_status, sizeof(s_opds_status)) == ESP_OK) {
-            snprintf(s_opds_status, sizeof(s_opds_status), "Có %u mục · %.72s",
-                     (unsigned)s_opds_feed->count, app_settings_opds_url());
-        }
+        opds_start_load(OPDS_LOAD_ROOT, NULL);
     } else {
+        s_opds_loading = false;
         copy_text(s_opds_status, sizeof(s_opds_status), "Không đủ bộ nhớ PSRAM");
     }
 }
@@ -2079,7 +2116,7 @@ static void draw_opds(uint8_t *fb) {
     fit_text(status, 19, 612);
     ui_text(fb, 36, 164, 19, status, EPD_DRAW_ALIGN_LEFT, false);
     ui_hairline(fb, 198, 36, 612, 0x70);
-    size_t count = s_opds_feed ? s_opds_feed->count : 0;
+    size_t count = (s_opds_feed && !s_opds_loading) ? s_opds_feed->count : 0;
     int pages = count ? ((int)count + OPDS_ROWS - 1) / OPDS_ROWS : 1;
     if (s_opds_page >= pages) s_opds_page = pages - 1;
     if (s_opds_page < 0) s_opds_page = 0;
@@ -2108,7 +2145,13 @@ static void draw_opds(uint8_t *fb) {
         ui_text_vc(fb, r.x + r.width - 24, r.y + r.height / 2, 24,
                    !entry->is_book ? "›" : "↓", EPD_DRAW_ALIGN_RIGHT, false);
     }
-    if (!count) {
+    if (s_opds_loading) {
+        char loading[128];
+        copy_text(loading, sizeof(loading), s_opds_load_title[0] ? s_opds_load_title : "Kho sách OPDS");
+        fit_text(loading, 24, 560);
+        ui_text_vc(fb, 342, 500, 24, loading, EPD_DRAW_ALIGN_CENTER, false);
+        ui_text_vc(fb, 342, 550, 22, "Đang tải…", EPD_DRAW_ALIGN_CENTER, false);
+    } else if (!count) {
         ui_text_vc(fb, 342, 540, 24, "Không có mục nào hoặc chưa kết nối Wi-Fi", EPD_DRAW_ALIGN_CENTER, false);
     }
     char page_label[48];
@@ -7820,31 +7863,26 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
     }
     if (s_view == OPDS) {
         if (y < 160 && x < 140) {
-            if (s_opds_depth > 0) {
+            if (s_opds_depth > 0 && s_opds_feed) {
                 --s_opds_depth;
                 copy_text(s_opds_url, sizeof(s_opds_url), s_opds_history[s_opds_depth]);
-                s_opds_page = 0;
-                if (s_opds_feed && opds_fetch_feed(s_opds_url, s_opds_feed,
-                                    s_opds_status, sizeof(s_opds_status)) == ESP_OK) {
-                    snprintf(s_opds_status, sizeof(s_opds_status), "Có %u mục", (unsigned)s_opds_feed->count);
-                }
+                opds_start_load(OPDS_LOAD_BACK, NULL);
             } else {
+                opds_stop_load();
                 opds_session_end();
                 s_view = IMPORT;
             }
             return APP_REDRAW_PAGE;
         }
         if (y < 160 && x > 500) {
-            s_opds_page = 0;
-            if (s_opds_feed && opds_fetch_feed(s_opds_url, s_opds_feed,
-                                s_opds_status, sizeof(s_opds_status)) == ESP_OK) {
-                snprintf(s_opds_status, sizeof(s_opds_status), "Đã làm mới · %u mục", (unsigned)s_opds_feed->count);
-            }
+            if (!s_opds_feed || s_opds_loading) return APP_REDRAW_NONE;
+            opds_start_load(OPDS_LOAD_REFRESH, NULL);
             return APP_REDRAW_PAGE;
         }
         int tab = ui_nav_hit(x, y);
-        if (tab == 1) { s_view = SHELF; return APP_REDRAW_PAGE; }
-        if (tab >= 0) { ui_nav_request(ctx, tab); return APP_REDRAW_NONE; }
+        if (tab == 1) { opds_stop_load(); s_view = SHELF; return APP_REDRAW_PAGE; }
+        if (tab >= 0) { opds_stop_load(); ui_nav_request(ctx, tab); return APP_REDRAW_NONE; }
+        if (s_opds_loading) return APP_REDRAW_NONE;
         size_t count = s_opds_feed ? s_opds_feed->count : 0;
         int pages = count ? ((int)count + OPDS_ROWS - 1) / OPDS_ROWS : 1;
         int pager = ui_pager_hit_at(x, y, 1006);
@@ -7863,14 +7901,9 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
                         copy_text(s_opds_history[s_opds_depth++], sizeof(s_opds_history[0]), s_opds_url);
                     }
                     copy_text(s_opds_url, sizeof(s_opds_url), entry->href);
-                    s_opds_page = 0;
                     char clicked_title[128];
                     copy_text(clicked_title, sizeof(clicked_title), entry->title);
-                    if (opds_fetch_feed(s_opds_url, s_opds_feed,
-                                        s_opds_status, sizeof(s_opds_status)) == ESP_OK) {
-                        snprintf(s_opds_status, sizeof(s_opds_status), "%.72s · %u mục",
-                                 clicked_title, (unsigned)s_opds_feed->count);
-                    }
+                    opds_start_load(OPDS_LOAD_CHILD, clicked_title);
                 } else {
                     opds_ui_progress_ctx_t prog = {
                         .ctx = ctx,
@@ -8170,6 +8203,7 @@ static void reader_edge_light_cancel(void);
 #endif
 static void book_on_exit(app_ctx_t* ctx) {
     if (s_text) book_busy_notice(ctx, "Đang đóng sách…");
+    opds_stop_load();
     opds_session_end();
     opds_set_network_observer(NULL,NULL);
     if(app_settings_simple_ui()){free(s_opds_feed);s_opds_feed=NULL;}
@@ -8290,7 +8324,7 @@ static int opds_control_at(uint16_t x,uint16_t y) {
     if(y<160 && x>500)return 1;
     int tab=ui_nav_hit(x,y);if(tab>=0)return 10+tab;
     int pager=ui_pager_hit_at(x,y,1006);if(pager>=0)return 20+pager;
-    size_t count=s_opds_feed?s_opds_feed->count:0;
+    size_t count=(s_opds_feed&&!s_opds_loading)?s_opds_feed->count:0;
     for(int row=0;row<OPDS_ROWS;++row) {
         size_t index=(size_t)(s_opds_page*OPDS_ROWS+row);
         if(index>=count)break;
@@ -9176,7 +9210,7 @@ static app_redraw_t on_key(app_ctx_t* ctx, int key) {
         if (s_batch_confirm) { s_batch_confirm = false; return APP_REDRAW_PAGE; }
         if (s_view == MANAGE || s_view == BULK || s_view == IMPORT || s_view == OPDS) {
             if (s_view == BULK) return bulk_finish(ctx);
-            if (s_view == OPDS) { opds_session_end(); s_view = IMPORT; return APP_REDRAW_PAGE; }
+            if (s_view == OPDS) { opds_stop_load(); opds_session_end(); s_view = IMPORT; return APP_REDRAW_PAGE; }
             s_view = SHELF; return APP_REDRAW_PAGE;
         }
         if (s_view == SHELF) { ui_nav_request(ctx, 0); return APP_REDRAW_NONE; }
@@ -9496,7 +9530,8 @@ static app_redraw_t on_tick(app_ctx_t* ctx) {
     // Ưu tiên cử chỉ đang diễn ra, kể cả khi chờ xác định chạm kép trên ảnh.
     // Bỏ lệnh BLE trùng thời điểm để tránh lật thêm trang sau khi nhấc tay.
     if (ble_enabled && touch_owns_input) ble_pt_discard_input();
-    if(s_view!=OPDS && opds_session_active())opds_session_end();
+    if(s_view!=OPDS && opds_session_active()){opds_stop_load();opds_session_end();}
+    if(s_view==OPDS && opds_poll_load())return APP_REDRAW_PAGE;
     if(app_settings_simple_ui()&&(s_view==SHELF||s_view==BULK||(DPREADER_LOVE_BOOK&&s_view!=READING&&s_view!=TOC&&s_view!=OPDS))) {
         s_scan_pending=false;ctx->request_app=app_at(5);return APP_REDRAW_NONE;
     }

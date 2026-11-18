@@ -41,9 +41,27 @@ bool opds_session_active(void);
 
 typedef void (*opds_progress_cb_t)(size_t received_bytes, size_t total_bytes, void *user_ctx);
 
-/* UI-thread-only observer; requests are synchronous. Must not start/stop network.
- * Clear before the owning page/context exits. */
+/* UI-thread-only observer; background feed fetches forward it through opds_fetch_async_poll.
+ * Must not start/stop network. Clear before the owning page/context exits. */
 void opds_set_network_observer(void (*observer)(void *),void *context);
+
+typedef enum {
+    OPDS_ASYNC_IDLE = 0,    ///< 没有进行中的目录请求 / No feed request in flight
+    OPDS_ASYNC_LOADING,     ///< 后台任务仍在加载 / Worker still loading
+    OPDS_ASYNC_DONE,        ///< 最新请求已完成，结果已写出 / Latest request finished; result copied out
+} opds_async_state_t;
+
+/// 在后台任务加载目录；新请求取代旧请求（旧结果丢弃）。UI线程调用。
+/// Fetch a feed in a background worker; a newer request supersedes older ones (stale results are dropped). UI thread only.
+bool opds_fetch_feed_async(const char *url);
+/// UI线程轮询：转发网络状态观察者，完成时复制结果与提示并返回 DONE。
+/// UI-thread poll: forwards the network observer and, when finished, copies the feed and message and returns DONE.
+opds_async_state_t opds_fetch_async_poll(opds_feed_t *out_feed, esp_err_t *out_err,
+                                         char *message, size_t message_cap);
+/// 放弃未取的结果与排队请求；进行中的任务完成后其结果被丢弃。/ Drop queued/unclaimed results; an in-flight result is discarded when it lands.
+void opds_fetch_async_cancel(void);
+/// 后台任务仍持有网络时为 true。/ True while the worker is still running.
+bool opds_fetch_async_busy(void);
 
 /// Tải và phân tích danh mục OPDS tại `url` (nếu `url == NULL` hoặc rỗng sẽ dùng URL gốc trong Cài đặt).
 esp_err_t opds_fetch_feed(const char *url, opds_feed_t *out_feed, char *message, size_t message_cap);
