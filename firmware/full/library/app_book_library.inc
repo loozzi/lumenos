@@ -269,7 +269,7 @@ static void batch_apply(app_ctx_t* ctx) {
                 delete_retry_discard(item.path);
                 ++done; item.selected = false;
                 if (!unshelf) {
-                    item.has_progress = false; item.pct = 0;
+                    item.finished = false; item.has_progress = false; item.pct = 0;
                     item.chapter = 0; item.recent = 0;
                 }
                 discard = discard || item.removed;

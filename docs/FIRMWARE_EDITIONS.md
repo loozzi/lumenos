@@ -34,3 +34,21 @@ Mã nguồn thật nằm ở `firmware/shared`, `firmware/full`, `firmware/love_
 Xem [cây tính năng Love Book](LOVE_BOOK_FEATURES.md) để tra vị trí các chức năng.
 
 Love Book không dùng PIN khi mở máy hoặc đánh thức. Mã PIN đã lưu chỉ được bản Full sử dụng.
+
+## Kết thúc sách và điều khiển danh sách
+
+Lật tiếp qua trang cuối TXT/EPUB mở màn Hết sách ở cả hai bản. Màn này hiển thị tên sách, số chương của trình đọc và thời gian đọc đã ghi nhận từ khi cài tính năng; thời gian các phiên cũ chưa có dữ liệu không được suy đoán. Trạng thái Đã đọc xong được lưu riêng, chạm để bỏ/đặt lại mà không đổi tiến độ. Bản Full dùng trạng thái này cho bộ lọc Đang đọc/Đã xong; sách cũ có tiến độ 100% vẫn được nhận là đã xong nếu chưa có trạng thái riêng. Xóa tiến độ cũng xóa trạng thái và thời gian riêng của sách; sao lưu lịch sử bao gồm dữ liệu này.
+
+Màn Hết sách tìm tối đa ba tệp TXT/EPUB chưa có tiến độ đọc và chưa đánh dấu xong trong cùng thư mục. Thứ tự theo tên tệp sau sách hiện tại rồi vòng về đầu; không duyệt thư mục con, tối đa 4096 mục thư mục mỗi lần. Tìm theo từng nhóm nhỏ sau khi màn hình đã hiện; chạm tên để mở sách, Về trang cuối để đọc lại hoặc Về Home để thoát.
+
+Nhấn ngắn âm lượng lùi/tiến một trang trong Mục lục, danh sách Font, Đánh dấu, Ghi chú và danh sách chọn đang mở, không thay lựa chọn hay vị trí đọc. Tới biên thì dừng. Khi đóng bảng, tác vụ âm lượng đã gán có hiệu lực trở lại; nhấn giữ giữ tác vụ riêng. Chạm ở bất kỳ vị trí nào khi chú thích nổi đang mở để đóng mà không lật trang sách; chú thích dài dùng vuốt trái/lên để xem tiếp, vuốt phải/xuống để trở lại hoặc dùng âm lượng.
+
+Kiểm thử điều khiển và lưu trạng thái trên máy tính:
+
+```sh
+python3 tools/board_source_view.py --board metalio47 --tests --output build/reader-finish-host
+python3 build/reader-finish-host/tools/reader_finish_host_test.py
+python3 build/reader-finish-host/tools/book_notes_ui_host_test.py
+```
+
+Kiểm thử chú thích dùng libcjson hoặc biến `CJSON_DIR` trỏ tới thư mục chứa `cJSON.c`/`cJSON.h` của SDK, như các kiểm thử ghi chú hiện có. Các kiểm thử máy tính không thay thế nghiệm thu cảm ứng, âm lượng và bóng màn trên thiết bị.

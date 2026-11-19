@@ -2,6 +2,8 @@
  * Long-press text selects instead of opening TOC; TOC remains in reader tools.
  * Geometry and annotations are restricted to horizontal text in this first version.
  * A tap on an EPUB footnote reference opens its text in a small popup instead of jumping pages.
+ * User 2026-11-19: every tap dismisses a footnote without turning the book;
+ * long footnotes page with swipes or volume. Notes lists also accept volume paging.
  */
 #include "book_notes_ui.h"
 #include "book_annotations.h"
@@ -212,10 +214,6 @@ static unsigned definition_draw(uint8_t *fb,const char *t,int x,int y) {
     return line;
 }
 /* ---- 脚注弹窗 / Footnote popup ---- */
-static EpdRect footnote_button(int index) {
-    EpdRect p=s->footnote_panel;
-    return (EpdRect){p.x+12+index*190,p.y+p.height-FOOTNOTE_BUTTON_H-14,index==2?p.width-24-380:178,FOOTNOTE_BUTTON_H};
-}
 static bool footnote_paged(void) {return s->footnote_lines>s->footnote_page_lines;}
 // 引用表按正文顺序；二分找包含该字节的链接。/ References are in text order; binary-search the one containing the byte.
 static size_t link_find(size_t at) {
@@ -305,15 +303,25 @@ static void footnote_draw(uint8_t *fb) {
     ui_fill_round_rect(fb,p,16,0xff);
     ui_draw_control_frame(fb,p,16,0x00);
     definition_draw(fb,s->footnote?s->footnote:s->message,p.x+26,p.y+24);
-    if(footnote_paged()){button(fb,footnote_button(0),"Trang trước");button(fb,footnote_button(1),"Trang sau");}
-    button(fb,footnote_button(2),"Đóng");
+    char hint[128];
+    if(footnote_paged())snprintf(hint,sizeof(hint),"%d/%u · Vuốt/âm lượng: lật · Chạm: đóng",s->definition_page+1,
+        (s->footnote_lines+s->footnote_page_lines-1)/s->footnote_page_lines);
+    else snprintf(hint,sizeof(hint),"Chạm bất kỳ đâu để đóng");
+    ui_text_box(fb,(EpdRect){p.x+20,p.y+p.height-72,p.width-40,58},20,hint,EPD_DRAW_ALIGN_CENTER,false);
 }
-static void footnote_gesture(const ui_gesture_event_t *ev,app_redraw_t *redraw) {
-    int x=ev->x0,y=ev->y0;
-    if(!hit(s->footnote_panel,x,y)||hit(footnote_button(2),x,y)){book_notes_cancel();*redraw=APP_REDRAW_PAGE;return;}
-    unsigned pages=(s->footnote_lines+s->footnote_page_lines-1)/s->footnote_page_lines;
-    if(footnote_paged()&&hit(footnote_button(0),x,y)&&s->definition_page){s->definition_page--;*redraw=APP_REDRAW_PAGE;}
-    else if(footnote_paged()&&hit(footnote_button(1),x,y)&&(unsigned)s->definition_page+1<pages){s->definition_page++;*redraw=APP_REDRAW_PAGE;}
+bool book_notes_volume_key(int direction,app_redraw_t *redraw) {
+    if(!book_notes_active())return false;
+    *redraw=APP_REDRAW_NONE;
+    if(direction!=-1&&direction!=1)return true;
+    if(s->mode==LIST) {
+        int next=s->list_at+direction*NOTES_LIST_ROWS;
+        if(next>=0&&next<(int)s->annotations.count){s->list_at=next;*redraw=APP_REDRAW_PAGE;}
+    } else if(s->mode==FOOTNOTE) {
+        unsigned pages=(s->footnote_lines+s->footnote_page_lines-1)/s->footnote_page_lines;
+        int next=s->definition_page+direction;
+        if(next>=0&&(unsigned)next<pages){s->definition_page=next;*redraw=APP_REDRAW_PAGE;}
+    }
+    return true;
 }
 /* Preview only: retain the full annotation in storage and the editor. */
 static void note_preview(const char *text,char out[128]) {
@@ -443,9 +451,9 @@ bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,
         *redraw=APP_REDRAW_PAGE;return true;
     }
     if(s->mode==FOOTNOTE) {
-        // 弹窗只吞轻点和按住类事件；滑动关掉弹窗后照常翻页。/ The popup keeps taps and holds; a swipe closes it and turns pages as usual.
-        if(ev->type==UI_GESTURE_TAP)footnote_gesture(ev,redraw);
-        else if(ev->type!=UI_GESTURE_PRESS&&ev->type!=UI_GESTURE_MOVE&&ev->type!=UI_GESTURE_LONG_PRESS&&ev->type!=UI_GESTURE_CANCEL){book_notes_cancel();return false;}
+        if(ev->type==UI_GESTURE_TAP){book_notes_cancel();*redraw=APP_REDRAW_PAGE;}
+        else if(ev->type==UI_GESTURE_SWIPE_U||ev->type==UI_GESTURE_SWIPE_L)book_notes_volume_key(1,redraw);
+        else if(ev->type==UI_GESTURE_SWIPE_D||ev->type==UI_GESTURE_SWIPE_R)book_notes_volume_key(-1,redraw);
         return true;
     }
     if(ev->type==UI_GESTURE_CANCEL){if(s->dragging){s->dragging=false;place_menu(page,body,px);*redraw=APP_REDRAW_PAGE;}return true;}

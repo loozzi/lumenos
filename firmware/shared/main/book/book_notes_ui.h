@@ -14,6 +14,8 @@ bool book_notes_active(void);
 /// 脚注弹窗可保留当前阅读方向。/ Footnote dialogs can retain the current reader orientation.
 bool book_notes_footnote_active(void);
 bool book_notes_open_list(size_t page);
+/* Consume volume input while a notes overlay owns it; retain selection/editor state. */
+bool book_notes_volume_key(int direction, app_redraw_t *redraw);
 size_t book_notes_page(size_t fallback);
 /* Event calls and draw must share the reader font lock. */
 bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,EpdRect body,int px,app_redraw_t *redraw);

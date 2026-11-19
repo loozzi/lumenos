@@ -29,7 +29,7 @@ typedef esp_err_t (*book_notes_footnote_fn)(const char *href,char **utf8,size_t 
 void book_notes_bind_links(const html_link_t *links,size_t count,book_notes_footnote_fn load);
 typedef struct {int64_t now_ms;uint8_t *fb;} app_ctx_t;
 typedef enum {APP_REDRAW_NONE,APP_REDRAW_PAGE,APP_REDRAW_AREA} app_redraw_t;
-typedef enum {UI_GESTURE_PRESS,UI_GESTURE_MOVE,UI_GESTURE_LONG_PRESS,UI_GESTURE_TAP,UI_GESTURE_CANCEL} gesture_type;
+typedef enum {UI_GESTURE_PRESS,UI_GESTURE_MOVE,UI_GESTURE_LONG_PRESS,UI_GESTURE_TAP,UI_GESTURE_CANCEL,UI_GESTURE_SWIPE_L,UI_GESTURE_SWIPE_R,UI_GESTURE_SWIPE_U,UI_GESTURE_SWIPE_D} gesture_type;
 typedef struct {gesture_type type;int x,y,x0,y0;} ui_gesture_event_t;
 enum EpdFontFlags {EPD_DRAW_ALIGN_LEFT,EPD_DRAW_ALIGN_CENTER};
 typedef void (*book_layout_glyph_fn)(void*,size_t,size_t,EpdRect);
@@ -166,6 +166,14 @@ int main(void){
  book_notes_bind("book.txt",0,test_text,strlen(test_text));assert(s->annotations.count==1&&!strcmp(s->annotations.items[0].note,"A note"));
  assert(event(UI_GESTURE_LONG_PRESS,60,310));assert(event(UI_GESTURE_MOVE,240,310));assert(event(UI_GESTURE_CANCEL,240,310));
  assert(action(3));assert(s->mode==LIST);
+ {unsigned saved_count=s->annotations.count;s->annotations.count=15;
+ assert(book_notes_volume_key(1,&redraw)&&s->list_at==7&&redraw==APP_REDRAW_PAGE&&s->mode==LIST);
+ assert(book_notes_volume_key(1,&redraw)&&s->list_at==14);
+ assert(book_notes_volume_key(1,&redraw)&&s->list_at==14&&redraw==APP_REDRAW_NONE);
+ assert(book_notes_volume_key(-1,&redraw)&&s->list_at==7);
+ assert(book_notes_volume_key(-1,&redraw)&&s->list_at==0);
+ assert(book_notes_volume_key(-1,&redraw)&&s->list_at==0&&redraw==APP_REDRAW_NONE);
+ s->annotations.count=saved_count;}
  panel_frames=0;book_notes_draw(NULL,0,body_rect(),24);assert(panel_frames==1);
  assert(event(UI_GESTURE_TAP,100,180));assert(!book_notes_active());
  assert(book_notes_open_list(0));
@@ -232,16 +240,18 @@ int main(void){
  assert(!strcmp(note_href,"notes.xhtml#n1")&&!strcmp(s->footnote,"Note text")&&s->footnote_lines==1);
  assert(s->footnote_panel.y==88); // Reference in the lower half: popup above it.
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==1&&definition_ys[0]==112);
- assert(event(UI_GESTURE_TAP,100,120)&&s->mode==FOOTNOTE); // Inside the panel keeps it.
- EpdRect close=footnote_button(2);
- assert(event(UI_GESTURE_TAP,close.x+close.width/2,close.y+close.height/2)&&!book_notes_active()&&!s->footnote);
+ assert(event(UI_GESTURE_TAP,100,120)&&!book_notes_active()&&!s->footnote); // Any inside tap closes and consumes.
+ assert(redraw==APP_REDRAW_PAGE&&!s_reader_tap.pending);
  assert(event(UI_GESTURE_TAP,170,710)&&s->mode==FOOTNOTE);
  assert(event(UI_GESTURE_TAP,100,1100)&&!book_notes_active()&&!s->footnote); // Outside closes.
  glyph_y=300;assert(event(UI_GESTURE_TAP,170,310)&&s->footnote_panel.y+s->footnote_panel.height==1152);book_notes_cancel();
  note_body="1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11";glyph_y=700;
  assert(event(UI_GESTURE_TAP,170,710)&&s->footnote_lines==11);
- EpdRect next=footnote_button(1);
- assert(event(UI_GESTURE_TAP,next.x+next.width/2,next.y+next.height/2)&&s->definition_page==1);
+ assert(event(UI_GESTURE_SWIPE_U,100,200)&&s->definition_page==1);
+ assert(event(UI_GESTURE_SWIPE_U,100,200)&&s->definition_page==1); // Clamp at end; no book turn.
+ assert(book_notes_volume_key(-1,&redraw)&&s->definition_page==0);
+ assert(book_notes_volume_key(-1,&redraw)&&s->definition_page==0&&redraw==APP_REDRAW_NONE);
+ assert(book_notes_volume_key(1,&redraw)&&s->definition_page==1);
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==1);
  book_notes_cancel();
  // Wrap at spaces (46 glyphs of 12px fit); a spaceless run still breaks per glyph.
@@ -259,7 +269,7 @@ int main(void){
  note_body=NULL;assert(event(UI_GESTURE_TAP,170,710)&&book_notes_active()&&s->mode==FOOTNOTE);
  assert(redraw==APP_REDRAW_PAGE&&!s->footnote&&strstr(s->message,"Không tải được"));
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines>0);
- close=footnote_button(2);assert(event(UI_GESTURE_TAP,close.x+2,close.y+2)&&!book_notes_active());
+ assert(event(UI_GESTURE_TAP,100,120)&&!book_notes_active());
  note_body="";assert(event(UI_GESTURE_TAP,170,710)&&book_notes_active()&&!s->footnote);book_notes_cancel();
  note_body="Note text";assert(event(UI_GESTURE_TAP,170,710)&&s->footnote&&!s->message[0]);book_notes_cancel();
  const char *original_text=test_text;
@@ -287,9 +297,9 @@ int main(void){
  assert(s->footnote_page_lines==9&&s->footnote_panel.x==302&&s->footnote_panel.y>=reader_body.y);
  assert(s->footnote_panel.y+s->footnote_panel.height<=reader_body.y+reader_body.height);
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==9);
- next=footnote_button(1);assert(event(UI_GESTURE_TAP,next.x+2,next.y+2)&&s->definition_page==1);
+ assert(event(UI_GESTURE_SWIPE_L,970,310)&&s->definition_page==1);
  definition_lines=0;book_notes_draw(fbuf,0,body_rect(),24);assert(definition_lines==2);
- close=footnote_button(2);assert(event(UI_GESTURE_TAP,close.x+2,close.y+2)&&!book_notes_active());
+ assert(event(UI_GESTURE_TAP,100,120)&&!book_notes_active());
  assert(event(UI_GESTURE_TAP,970,310)&&book_notes_footnote_active());
  app_book_orientation_changed();assert(!book_notes_active()&&!s->footnote);
  landscape=false;reader_body=(EpdRect){20,80,640,1080};glyph_x=40;glyph_y=700;

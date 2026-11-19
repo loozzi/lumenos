@@ -127,6 +127,8 @@
     "main/book/book_progress.c": "firmware/shared/main/book/book_progress.c",
     "main/book/book_state_store.c": "firmware/shared/main/book/book_state_store.c",
     "main/book/book_state_store.h": "firmware/shared/main/book/book_state_store.h",
+    "main/book/book_reading_state.c": "firmware/shared/main/book/book_reading_state.c",
+    "main/book/book_reading_state.h": "firmware/shared/main/book/book_reading_state.h",
     "main/book/book_cover_jobs.c": "firmware/shared/main/book/book_cover_jobs.c",
     "main/book/book_annotation_exchange.c": "firmware/shared/main/book/book_annotation_exchange.c",
     "main/book/book_policy.h": "firmware/shared/main/book/book_policy.h",
