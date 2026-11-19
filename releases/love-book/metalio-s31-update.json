@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "love-book",
-  "version": "1.5.13-love",
+  "version": "1.5.14-love",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.12-love",
-  "notes": "LumenOS 1.5.13 Love Book: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.",
+  "previous_version": "1.5.13-love",
+  "notes": "LumenOS 1.5.14 Love Book: Thường và Sóng nước dùng quét chữ đầy đủ 48 pha, giữ font/AA và cài đặt. Có thể lật chậm hơn; chưa nghiệm thu độ trắng thực tế. Giữ các tính năng 1.5.13.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "7309bc60bf3be12bfbe60dcf716e815b566a3fbd8c9a1f93a093b4bd48039f74",
-      "md5": "8e560daa6e3010d9c625afde5790aeef"
+      "sha256": "cf7008dbbe2be8d426d9af7c4905784f6bd82d6bffd2fb03b9944e6b183072f0",
+      "md5": "4a5bf01bae662d8b5990c76582009cf0"
     }
   },
   "clean_image": {
-    "sha256": "b49a4d1a13913cb52069b9d03053fb8ed68d2e6ceda027c619f63b8035dd74b5",
-    "md5": "f4d9f05d3e53e8d3a60b2c143965ecdb"
+    "sha256": "7b517a4698e2b79b260e7e62f12b071dabc69b34e8dfc5df71e49214261481a4",
+    "md5": "3a3c965ceda55c8dba93eef33fb5a9a3"
   },
-  "size": 4914512,
-  "sha256": "684b17eb9a6c447bb41b57679d704c82e75caa21589591eb3079361faee25ec6",
-  "md5": "5a379b1d17b25522bf857597bb9f4c10"
+  "size": 4913072,
+  "sha256": "23b4f561531e7e0d5efbae7b13f28c9001b3a493dc5ef24cffd0e539c8786dca",
+  "md5": "89d46208236d4c691871655d21ec5d23"
 }

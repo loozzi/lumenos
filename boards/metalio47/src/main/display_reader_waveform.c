@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0
- * User trial2026-10-30: AA reader turns use native-derived GL37 (erase11,
- * sat_cut5, white_sat_cut0, tail3), retaining white saturation and gray tails.
- * Equal ink holds; unchanged white retains the existing maintenance pulse count.
- * Full/periodic/recovery cleaning remains GC48; invalid derivation falls back
- * to the preceding selective GC48 reader path. No optical acceptance claimed.
- * Revision2026-10-30: reader AA overrides Fast BW on subsequent turns, matching
- * initial rendering; only an explicit AA-off choice permits target binarization.
+ * User release2026-11-19: ordinary and ripple reader turns use the existing
+ * complete GL48 text table. Keep AA/targets, equal-ink holds and white maintenance;
+ * preserve raw GC48/GL48/DU20 tables and all power/VCOM/panel timings.
+ * Full/periodic/recovery cleaning remains GC48. FastBW with AA off and Flash
+ * retain their existing separate paths. Optical quality still needs device acceptance.
  */
 #include "display_reader_waveform.h"
 #include "e0470_epaper_waveform.h"
@@ -24,129 +22,12 @@
 #define PANEL_LUT_ATTR
 #endif
 #endif
-static const EpdWaveform* reader_native_text_waveform(void) {
-    if(!app_settings_book_antialias())return &E0470_TEXTTURN_WAVEFORM;
-    /* User revision: avoid frequent global clears. Rebuild only ink footprints
-     * with the original GC sequence; unchanged white keeps existing GL pulses.
-     * No phase trimming, fabricated history or additional refresh pass. */
-#ifdef ESP_PLATFORM
-    static EXT_RAM_BSS_ATTR uint8_t pixels[E0470_FULL_GC16_FRAMES][16][4];
-#else
-    static uint8_t pixels[E0470_FULL_GC16_FRAMES][16][4];
-#endif
-    static bool ready;
-    static EpdWaveformPhases phase;
-    static const EpdWaveformPhases* ranges[1];
-    static EpdWaveformMode mode;
-    static const EpdWaveformMode* modes[1];
-    static EpdWaveform waveform;
-    if(!ready) {
-        const EpdWaveformPhases *gc=e0470_waveform_phases(&E0470_FULL_WAVEFORM,MODE_GC16);
-        const EpdWaveformPhases *gl=e0470_waveform_phases(&E0470_TEXTTURN_WAVEFORM,MODE_GL16);
-        if(!gc||!gl||!gc->luts||!gl->luts||gc->phase_times||gl->phase_times||
-           gc->phases!=E0470_FULL_GC16_FRAMES||gl->phases!=gc->phases)return &E0470_TEXTTURN_WAVEFORM;
-        for(int f=0;f<gc->phases;++f)for(int to=0;to<16;++to)for(int group=0;group<4;++group)
-            pixels[f][to][group]=gc->luts[f*64+to*4+group];
-        for(int f=0;f<gc->phases;++f)
-            pixels[f][15][3]=(uint8_t)((pixels[f][15][3]&0xfc)|(gl->luts[f*64+63]&3));
-        phase=(EpdWaveformPhases){.phases=gc->phases,.luts=(const uint8_t*)pixels,.phase_times=NULL};
-        ranges[0]=&phase;
-        mode=(EpdWaveformMode){.type=MODE_GL16,.temp_ranges=1,.range_data=ranges};
-        modes[0]=&mode;waveform=E0470_TEXTTURN_WAVEFORM;waveform.mode_data=modes;
-        ready=true;
-    }
-    return &waveform;
-}
-
-
 const EpdWaveform* display_reader_text_waveform(void) {
-    if(!app_settings_book_antialias())return &E0470_TEXTTURN_WAVEFORM;
-#ifdef ESP_PLATFORM
-    static EXT_RAM_BSS_ATTR uint8_t pixels[E0470_FULL_GL16_FRAMES][16][4];
-#else
-    static uint8_t pixels[E0470_FULL_GL16_FRAMES][16][4];
-#endif
-    static bool ready,failed;
-    static EpdWaveformPhases phase;
-    static const EpdWaveformPhases* ranges[1];
-    static EpdWaveformMode mode;
-    static const EpdWaveformMode* modes[1];
-    static EpdWaveform waveform;
-    if(failed)return reader_native_text_waveform();
-    if(!ready) {
-        extern const EpdWaveformPhases my_gl_25_0;
-        const EpdWaveformPhases *white=e0470_waveform_phases(&E0470_TEXTTURN_WAVEFORM,MODE_GL16);
-        const e0470_trim_t trim={.erase_max=11,.sat_cut=5,.white_sat_cut=0,.hold=3};
-        if(!my_gl_25_0.luts||my_gl_25_0.phases!=48||my_gl_25_0.phase_times||
-           !white||!white->luts||white->phase_times||white->phases!=48||
-           e0470_waveform_trim(&my_gl_25_0,&trim,pixels)!=37) {
-            failed=true;return reader_native_text_waveform();
-        }
-        unsigned maintenance=0;
-        for(int f=0;f<white->phases;++f) {
-            int action=e0470_phase_action(white,f,15,15);
-            if(action!=0&&action!=2){failed=true;return reader_native_text_waveform();}
-            maintenance+=action==2;
-        }
-        if(!maintenance||maintenance>18){failed=true;return reader_native_text_waveform();}
-        for(int f=0;f<37;++f)for(int v=0;v<16;++v)
-            pixels[f][v][v/4]&=(uint8_t)~(3u<<(6-2*(v%4)));
-        // Preserve the white maintenance budget before the three final holds.
-        for(unsigned n=0;n<maintenance;++n)pixels[33-n][15][3]|=2;
-        phase=(EpdWaveformPhases){.phases=37,.luts=(const uint8_t*)pixels,.phase_times=NULL};
-        ranges[0]=&phase;mode=(EpdWaveformMode){.type=MODE_GL16,.temp_ranges=1,.range_data=ranges};
-        modes[0]=&mode;waveform=E0470_TEXTTURN_WAVEFORM;waveform.mode_data=modes;
-        ready=true;
-    }
-    return &waveform;
+    return &E0470_TEXTTURN_WAVEFORM;
 }
 
 const EpdWaveform* display_reader_ripple_waveform(void) {
-    const EpdWaveform* base = display_reader_text_waveform();
-    if (!app_settings_book_antialias()) return base;
-
-    enum { PHASES = 37, LAST_DRIVE = PHASES - 4, EXTRA_BLACK = 2 };
-#ifdef ESP_PLATFORM
-    static EXT_RAM_BSS_ATTR uint8_t pixels[PHASES][16][4];
-#else
-    static uint8_t pixels[PHASES][16][4];
-#endif
-    static const EpdWaveformPhases phase = {PHASES, (const uint8_t*)pixels, NULL};
-    static const EpdWaveformPhases* ranges[] = {&phase};
-    static const EpdWaveformMode mode = {MODE_GL16, 1, ranges};
-    static const EpdWaveformMode* modes[] = {&mode};
-    static EpdWaveform waveform;
-    static bool ready, failed;
-    if (ready) return &waveform;
-    if (failed) return base;
-
-    const EpdWaveformPhases* source = e0470_waveform_phases(base, MODE_GL16);
-    if (!source || !source->luts || source->phase_times || source->phases != PHASES) return base;
-    for (int from = 1; from < 16; ++from) {
-        if (e0470_phase_action(source, 0, 0, from) ||
-            e0470_phase_action(source, 1, 0, from) ||
-            e0470_phase_action(source, LAST_DRIVE, 0, from) != 1) {
-            failed = true;
-            return base;
-        }
-    }
-
-    // Start transitions to black two phases earlier and extend their final
-    // black drive. Leave every other transition and the three tail holds intact.
-    memcpy(pixels, source->luts, sizeof(pixels));
-    for (int from = 1; from < 16; ++from) {
-        const int shift = 6 - 2 * (from % 4);
-        for (int f = 0; f <= LAST_DRIVE; ++f) {
-            const int action = f <= LAST_DRIVE - EXTRA_BLACK
-                ? e0470_phase_action(source, f + EXTRA_BLACK, 0, from) : 1;
-            uint8_t* entry = &pixels[f][0][from / 4];
-            *entry = (uint8_t)((*entry & ~(3u << shift)) | ((unsigned)action << shift));
-        }
-    }
-    waveform = *base;
-    waveform.mode_data = modes;
-    ready = true;
-    return &waveform;
+    return display_reader_text_waveform();
 }
 
 const EpdWaveform* display_reader_flash_waveform(void) {
