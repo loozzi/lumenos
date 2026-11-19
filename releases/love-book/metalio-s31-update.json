@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "love-book",
-  "version": "1.5.12-love",
+  "version": "1.5.13-love",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.11-love",
-  "notes": "LumenOS 1.5.12 Love Book: Kho sách OPDS mở ngay khi chạm, danh mục tải ở nền và tự hiện khi xong; vẫn có thể quay lại hoặc rời trang trong lúc tải.",
+  "previous_version": "1.5.12-love",
+  "notes": "LumenOS 1.5.13 Love Book: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "45c4f067389d21e6bd1e9da55ad34e15d8f6a6204f855b2f226c8ca72061090d",
-      "md5": "46c569ed60c0bdedae744702f19cb566"
+      "sha256": "7309bc60bf3be12bfbe60dcf716e815b566a3fbd8c9a1f93a093b4bd48039f74",
+      "md5": "8e560daa6e3010d9c625afde5790aeef"
     }
   },
   "clean_image": {
-    "sha256": "719da190ef960417540ac816b434f4c094b0fa5bccd39ef24125c567a020e5fd",
-    "md5": "e727e6088107bed134b0c7fd5adf6801"
+    "sha256": "b49a4d1a13913cb52069b9d03053fb8ed68d2e6ceda027c619f63b8035dd74b5",
+    "md5": "f4d9f05d3e53e8d3a60b2c143965ecdb"
   },
-  "size": 4910320,
-  "sha256": "dd0dcdc22815cdf71168493e86a593cb07f6f94e5188bde9fd8df6cc5475fc42",
-  "md5": "1d88d17bc438b7155acf592e459dcc04"
+  "size": 4914512,
+  "sha256": "684b17eb9a6c447bb41b57679d704c82e75caa21589591eb3079361faee25ec6",
+  "md5": "5a379b1d17b25522bf857597bb9f4c10"
 }

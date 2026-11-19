@@ -1,1 +1,1 @@
-LumenOS 1.5.12: Kho sách OPDS mở ngay khi chạm, danh mục tải ở nền với dòng Đang tải… và tự hiện khi xong; vẫn có thể quay lại hoặc rời trang trong lúc tải.
+LumenOS 1.5.13: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.

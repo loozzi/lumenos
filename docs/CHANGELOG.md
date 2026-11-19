@@ -1,3 +1,10 @@
+## LumenOS 1.5.13 / 1.5.13-love · Phát hành chính thức · 2026-11-19
+
+- Lật tiếp qua trang cuối mở màn **Hết sách** với tên sách, số chương, thời gian đọc đã ghi nhận, nút về trang cuối và về Home. Tự đánh dấu đã đọc xong; chạm để bỏ hoặc đặt lại, giữ nguyên vị trí đọc. Trạng thái được lưu riêng với tiến độ và dùng cho bộ lọc Tủ sách Full.
+- Gợi ý tối đa 3 sách TXT/EPUB chưa đọc trong cùng thư mục, theo tên tệp sau cuốn hiện tại rồi vòng về đầu. Tìm ở nền theo từng nhóm nhỏ, không mở thư mục con. Áp dụng cả Full và Love Book.
+- Nhấn ngắn âm lượng chuyển trang Mục lục, danh sách Font, Đánh dấu, Ghi chú và danh sách chọn đang mở; đến đầu/cuối thì dừng. Đóng danh sách trở về tác vụ âm lượng đã gán; nhấn giữ vẫn dùng tác vụ riêng.
+- Chạm bất kỳ đâu khi chú thích nổi đang mở sẽ đóng và giữ nguyên trang sách. Chú thích dài chuyển trang bằng vuốt hoặc âm lượng, không lật sách phía dưới.
+
 ## LumenOS 1.5.12 / 1.5.12-love · Phát hành chính thức · 2026-11-18
 
 - Kho sách **OPDS** mở ngay khi chạm: trang hiện tức thì với dòng **Đang tải…**, danh mục tải ở nền rồi tự hiện khi xong; áp dụng cho mở kho, vào danh mục con, Quay lại và Làm mới.

@@ -1,0 +1,1 @@
+../../firmware/shared/main/book/book_reading_state.h

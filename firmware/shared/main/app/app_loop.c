@@ -885,13 +885,14 @@ static app_redraw_t volume_key_action(app_ctx_t *ctx,const app_desc_t *current,i
        usb_storage_active() || pico_online_busy())return APP_REDRAW_NONE;
     if(volume==2||volume==-2)return control_hold_action(ctx,current,volume>0?1:2);
     int key=volume<0?UI_KEY_1:UI_KEY_3;
+    // Active reader lists own short volume presses before global saved shortcuts.
+    app_redraw_t redraw = APP_REDRAW_NONE;
+    if(current==&app_book && app_book_volume_key(ctx,volume<0?-1:1,&redraw))return redraw;
     app_reader_key_action_t vol_action=app_settings_volume_key_action(volume<0?0:1);
     if(vol_action==APP_READER_KEY_ACTION_MENU){app_action_menu_request();return APP_REDRAW_NONE;}
     if(vol_action==APP_READER_KEY_INVERT)return display_toggle_inverted()?APP_REDRAW_FULL:APP_REDRAW_NONE;
     if(vol_action==APP_READER_KEY_LOCK){app_lock_request();return APP_REDRAW_NONE;}
     if(main_page_ready(ctx,current))return main_key_action(ctx,current,key,false);
-    app_redraw_t redraw = APP_REDRAW_NONE;
-    if(current==&app_book && app_book_volume_key(ctx,volume<0?-1:1,&redraw))return redraw;
     return current->owns_keys && current->on_key?current->on_key(ctx,key):APP_REDRAW_NONE;
 }
 #endif

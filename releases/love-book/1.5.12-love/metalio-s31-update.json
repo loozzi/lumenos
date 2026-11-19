@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.12-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.11-love",
+  "notes": "LumenOS 1.5.12 Love Book: Kho sách OPDS mở ngay khi chạm, danh mục tải ở nền và tự hiện khi xong; vẫn có thể quay lại hoặc rời trang trong lúc tải.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "ecea0e924a62b688c190275eadfe5df9e6353db8ed527fe8be1433508494f939",
+      "md5": "d616ede99b83a02be765fd23d037ad9e"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "45c4f067389d21e6bd1e9da55ad34e15d8f6a6204f855b2f226c8ca72061090d",
+      "md5": "46c569ed60c0bdedae744702f19cb566"
+    }
+  },
+  "clean_image": {
+    "sha256": "719da190ef960417540ac816b434f4c094b0fa5bccd39ef24125c567a020e5fd",
+    "md5": "e727e6088107bed134b0c7fd5adf6801"
+  },
+  "size": 4910320,
+  "sha256": "dd0dcdc22815cdf71168493e86a593cb07f6f94e5188bde9fd8df6cc5475fc42",
+  "md5": "1d88d17bc438b7155acf592e459dcc04"
+}
