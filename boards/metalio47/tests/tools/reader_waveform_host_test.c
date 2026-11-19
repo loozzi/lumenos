@@ -14,40 +14,15 @@ int main(void){
  e0470_waveform_init();
  const EpdWaveform *wave=display_reader_text_waveform();
  const EpdWaveformPhases *actual=e0470_waveform_phases(wave,MODE_GL16);
- extern const EpdWaveformPhases my_gl_25_0;
+ assert(wave==&E0470_TEXTTURN_WAVEFORM&&actual&&actual->phases==48&&!actual->phase_times);
+ assert(e0470_waveform_phases(&E0470_FULL_WAVEFORM,MODE_GC16)->phases==48);
+ assert(display_reader_ripple_waveform()==wave);
+ aa=false;assert(display_reader_text_waveform()==wave&&display_reader_ripple_waveform()==wave);
+ aa=true;assert(display_reader_text_waveform()==wave&&display_reader_ripple_waveform()==wave);
  static uint8_t expected_pixels[48][16][4];
  const e0470_trim_t trim={.erase_max=11,.sat_cut=5,.white_sat_cut=0,.hold=3};
- assert(e0470_waveform_trim(&my_gl_25_0,&trim,expected_pixels)==37);
- EpdWaveformPhases expected={.phases=37,.luts=(const uint8_t*)expected_pixels};
- assert(actual&&actual->phases==37&&!actual->phase_times);
- for(int f=0;f<37;++f)for(int from=0;from<16;++from)for(int to=0;to<16;++to)
-  if(from!=to)assert(e0470_phase_action(actual,f,to,from)==e0470_phase_action(&expected,f,to,from));
-  else if(to!=15)assert(e0470_phase_action(actual,f,to,from)==0);
- const EpdWaveformPhases *native=e0470_waveform_phases(&E0470_TEXTTURN_WAVEFORM,MODE_GL16);
- unsigned old_white=0,new_white=0;
- for(int f=0;f<native->phases;++f)old_white+=e0470_phase_action(native,f,15,15)==2;
- for(int f=0;f<37;++f)new_white+=e0470_phase_action(actual,f,15,15)==2;
- assert(old_white&&old_white==new_white);
- assert(e0470_waveform_phases(&E0470_FULL_WAVEFORM,MODE_GC16)->phases==48);
- const EpdWaveform* ripple=display_reader_ripple_waveform();
- const EpdWaveformPhases* boosted=e0470_waveform_phases(ripple,MODE_GL16);
- assert(ripple!=wave&&boosted&&boosted->phases==37&&!boosted->phase_times);
- for(int from=0;from<16;++from)for(int to=0;to<16;++to){
-  int old_black=0,new_black=0,old_white=0,new_white=0;
-  for(int f=0;f<37;++f){
-   int before=e0470_phase_action(actual,f,to,from);
-   int after=e0470_phase_action(boosted,f,to,from);
-   if(to||!from||f>=34)assert(before==after);
-   old_black+=before==1;new_black+=after==1;
-   old_white+=before==2;new_white+=after==2;
-  }
-  assert(new_white==old_white);
-  assert(new_black==old_black+(to==0&&from>0?2:0));
- }
- assert(display_reader_text_waveform()==wave);
- puts("PASS: ripple GL37 adds exactly two black pulses per incoming black transition");
- aa=false;assert(display_reader_text_waveform()==&E0470_TEXTTURN_WAVEFORM);
- assert(display_reader_ripple_waveform()==&E0470_TEXTTURN_WAVEFORM);
+ EpdWaveformPhases expected={.phases=36,.luts=(const uint8_t*)expected_pixels};
+ puts("PASS: ordinary/ripple GL48 unchanged by AA, no extra GL37 black pulses; GC48 cleanup remains native");
  const EpdWaveform *flash=display_reader_flash_waveform();
  actual=e0470_waveform_phases(flash,MODE_GC16);
  assert(actual&&actual->phases==36&&!actual->phase_times);
@@ -73,5 +48,5 @@ int main(void){
  assert(black_pulses==1&&white_pulses==1);
  aa=true;assert(display_reader_flash_waveform()==flash);
  puts("PASS: Flash GC36 preserves native gray transitions and reinforces unchanged black and white");
- puts("PASS: reader AA GL37 retains native-derived changed transitions, equal ink holds and native white maintenance; AA-off and GC48 cleanup remain native");
+ puts("PASS: reader GL48 retains existing changed transitions, equal ink holds and white maintenance; Flash and GC48 cleanup remain unchanged");
 }

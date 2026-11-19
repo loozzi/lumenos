@@ -1,3 +1,8 @@
+## LumenOS 1.5.14 / 1.5.14-love · Phát hành chính thức · 2026-11-19
+
+- Thường và Sóng nước dùng đường quét chữ đầy đủ 48 pha có sẵn thay chuỗi rút ngắn 37 pha. Giữ nguyên font, AA, độ đậm được chọn và ảnh đích; Flash và Đen trắng nhanh khi tắt AA giữ đường riêng.
+- Giữ bảng waveform gốc, VCOM, nguồn, phân vùng và chu kỳ làm mới kỹ. Có thể lật trang chậm hơn; độ trắng và bóng chữ thực tế chưa được nghiệm thu trên thiết bị. Giữ các tính năng 1.5.13 ở cả Full và Love Book.
+
 ## LumenOS 1.5.13 / 1.5.13-love · Phát hành chính thức · 2026-11-19
 
 - Lật tiếp qua trang cuối mở màn **Hết sách** với tên sách, số chương, thời gian đọc đã ghi nhận, nút về trang cuối và về Home. Tự đánh dấu đã đọc xong; chạm để bỏ hoặc đặt lại, giữ nguyên vị trí đọc. Trạng thái được lưu riêng với tiến độ và dùng cho bộ lọc Tủ sách Full.

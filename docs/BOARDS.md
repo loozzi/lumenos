@@ -590,3 +590,11 @@ Trong host view S31, chạy `tools/test_book_epub.py` và biên dịch
 chạm số, tải lỗi/rỗng, thiếu hyperlink, đọc ngang/phân trang và cổng chọn chữ.
 Nếu không có libcjson trên host, đặt `CJSON_DIR` tới thư mục chứa `cJSON.c`
 của thành phần cJSON trong nguồn build ESP-IDF.
+
+## Quét chữ S31 GL48 từ LumenOS 1.5.14
+
+Theo yêu cầu phát hành ngày 2026-11-19, Thường và Sóng nước dùng nguyên đường `E0470_TEXTTURN_WAVEFORM` 48 pha có sẵn thay GL37 rút ngắn. Không còn cần tùy chọn build đối chứng; font, AA và ảnh đích không đổi. Giữ xử lý giữ màu và duy trì nền trắng của đường GL48 hiện có; không sửa bảng xung gốc, VCOM, nguồn hoặc timing. Flash và Đen trắng nhanh khi tắt AA giữ đường riêng; GC48 định kỳ/thủ công, hình ảnh và giao diện giữ nguyên.
+
+Kiểm thử bằng `python3 tools/reader_native48_host_test.py` hoặc runner tương thích `python3 tools/reader_aa_waveform_host_test.py`, sau khi tạo view `tools/board_source_view.py --board metalio47 --tests`. Kiểm thử máy tính xác minh toàn bộ 256 cặp chuyển mức xám và dữ liệu gốc bất biến, không đo được độ trắng thực.
+
+Đối chiếu với 1.5.13 trên cùng máy: chọn Thường, cùng trang/font/AA/độ đậm/lề và mức đèn (ưu tiên tắt đèn), làm mới kỹ một lần, chụp ngay và sau 10/30 lượt chuyển hai trang. Giữ góc máy, ánh sáng và phơi sáng camera cố định; so độ sạch nền, bóng chữ, độ đậm và độ trễ. Quét 48 pha có thể chậm hơn; bản chính thức chưa được nghiệm thu quang học trên thiết bị.

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.5.13",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.12",
+  "notes": "LumenOS 1.5.13: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5",
+      "md5": "a865d71c2d6db481384bdd719fbfc2d9"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "fb2edde34c7bfbc4eb0f650a37da0acbec4e5ec435f64ee49077aade99b4678c",
+      "md5": "2ce4d07eae6c65030de4580b167d1ed6"
+    }
+  },
+  "clean_image": {
+    "sha256": "7bca66ff8d100a1510311aa5e2687d015baa99703ba3290eab769f3330d8b443",
+    "md5": "8ccd03f90dc34409578d0856ee21f33e"
+  },
+  "size": 4994384,
+  "sha256": "cbb57643395477b447104e7697188b708d9927a613c4f362efe0d8eff7114ff9",
+  "md5": "f7e6a7bf27e6920fef6125adf7ccb721"
+}

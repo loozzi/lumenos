@@ -1,1 +1,1 @@
-LumenOS 1.5.13: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.
+LumenOS 1.5.14: Thường và Sóng nước dùng quét chữ đầy đủ 48 pha, giữ font/AA và cài đặt. Có thể lật chậm hơn; chưa nghiệm thu độ trắng thực tế. Giữ các tính năng 1.5.13.
