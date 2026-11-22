@@ -47,12 +47,13 @@
  * User revision 2026-10-29 removes full screen: status bar only above the text, a compact bottom footer, independent footer toggles, chapter above a shared page/bar/percentage row.
  * Ngày 2026-11-07, người dùng chuyển chân trang vào Cài đặt đọc và cho ẩn thanh trạng thái để tăng vùng dàn trang.
  * 用户2026-11-22修订（方案C），取代上方“保留状态栏”与“章名在上/进度条同排”：阅读页不画顶部状态栏；页脚只有一行，
- * 左章名（无则书名），右为已开启的“页码 · 时间 · 百分比”；不画电量/网络，进度条只保留“Thanh Đáy”最底细线。
- * 原状态栏开关改为“Giờ ở chân trang”；按分钟只重画页脚，工具条/面板覆盖时不画。
+ * 左章名（无则书名），右为已开启的“页码 · 时间 · 百分比”及最右小电池（无百分比）；不画网络，进度条只保留“Thanh Đáy”最底细线。
+ * 原状态栏开关改为“Giờ & pin ở chân trang”；按分钟或电量/充电变化只重画页脚，工具条/面板覆盖时不画。
  * User revision 2026-11-22 (design C), superseding "retain the status bar" and "chapter above a page/bar/percentage
- * row": no top status bar; a single footer row with the chapter (or title) left and enabled "page · clock · percentage"
- * right; no battery/network marks, and only "Thanh Đáy" keeps a bottom progress strip. The status toggle becomes
- * "Giờ ở chân trang"; minute changes repaint only the footer and never while tools or panels cover it.
+ * row": no top status bar; a single footer row with the chapter (or title) left, enabled "page · clock · percentage"
+ * and a small rightmost battery gauge without a percentage; no network marks, and only "Thanh Đáy" keeps a bottom
+ * progress strip. The status toggle becomes "Giờ & pin ở chân trang"; minute or charge changes repaint only the
+ * footer and never while tools or panels cover it.
  * 用户2026-10-29修订：章名下移4px；进度条固定位置/总宽，已读粗黑、未读细浅。
  * User revision 2026-10-29: lower chapter by4px; fixed track frame with thick black read and thin pale unread segments.
  * 用户修订：阅读进度条无外伸刻度并使用圆角；继续阅读区显示最近书籍封面。
@@ -441,6 +442,7 @@ static int s_shelf_key_pressed,s_shelf_key_delta;
 static int64_t s_shelf_key_until;
 static int64_t s_reader_clock_minute = -1, s_reader_clock_painted_minute = -1;
 static bool s_reader_clock_pending;
+static int s_reader_footer_battery = -1;
 static char s_message[128], s_storage[128], s_path[BOOK_STORE_PATH_MAX], s_title[128];
 static char s_book_title[128];
 static char s_font_path[192];
@@ -748,7 +750,7 @@ static size_t fb_bytes(void) { return (size_t)epd_width() * epd_height() / 2; }
 #define READER_FOOTER_BOTTOM_BAR_HEIGHT 12
 static int s_footer_layout_override = -1;
 static int s_status_layout_override = -1;
-// 状态设置改为“页脚显示时间”。/ The status setting now means "clock in the footer".
+// 状态设置改为“页脚显示时间与电池”。/ The status setting now means "clock and battery in the footer".
 static bool reader_footer_status(void) {
     return s_status_layout_override < 0 ? app_settings_book_status_enabled() : s_status_layout_override != 0;
 }
@@ -3025,7 +3027,7 @@ static void draw_reader_bars_back(uint8_t *fb) {
 static void draw_status_footer_settings(uint8_t *fb) {
     draw_sheet(fb, READER_BARS_TOP, "Status & Footer");
     draw_sheet_back(fb, READER_BARS_TOP);
-    draw_reader_bar_switch(fb, reader_bars_status_rect(), "Giờ ở chân trang", app_settings_book_status_enabled());
+    draw_reader_bar_switch(fb, reader_bars_status_rect(), "Giờ & pin ở chân trang", app_settings_book_status_enabled());
     draw_font_pair(fb, reader_bars_footer_rect(), "Footer",
                    app_settings_book_footer_enabled() ? "Hiện chân trang" : "Ẩn chân trang");
     draw_reader_bars_back(fb);
@@ -4193,7 +4195,13 @@ static void draw_reader_footer(uint8_t *fb, size_t page) {
     if (!reader_footer_visible()) return;
     const unsigned pct = percent(page);
     const int cy = reader_footer_row_cy();
-    const int left = READER_FOOTER_TEXT_INSET, right = UI_LOCK_WIDTH - READER_FOOTER_TEXT_INSET;
+    const int left = READER_FOOTER_TEXT_INSET;
+    int right = UI_LOCK_WIDTH - READER_FOOTER_TEXT_INSET;
+    // 最右为小电池，随“Giờ & pin ở chân trang”开关。/ The small battery sits rightmost, following the clock & battery toggle.
+    if (reader_footer_status()) {
+        right = ui_nav_footer_battery_draw(fb, right, cy) - 12;
+        s_reader_footer_battery = ui_nav_battery_signature();
+    }
     // 右侧：页码 · 时间 · 百分比，按开关拼接。/ Right: page · clock · percentage, joined per toggle.
     char info[64] = {0};
     size_t used = 0;
@@ -4737,7 +4745,8 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
 #endif
     unlock_draw();
 }
-// 时间位于页脚：按分钟只重画页脚区域。/ The clock lives in the footer: minute changes repaint only the footer area.
+// 时间与电池位于页脚：按分钟或电量/充电变化只重画页脚区域。
+// Clock and battery live in the footer: minute or charge changes repaint only the footer area.
 static EpdRect reader_status_area(void) { return progress_rect(); }
 static bool reader_status_visible(void) {
     return s_view==READING && s_text && app_settings_book_footer_enabled() && reader_footer_status();
@@ -4753,7 +4762,8 @@ static app_redraw_t reader_clock_tick(app_ctx_t *ctx) {
 #if DPREADER_BOARD_METALIO47
     if (reader_viewport_active()) return APP_REDRAW_NONE;
 #endif
-    if (ui_nav_clock_minute()==s_reader_clock_minute) return APP_REDRAW_NONE;
+    if (ui_nav_clock_minute()==s_reader_clock_minute && ui_nav_battery_signature()==s_reader_footer_battery)
+        return APP_REDRAW_NONE;
     s_reader_clock_painted_minute=ui_nav_clock_minute();
     lock_draw(); reader_status_paint(ctx->fb); unlock_draw();
     s_reader_clock_pending=true;
@@ -6720,7 +6730,7 @@ static app_redraw_t toggle_reader_bar(bool status) {
         release_page_images();
         save_progress();
     } else {
-        copy_text(s_reader_notice, sizeof(s_reader_notice), status ? "Không đổi được giờ" : "Không đổi được chân trang");
+        copy_text(s_reader_notice, sizeof(s_reader_notice), status ? "Không đổi được giờ & pin" : "Không đổi được chân trang");
         s_reader_notice_until = esp_timer_get_time() / 1000 + 1800;
     }
     return APP_REDRAW_FULL;

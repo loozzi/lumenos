@@ -1,3 +1,8 @@
+## LumenOS 1.5.17 / 1.5.17-love · Phát hành chính thức · 2026-11-22
+
+- Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng, không ghi số %; khi sạc hiện tia sét. Bật/tắt cùng giờ bằng công tắc **Giờ & pin ở chân trang** (đổi tên từ "Giờ ở chân trang").
+- Chân trang vẽ lại khi đổi phút hoặc khi mức pin/trạng thái sạc thay đổi; không vẽ khi thanh công cụ hay bảng cài đặt đang mở. Áp dụng cả Full và Love Book.
+
 ## LumenOS 1.5.16 / 1.5.16-love · Phát hành chính thức · 2026-11-22
 
 - Trang chủ: vuốt ngang để chuyển trang chính theo cùng thứ tự với phím trái/phải — vuốt trái sang Kệ sách, vuốt phải sang Cài đặt (giao diện đơn giản: sang Cài đặt). Thanh điều hướng vẫn giữ nguyên.

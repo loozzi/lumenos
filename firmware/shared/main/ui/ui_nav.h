@@ -40,6 +40,11 @@ int64_t ui_nav_clock_minute(void);
 void ui_nav_clock_draw(uint8_t *fb);
 /// 状态栏同款时间文本（HH:MM，未校时为--:--）。/ Status clock text (HH:MM, or --:-- before time sync).
 void ui_nav_clock_text(char *out, size_t capacity);
+/// 电量与充电签名，阅读页脚据此判断是否重画。/ Battery level and charging signature for reader-footer repaint checks.
+int ui_nav_battery_signature(void);
+/// 阅读页脚右对齐画小电池（无百分比），fb 为空只测量；返回左边界。
+/// Right-align the small reader-footer battery (no percentage); NULL fb measures only. Returns the left edge.
+int ui_nav_footer_battery_draw(uint8_t *fb, int right, int cy);
 /// 绘制设置页与状态栏共用的 WiFi 标志。/ Draw the WiFi mark shared by Settings and the status bar.
 void ui_nav_wifi_icon(uint8_t *fb, int cx, int cy, int size, uint8_t gray);
 /// 二级页面共用的圆形返回按钮。/ Shared circular back control for secondary pages.

@@ -1,1 +1,1 @@
-LumenOS 1.5.16: Trang chủ vuốt trái sang Kệ sách, vuốt phải sang Cài đặt; vẫn giữ thanh điều hướng. Giữ trang đọc gọn của 1.5.15.
+LumenOS 1.5.17: Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng (tia sét khi sạc), bật/tắt cùng "Giờ & pin ở chân trang". Giữ vuốt ở Trang chủ của 1.5.16.

@@ -471,6 +471,34 @@ void ui_nav_reader_status(uint8_t *fb) { draw_status(fb, true); }
 
 // 阅读页去掉顶部状态栏后，页脚复用同一时间文本。/ With the reader status bar removed, the footer reuses the clock text.
 void ui_nav_clock_text(char *out, size_t capacity) { if (out && capacity) clock_text(out, capacity); }
+// 用户2026-11-22：页脚末尾的小电池，只表示电量与充电，不画百分比。
+// User 2026-11-22: a small footer battery showing charge level and charging only, without a percentage.
+#define FOOTER_BATTERY_W 32
+#define FOOTER_BATTERY_H 18
+#define FOOTER_NUB_W 3
+int ui_nav_battery_signature(void) {
+    const pmu_snapshot_t *pmu = read_pico_pmu_get();
+    return (pmu_battery_percent(pmu) + 1) * 2 + (pmu_battery_charging(pmu) ? 1 : 0);
+}
+int ui_nav_footer_battery_draw(uint8_t *fb, int right, int cy) {
+    const int x = right - FOOTER_NUB_W - 1 - FOOTER_BATTERY_W;
+    if (!fb) return x;
+    const pmu_snapshot_t *pmu = read_pico_pmu_get();
+    const int gauge = pmu_battery_percent(pmu);
+    const EpdRect body = {x, cy - FOOTER_BATTERY_H / 2, FOOTER_BATTERY_W, FOOTER_BATTERY_H};
+    ui_draw_round_rect(fb, body, 4, UI_GRAY_BLACK);
+    ui_fill_round_rect(fb, (EpdRect){x + FOOTER_BATTERY_W + 1, cy - 4, FOOTER_NUB_W, 8}, 1, UI_GRAY_BLACK);
+    if (pmu_battery_charging(pmu)) {
+        // 充电时满格黑底加白色闪电，0%也清晰。/ Charging: a full black well with a white bolt, legible even at 0%.
+        ui_fill_round_rect(fb, (EpdRect){x + 3, body.y + 3, FOOTER_BATTERY_W - 6, FOOTER_BATTERY_H - 6}, 2, UI_GRAY_BLACK);
+        ui_draw_icon(fb, x + FOOTER_BATTERY_W / 2, cy, 16, UI_ICON_ZAP, UI_GRAY_WHITE);
+    } else if (gauge >= 0) {
+        const int width = ((FOOTER_BATTERY_W - 8) * gauge + 50) / 100;
+        if (width > 0)
+            ui_fill_round_rect(fb, (EpdRect){x + 4, body.y + 4, width, FOOTER_BATTERY_H - 8}, 2, UI_GRAY_BLACK);
+    }
+    return x;
+}
 
 int ui_nav_hit(uint16_t x, uint16_t y) {
     if (x >= UI_LOCK_WIDTH || y < UI_NAV_TOUCH_TOP || y >= UI_LOCK_HEIGHT) return -1;
