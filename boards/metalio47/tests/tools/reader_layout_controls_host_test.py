@@ -36,9 +36,9 @@ static unsigned s_book_indent_adjust=20;
 static void nvs_put_u8(const char *key,uint8_t v){(void)key;assert(v==s_book_indent_adjust);}
 #define NVS_KEY_BOOK_INDENT_ADJUST "bk_indent_adj"
 '''
-for name in ('READER_FOOTER_HEIGHT','READER_FOOTER_COMPACT_HEIGHT','READER_FOOTER_BOTTOM_BAR_HEIGHT'):
+for name in ('READER_TOP_PAD','READER_FOOTER_COMPACT_HEIGHT','READER_FOOTER_BOTTOM_BAR_HEIGHT'):
     u+=re.search(r'^#define '+name+r' .*',f.read_text(),re.M)[0]+'\n'
-for n in ('reader_footer_height','reader_footer_top','reader_content_top','reader_content_bottom',
+for n in ('reader_footer_status','reader_footer_height','reader_footer_top','reader_content_top','reader_content_bottom',
           'body_rect_for_tracking','reader_margin_width','reader_margin_levels',
           'reader_margin_level_for','reader_margin_for_level','reader_margin_input'):
     u+=function(n,f)+'\n'
@@ -51,12 +51,14 @@ int main(void){
   for(int i=0;i<9;++i){assert(values[i]==i*6&&widths[i]==684-i*12);assert(reader_margin_level_for(i*6,px,tr)==i);}
   for(int i=0;i<=48;++i)assert(reader_margin_for_level(reader_margin_level_for(i,px,tr),i,px,tr)==i);
  }
- const int footer_heights[]={2,54,92,66};
+ // 单行页脚：状态与章名不改变高度，正文顶部固定留白。
+ // Single-row footer: status and chapter never change its height; the body keeps a fixed top pad.
+ const int footer_heights[2][4]={{2,54,54,66},{2,54,54,66}};
  for(int bar=0;bar<2;++bar)for(int mode=0;mode<4;++mode)for(int v=0;v<2;++v){
   status=bar;footer=mode!=0;chapter=mode==2;vertical=v;
   progress_style=mode==3?APP_BOOK_PROGRESS_STYLE_BOTTOM:0;
-  int top=bar?60:2;
-  int bottom=1216-footer_heights[mode]-2;
+  int top=READER_TOP_PAD+2;
+  int bottom=1216-footer_heights[bar][mode]-2;
   for(int margin=0;margin<=48;++margin){
    s_margin=margin;EpdRect a=body_rect_for_tracking(2);
    if(v){assert(a.x==24&&a.width==636);assert(a.y==top+margin&&a.height==bottom-top-2*margin);}

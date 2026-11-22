@@ -7,7 +7,7 @@
 **Firmware đọc sách tiếng Việt cho Metalio E-ink 4 Plus 4.7 inch, ESP32-S31.**
 LumenOS là nhánh cá nhân phát triển từ dpReader, dùng logo PNG trắng đen do người dùng cung cấp và tiếp tục duy trì mã nguồn cùng các giấy phép của dự án gốc.
 
-Bản hiện tại: **Full `1.5.14`** và **Love Book `1.5.14-love`** — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
+Bản hiện tại: **Full `1.5.15`** và **Love Book `1.5.15-love`** — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
 Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Love Book thêm hậu tố `-love`.
 
 [Cài đặt và sử dụng](docs/CAI_DAT.md) · [Thay đổi theo phiên bản](docs/CHANGELOG.md) · [Hai bản firmware](docs/FIRMWARE_EDITIONS.md) · [Build cho S31](docs/BOARDS.md)
@@ -36,7 +36,7 @@ Hai bản dùng chung trình đọc, phông chữ, tiến độ đọc và phầ
 
 | | Full | Love Book |
 | --- | --- | --- |
-| Phiên bản hiện tại | `1.5.14` | `1.5.14-love` |
+| Phiên bản hiện tại | `1.5.15` | `1.5.15-love` |
 | Trang chủ | Chọn Đầy đủ hoặc I Love Book | Cố định I Love Book |
 | Mở sách | Tủ sách, lịch sử và trình quản lý tệp | Trình chọn TXT/EPUB theo thư mục |
 | Quản lý kệ sách, kiểu kệ, khóa ghép bìa | Có | Lược bỏ |

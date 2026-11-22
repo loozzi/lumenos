@@ -1,3 +1,9 @@
+## LumenOS 1.5.15 / 1.5.15-love · Phát hành chính thức · 2026-11-22
+
+- Trang đọc bỏ thanh trạng thái phía trên; chữ bắt đầu sát mép trên hơn nên mỗi trang chứa thêm dòng.
+- Chân trang còn một hàng: tên chương bên trái (không có tên chương thì hiện tên sách); số trang, giờ và % sách bên phải, mỗi mục bật/tắt riêng. Giờ cập nhật theo phút, chỉ vẽ lại chân trang.
+- Công tắc "Thanh trạng thái" trong Status & Footer đổi thành **Giờ ở chân trang**. Pin, Wi-Fi/Bluetooth không còn hiện khi đọc; kiểu tiến độ "Thanh Đáy" giữ vạch sát mép dưới, các kiểu thanh khác không vẽ thanh. Áp dụng cả Full và Love Book.
+
 ## LumenOS 1.5.14 / 1.5.14-love · Phát hành chính thức · 2026-11-19
 
 - Thường và Sóng nước dùng đường quét chữ đầy đủ 48 pha có sẵn thay chuỗi rút ngắn 37 pha. Giữ nguyên font, AA, độ đậm được chọn và ảnh đích; Flash và Đen trắng nhanh khi tắt AA giữ đường riêng.

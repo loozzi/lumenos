@@ -469,6 +469,9 @@ void ui_nav_redraw_status(uint8_t *fb) {
 void ui_nav_status(uint8_t *fb) { draw_status(fb, false); }
 void ui_nav_reader_status(uint8_t *fb) { draw_status(fb, true); }
 
+// 阅读页去掉顶部状态栏后，页脚复用同一时间文本。/ With the reader status bar removed, the footer reuses the clock text.
+void ui_nav_clock_text(char *out, size_t capacity) { if (out && capacity) clock_text(out, capacity); }
+
 int ui_nav_hit(uint16_t x, uint16_t y) {
     if (x >= UI_LOCK_WIDTH || y < UI_NAV_TOUCH_TOP || y >= UI_LOCK_HEIGHT) return -1;
 #if DPREADER_BOARD_METALIO47

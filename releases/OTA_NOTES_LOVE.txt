@@ -1,1 +1,1 @@
-LumenOS 1.5.14 Love Book: Thường và Sóng nước dùng quét chữ đầy đủ 48 pha, giữ font/AA và cài đặt. Có thể lật chậm hơn; chưa nghiệm thu độ trắng thực tế. Giữ các tính năng 1.5.13.
+LumenOS 1.5.15 Love Book: Bỏ thanh trạng thái phía trên trang đọc, thêm chỗ cho chữ. Chân trang gọn một hàng: tên chương bên trái; số trang, giờ và % bên phải theo cài đặt.
