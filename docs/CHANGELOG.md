@@ -1,3 +1,8 @@
+## LumenOS 1.5.16 / 1.5.16-love · Phát hành chính thức · 2026-11-22
+
+- Trang chủ: vuốt ngang để chuyển trang chính theo cùng thứ tự với phím trái/phải — vuốt trái sang Kệ sách, vuốt phải sang Cài đặt (giao diện đơn giản: sang Cài đặt). Thanh điều hướng vẫn giữ nguyên.
+- Love Book: vuốt phải chuyển trang chính; vuốt trái vẫn mở menu Pop như trước. Giữ trang đọc gọn của 1.5.15.
+
 ## LumenOS 1.5.15 / 1.5.15-love · Phát hành chính thức · 2026-11-22
 
 - Trang đọc bỏ thanh trạng thái phía trên; chữ bắt đầu sát mép trên hơn nên mỗi trang chứa thêm dòng.

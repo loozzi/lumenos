@@ -1391,6 +1391,14 @@ static app_redraw_t on_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
         ctx->request_quick_menu=true;
         return APP_REDRAW_NONE;
     }
+    // 用户2026-11-22：首页左右滑与左右键同序切换主页面（左滑下一页、右滑上一页），保留底栏按钮。
+    // User 2026-11-22: horizontal Home swipes switch main pages in the side-key order (left next, right previous); nav buttons remain.
+    if(s_view==HOME_ROOT && (ev->type==UI_GESTURE_SWIPE_L || ev->type==UI_GESTURE_SWIPE_R)) {
+        s_press_pending=false;
+        ctx->user_activity=true;
+        ui_nav_request(ctx,app_settings_simple_ui() ? 3 : ev->type==UI_GESTURE_SWIPE_L ? 1 : 3);
+        return APP_REDRAW_NONE;
+    }
     // Keep Home contact sampling free of a blocking pressed-state refresh.
     if(s_view==HOME_ROOT && ev->type==UI_GESTURE_PRESS) {
         s_press_pending=false;

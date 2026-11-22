@@ -1,1 +1,1 @@
-LumenOS 1.5.15: Bỏ thanh trạng thái phía trên trang đọc, thêm chỗ cho chữ. Chân trang gọn một hàng: tên chương bên trái; số trang, giờ và % bên phải theo cài đặt.
+LumenOS 1.5.16: Trang chủ vuốt trái sang Kệ sách, vuốt phải sang Cài đặt; vẫn giữ thanh điều hướng. Giữ trang đọc gọn của 1.5.15.
