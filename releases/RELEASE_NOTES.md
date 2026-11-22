@@ -1,10 +1,10 @@
-## LumenOS 1.5.15 cho Metalio E-Ink 4 Plus (ESP32-S31)
+## LumenOS 1.5.16 cho Metalio E-Ink 4 Plus (ESP32-S31)
 
-- **Trang đọc rộng hơn:** bỏ thanh trạng thái phía trên, chữ bắt đầu sát mép trên hơn nên mỗi trang thêm dòng.
-- **Chân trang một hàng:** tên chương bên trái (không có thì hiện tên sách); số trang, giờ và % sách bên phải, bật/tắt riêng trong Status & Footer. Công tắc "Thanh trạng thái" đổi thành **Giờ ở chân trang**.
-- Pin và Wi-Fi/Bluetooth không còn hiện khi đọc. Kiểu tiến độ "Thanh Đáy" giữ vạch sát mép dưới; các kiểu thanh khác không vẽ thanh.
+- **Vuốt ở Trang chủ:** vuốt ngang để chuyển trang chính theo cùng thứ tự với phím trái/phải — vuốt trái sang Kệ sách, vuốt phải sang Cài đặt (giao diện đơn giản: sang Cài đặt). Thanh điều hướng vẫn giữ nguyên.
+- **Love Book:** vuốt phải chuyển trang chính; vuốt trái vẫn mở menu Pop như trước.
+- Giữ trang đọc gọn của 1.5.15: không thanh trạng thái phía trên, chân trang một hàng.
 
-Áp dụng cho **Full 1.5.15** và **Love Book 1.5.15-love**.
+Áp dụng cho **Full 1.5.16** và **Love Book 1.5.16-love**.
 
 Máy đang chạy LumenOS 1.5.1 trở lên cập nhật qua Wi-Fi (OTA) hoặc chọn Cập nhật ứng dụng trên Web Flash, giữ cài đặt và sách. Máy dùng kênh dpReader cũ hoặc LumenOS 1.5.0 cần chuyển kênh qua USB một lần. Gói USB chính thức hỗ trợ cài sạch bố cục cũ; trên bố cục NVS256 chỉ ghi ứng dụng và vùng chọn khởi động.
 
