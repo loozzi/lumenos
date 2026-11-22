@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.5.14",
+  "version": "1.5.15",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.13",
-  "notes": "LumenOS 1.5.14: Thường và Sóng nước dùng quét chữ đầy đủ 48 pha, giữ font/AA và cài đặt. Có thể lật chậm hơn; chưa nghiệm thu độ trắng thực tế. Giữ các tính năng 1.5.13.",
+  "previous_version": "1.5.14",
+  "notes": "LumenOS 1.5.15: Bỏ thanh trạng thái phía trên trang đọc, thêm chỗ cho chữ. Chân trang gọn một hàng: tên chương bên trái; số trang, giờ và % bên phải theo cài đặt.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "34f46a47adfed72121eaa4af8fe7af1c9a6b19b638e7c300f3838a282cf59f34",
-      "md5": "d074f0a6069dc57d218d08b7a7654e0a"
+      "sha256": "60f05b73cdc78c3fc4a547982710366c6d59494bdc846c209150c11c0c879c65",
+      "md5": "fae78b8c82250c5eaaeeadf9b41a9194"
     }
   },
   "clean_image": {
-    "sha256": "7115a8128f48e40d1252a80a11fce20299b6bc8826166c50157d34a6438403ab",
-    "md5": "5afa40915f37e996ffcc203f64c972dc"
+    "sha256": "a9bc5b8348b010012069cc15314f7ce4deacea8c2d891c9241bf7c109602d093",
+    "md5": "f165bcb52773277f59e652ee4e669ccc"
   },
-  "size": 4992928,
-  "sha256": "f57a0e854b991f2302cc3c85570394bc61c52af1cccacf256cebd5da54be3c16",
-  "md5": "c619d364e0415317114925fda04c04f5"
+  "size": 4991856,
+  "sha256": "019220caf7f9696ddfb33be3954656a24de2f9a5dd9d5ea538087abc91d164dd",
+  "md5": "9dd973fe8cf0149e41b5d9318833fdfc"
 }

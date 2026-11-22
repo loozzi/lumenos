@@ -38,6 +38,8 @@ void ui_nav_status_set_title_on(bool on);
 int64_t ui_nav_clock_minute(void);
 /// 只绘制状态栏时间，供主页面按分钟局部更新。/ Draw only the status clock for local minute updates.
 void ui_nav_clock_draw(uint8_t *fb);
+/// 状态栏同款时间文本（HH:MM，未校时为--:--）。/ Status clock text (HH:MM, or --:-- before time sync).
+void ui_nav_clock_text(char *out, size_t capacity);
 /// 绘制设置页与状态栏共用的 WiFi 标志。/ Draw the WiFi mark shared by Settings and the status bar.
 void ui_nav_wifi_icon(uint8_t *fb, int cx, int cy, int size, uint8_t gray);
 /// 二级页面共用的圆形返回按钮。/ Shared circular back control for secondary pages.

@@ -46,6 +46,13 @@
  * 用户2026-10-29取消全屏：移除重复书名/返回/收藏栏，保留状态栏和紧凑底部页脚；页脚开关独立生效，章名在上，页码/进度条/百分比同一行。
  * User revision 2026-10-29 removes full screen: status bar only above the text, a compact bottom footer, independent footer toggles, chapter above a shared page/bar/percentage row.
  * Ngày 2026-11-07, người dùng chuyển chân trang vào Cài đặt đọc và cho ẩn thanh trạng thái để tăng vùng dàn trang.
+ * 用户2026-11-22修订（方案C），取代上方“保留状态栏”与“章名在上/进度条同排”：阅读页不画顶部状态栏；页脚只有一行，
+ * 左章名（无则书名），右为已开启的“页码 · 时间 · 百分比”；不画电量/网络，进度条只保留“Thanh Đáy”最底细线。
+ * 原状态栏开关改为“Giờ ở chân trang”；按分钟只重画页脚，工具条/面板覆盖时不画。
+ * User revision 2026-11-22 (design C), superseding "retain the status bar" and "chapter above a page/bar/percentage
+ * row": no top status bar; a single footer row with the chapter (or title) left and enabled "page · clock · percentage"
+ * right; no battery/network marks, and only "Thanh Đáy" keeps a bottom progress strip. The status toggle becomes
+ * "Giờ ở chân trang"; minute changes repaint only the footer and never while tools or panels cover it.
  * 用户2026-10-29修订：章名下移4px；进度条固定位置/总宽，已读粗黑、未读细浅。
  * User revision 2026-10-29: lower chapter by4px; fixed track frame with thick black read and thin pale unread segments.
  * 用户修订：阅读进度条无外伸刻度并使用圆角；继续阅读区显示最近书籍封面。
@@ -731,23 +738,29 @@ static void draw_control(uint8_t* fb, EpdRect rect, const char* label, int id) {
 static void lock_draw(void) { if (s_draw_lock) xSemaphoreTake(s_draw_lock, portMAX_DELAY); }
 static void unlock_draw(void) { if (s_draw_lock) xSemaphoreGive(s_draw_lock); }
 static size_t fb_bytes(void) { return (size_t)epd_width() * epd_height() / 2; }
-// 状态栏下直接排正文，页脚贴近屏幕底部。/ Text follows the status bar; the footer sits near the bottom.
-#define READER_FOOTER_HEIGHT 92
+// 用户2026-11-22选定方案C：阅读页不画顶部状态栏，正文从顶边留白开始；页脚只有一行，
+// 左为章名（无章名时为书名），右为“页码 · 时间 · 百分比”中已开启的项；仅“Thanh Đáy”在最底再画一条进度线。
+// User 2026-11-22 chose design C: no top status bar, the body starts below a small top pad, and the footer is a
+// single row: chapter (or the book title) left, enabled "page · clock · percentage" items right. Only the
+// "Thanh Đáy" style adds a progress strip along the bottom edge.
+#define READER_TOP_PAD 16
 #define READER_FOOTER_COMPACT_HEIGHT 54
 #define READER_FOOTER_BOTTOM_BAR_HEIGHT 12
+static int s_footer_layout_override = -1;
+static int s_status_layout_override = -1;
+// 状态设置改为“页脚显示时间”。/ The status setting now means "clock in the footer".
+static bool reader_footer_status(void) {
+    return s_status_layout_override < 0 ? app_settings_book_status_enabled() : s_status_layout_override != 0;
+}
 static int reader_footer_height(void) {
-    if (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM)
-        return READER_FOOTER_COMPACT_HEIGHT + READER_FOOTER_BOTTOM_BAR_HEIGHT;
-    return app_settings_book_footer_chapter() ? READER_FOOTER_HEIGHT : READER_FOOTER_COMPACT_HEIGHT;
+    return READER_FOOTER_COMPACT_HEIGHT +
+        (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM ? READER_FOOTER_BOTTOM_BAR_HEIGHT : 0);
 }
 static int reader_footer_top(void) {
     return UI_LOCK_HEIGHT - reader_footer_height();
 }
-static int s_footer_layout_override = -1;
-static int s_status_layout_override = -1;
 static int reader_content_top(void) {
-    const bool enabled = s_status_layout_override < 0 ? app_settings_book_status_enabled() : s_status_layout_override != 0;
-    return enabled ? UI_NAV_READER_STATUS_HEIGHT + 4 : 0;
+    return READER_TOP_PAD;
 }
 static int reader_content_bottom(void) {
     bool enabled = s_footer_layout_override < 0 ? app_settings_book_footer_enabled() : s_footer_layout_override != 0;
@@ -834,15 +847,8 @@ static EpdRect progress_rect(void) {
         ? 0 : READER_FOOTER_TEXT_INSET;
     return (EpdRect){inset, reader_footer_top(), UI_LOCK_WIDTH - 2 * inset, reader_footer_height()};
 }
-#define READER_FOOTER_LINE_PX 40
-#define READER_FOOTER_CHAPTER_SHIFT 6
-#define READER_FOOTER_META_PX 32
-#define READER_FOOTER_SIDE_WIDTH 124
-#define READER_FOOTER_BAR_GAP 8
-#define READER_FOOTER_CHAPTER_TOP 4
-#define READER_FOOTER_CHAPTER_H 44
-#define READER_FOOTER_META_TOP 48
-#define READER_FOOTER_META_H 44
+#define READER_FOOTER_PX 28
+#define READER_FOOTER_GAP 24
 // 排版三连卡片显示的名称；顺序与设置枚举一致。/ Labels for the layout trio; order matches the settings enums.
 static const char *reader_align_name(uint8_t align) {
     static const char *const names[] = {"Căn đều (Hai bên)", "Căn trái", "Căn giữa", "Căn phải"};
@@ -855,45 +861,15 @@ static const char *reader_progress_style_name(uint8_t style) {
 // 页脚组件独立开关；全部关闭才不绘制。/ Footer components are independent; draw nothing only when all are off.
 static bool reader_footer_visible(void) {
     return app_settings_book_footer_enabled() &&
-           (app_settings_book_progress_style() != APP_BOOK_PROGRESS_STYLE_HIDDEN ||
+           (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM ||
+           reader_footer_status() ||
            app_settings_book_footer_page() ||
            app_settings_book_footer_chapter() ||
            app_settings_book_footer_pct());
 }
-static int reader_progress_bar_height(void) {
-    switch (app_settings_book_progress_style()) {
-        case APP_BOOK_PROGRESS_STYLE_THICK: return 16;
-        case APP_BOOK_PROGRESS_STYLE_HAIRLINE: return 4;
-        case APP_BOOK_PROGRESS_STYLE_BOTTOM: return READER_FOOTER_BOTTOM_BAR_HEIGHT;
-        default: return 10;
-    }
-}
-static EpdRect reader_footer_meta_rect(void) {
-    EpdRect r = progress_rect();
-    int top = r.height == READER_FOOTER_HEIGHT ? READER_FOOTER_META_TOP : 4;
-    if (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM)
-        top += READER_FOOTER_CHAPTER_SHIFT;
-    return (EpdRect){READER_FOOTER_TEXT_INSET, r.y + top,
-                     UI_LOCK_WIDTH - 2 * READER_FOOTER_TEXT_INSET, READER_FOOTER_META_H};
-}
-static EpdRect reader_footer_chapter_rect(void) {
-    if (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM) {
-        EpdRect r = reader_footer_meta_rect();
-        const int inset = READER_FOOTER_SIDE_WIDTH + READER_FOOTER_BAR_GAP;
-        return (EpdRect){r.x + inset, r.y, r.width - 2 * inset, r.height};
-    }
-    EpdRect r = progress_rect();
-    return (EpdRect){r.x, r.y + READER_FOOTER_CHAPTER_TOP, r.width, READER_FOOTER_CHAPTER_H};
-}
-static EpdRect reader_footer_bar_rect(void) {
-    if (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM) {
-        EpdRect r = progress_rect();
-        const int height = reader_progress_bar_height();
-        return (EpdRect){r.x, r.y + r.height - height, r.width, height};
-    }
-    EpdRect r = reader_footer_meta_rect();
-    const int inset = READER_FOOTER_SIDE_WIDTH + READER_FOOTER_BAR_GAP;
-    return (EpdRect){r.x + inset, r.y + (r.height - 16) / 2, r.width - 2 * inset, 16};
+// 单行文字的竖直中心。/ Vertical centre of the single text row.
+static int reader_footer_row_cy(void) {
+    return reader_footer_top() + READER_FOOTER_COMPACT_HEIGHT / 2;
 }
 // 用户2026-11-17选定列表方案B：题头带导入/更多键，搜索框与排序一行，状态标签带计数，每页5行。
 // User 2026-11-17 chose list design B: header import/more keys, a search field with sort, counted status tabs and 5 rows per page.
@@ -1744,10 +1720,10 @@ static void fit_fixed_text(char* text, int px, int width) {
     }
 }
 
-static void fit_footer_title(char *text, size_t capacity, int width) {
+static void fit_footer_title(char *text, size_t capacity, int width, int px) {
     const char *spaces = " \t\r\n";
     const char ellipsis[] = "...";
-    if (ui_text_fixed_width_px(READER_FOOTER_LINE_PX, text) <= width) return;
+    if (ui_text_fixed_width_px(px, text) <= width) return;
 
     size_t end = strlen(text);
     while (end && strchr(spaces, text[end - 1])) --end;
@@ -1756,7 +1732,7 @@ static void fit_footer_title(char *text, size_t capacity, int width) {
         while (end && strchr(spaces, text[end - 1])) --end;
         if (end + sizeof(ellipsis) <= capacity) {
             memcpy(text + end, ellipsis, sizeof(ellipsis));
-            if (ui_text_fixed_width_px(READER_FOOTER_LINE_PX, text) <= width) return;
+            if (ui_text_fixed_width_px(px, text) <= width) return;
         }
     }
     text[0] = 0;
@@ -3049,7 +3025,7 @@ static void draw_reader_bars_back(uint8_t *fb) {
 static void draw_status_footer_settings(uint8_t *fb) {
     draw_sheet(fb, READER_BARS_TOP, "Status & Footer");
     draw_sheet_back(fb, READER_BARS_TOP);
-    draw_reader_bar_switch(fb, reader_bars_status_rect(), "Thanh trạng thái", app_settings_book_status_enabled());
+    draw_reader_bar_switch(fb, reader_bars_status_rect(), "Giờ ở chân trang", app_settings_book_status_enabled());
     draw_font_pair(fb, reader_bars_footer_rect(), "Footer",
                    app_settings_book_footer_enabled() ? "Hiện chân trang" : "Ẩn chân trang");
     draw_reader_bars_back(fb);
@@ -4214,73 +4190,60 @@ static void draw_reader_footer(uint8_t *fb, size_t page) {
     ui_fill_rect_fast(area, UI_GRAY_WHITE, fb);
     if (s_reader_panel != READER_PANEL_BACKGROUND_PREVIEW)
         ui_reader_background_paint(fb, area, true);
-    if (reader_footer_visible()) {
-        const uint8_t style = app_settings_book_progress_style();
-        const bool bottom_bar = style == APP_BOOK_PROGRESS_STYLE_BOTTOM;
-        const unsigned pct = percent(page);
-        // 按开关显示章名。/ Show the chapter name when enabled.
-        if (app_settings_book_footer_chapter()) {
-            EpdRect chapter_box = reader_footer_chapter_rect();
-            char chapter_line[132] = {0};
-            reader_footer_chapter_name(chapter_line, sizeof(chapter_line));
-            fit_footer_title(chapter_line, sizeof(chapter_line), chapter_box.width);
-            int center_y = chapter_box.y + chapter_box.height / 2 +
-                (bottom_bar ? 0 : READER_FOOTER_CHAPTER_SHIFT);
-            ui_text_fixed_vc(fb, chapter_box.x + chapter_box.width / 2,
-                             center_y, READER_FOOTER_LINE_PX,
-                             chapter_line, EPD_DRAW_ALIGN_CENTER, false);
-        }
-        char page_text[48], book_text[48];
-        snprintf(page_text, sizeof(page_text), "%u / %u",
-                 (unsigned)page + 1, (unsigned)book_layout_page_count());
-        snprintf(book_text, sizeof(book_text), "%u%%", pct);
-        int page_px = READER_FOOTER_META_PX;
-        while (page_px > 20 && ui_text_fixed_width_px(page_px, page_text) > READER_FOOTER_SIDE_WIDTH)
-            --page_px;
-        fit_fixed_text(page_text, page_px, READER_FOOTER_SIDE_WIDTH);
-        fit_fixed_text(book_text, READER_FOOTER_META_PX, READER_FOOTER_SIDE_WIDTH);
-        const bool page_on = app_settings_book_footer_page();
-        const bool pct_on = app_settings_book_footer_pct();
-        // 固定外框内：未读细浅线，已读粗黑线，二者共用中心线。
-        // Within a fixed frame, a thin pale remainder and thick black progress share a centerline.
-        if (style != APP_BOOK_PROGRESS_STYLE_HIDDEN) {
-            EpdRect bar = reader_footer_bar_rect();
-            const int height = reader_progress_bar_height();
-            const int thin = bottom_bar ? 6 : (height > 4 ? 4 : 2);
-            const int track_y = bar.y + (bar.height - thin) / 2;
+    if (!reader_footer_visible()) return;
+    const unsigned pct = percent(page);
+    const int cy = reader_footer_row_cy();
+    const int left = READER_FOOTER_TEXT_INSET, right = UI_LOCK_WIDTH - READER_FOOTER_TEXT_INSET;
+    // 右侧：页码 · 时间 · 百分比，按开关拼接。/ Right: page · clock · percentage, joined per toggle.
+    char info[64] = {0};
+    size_t used = 0;
+    const char *sep = "";
+    if (app_settings_book_footer_page()) {
+        used += (size_t)snprintf(info + used, sizeof(info) - used, "%u/%u",
+                                 (unsigned)page + 1, (unsigned)book_layout_page_count());
+        sep = "  ·  ";
+    }
+    if (reader_footer_status() && used < sizeof(info)) {
+        char clock[12];
+        ui_nav_clock_text(clock, sizeof(clock));
+        used += (size_t)snprintf(info + used, sizeof(info) - used, "%s%s", sep, clock);
+        sep = "  ·  ";
+    }
+    if (app_settings_book_footer_pct() && used < sizeof(info))
+        snprintf(info + used, sizeof(info) - used, "%s%u%%", sep, pct);
+    int info_left = right;
+    if (info[0]) {
+        fit_fixed_text(info, READER_FOOTER_PX, right - left);
+        info_left = right - ui_text_fixed_width_px(READER_FOOTER_PX, info);
+        ui_text_fixed_vc(fb, right, cy, READER_FOOTER_PX, info, EPD_DRAW_ALIGN_RIGHT, false);
+    }
+    // 左侧：章名，空时用书名。/ Left: chapter name, or the book title when empty.
+    char title[132] = {0};
+    if (app_settings_book_footer_chapter()) {
+        reader_footer_chapter_name(title, sizeof(title));
+        if (!title[0]) copy_text(title, sizeof(title), ui_nav_status_title());
+    }
+    const int title_w = info[0] ? info_left - READER_FOOTER_GAP - left : right - left;
+    if (title[0] && title_w > 0) {
+        fit_footer_title(title, sizeof(title), title_w, READER_FOOTER_PX);
+        ui_text_fixed_vc(fb, left, cy, READER_FOOTER_PX, title, EPD_DRAW_ALIGN_LEFT, false);
+    }
+    // “Thanh Đáy”：最底一条全宽进度线，未读浅、已读黑。/ "Thanh Đáy": a full-width bottom strip, pale unread and black read.
+    if (app_settings_book_progress_style() == APP_BOOK_PROGRESS_STYLE_BOTTOM) {
+        EpdRect bar = {area.x, area.y + area.height - READER_FOOTER_BOTTOM_BAR_HEIGHT,
+                       area.width, READER_FOOTER_BOTTOM_BAR_HEIGHT};
+        const int thin = 6;
+        EpdRect track = {bar.x, bar.y + (bar.height - thin) / 2, bar.width, thin};
 #if DPREADER_BOARD_METALIO47
-            // 快读整帧会被压成黑白；未读段改用点阵，避免浅灰被吞成白色而消失。
-            // Fast turns collapse the frame to BW; dot the unread track so it cannot vanish with the pale gray.
-            if (app_settings_reader_turn_effect() == 2) {
-                for (int x = bar.x; x < bar.x + bar.width; ++x)
-                    if (((x - bar.x) % 3) == 0)
-                        ui_fill_rect_fast((EpdRect){x, track_y, 1, thin}, UI_GRAY_BLACK, fb);
-            } else
+        // 快读整帧会被压成黑白；未读段改用点阵。/ Fast turns collapse to BW; dot the unread track.
+        if (app_settings_reader_turn_effect() == 2) {
+            for (int x = track.x; x < track.x + track.width; x += 3)
+                ui_fill_rect_fast((EpdRect){x, track.y, 1, thin}, UI_GRAY_BLACK, fb);
+        } else
 #endif
-            {
-                EpdRect track = {bar.x, track_y, bar.width, thin};
-                if (bottom_bar) ui_fill_rect_fast(track, UI_GRAY_LIGHT, fb);
-                else ui_fill_round_rect(fb, track, thin / 2, UI_GRAY_LIGHT);
-            }
-            const int filled = bar.width * (int)pct / 100;
-            if (filled > 0) {
-                EpdRect done = {bar.x, bar.y + (bar.height - height) / 2, filled, height};
-                if (bottom_bar) ui_fill_rect_fast(done, UI_GRAY_BLACK, fb);
-                else ui_fill_round_rect(fb, done, height / 2, UI_GRAY_BLACK);
-            }
-        }
-        // 页码靠左，全书百分比靠右。/ Chapter pages align left; whole-book percentage aligns right.
-        if (page_on || pct_on) {
-            EpdRect meta = reader_footer_meta_rect();
-            if (page_on) {
-                ui_text_fixed_vc(fb, meta.x, meta.y + meta.height / 2, page_px,
-                                 page_text, EPD_DRAW_ALIGN_LEFT, false);
-            }
-            if (pct_on) {
-                ui_text_fixed_vc(fb, meta.x + meta.width, meta.y + meta.height / 2, READER_FOOTER_META_PX,
-                                 book_text, EPD_DRAW_ALIGN_RIGHT, false);
-            }
-        }
+        ui_fill_rect_fast(track, UI_GRAY_LIGHT, fb);
+        const int filled = bar.width * (int)pct / 100;
+        if (filled > 0) ui_fill_rect_fast((EpdRect){bar.x, bar.y, filled, bar.height}, UI_GRAY_BLACK, fb);
     }
 }
 #if DPREADER_BOARD_METALIO47
@@ -4413,7 +4376,6 @@ static void reader_viewport_point(uint16_t *x, uint16_t *y, bool origin) {
 #endif
 static void draw_reader_outer(uint8_t *fb,size_t page) {
     ui_text_set_system_scale(false);
-    if (app_settings_book_status_enabled()) ui_nav_reader_status(fb);
     EpdRect body=body_rect();
     if (s_reader_panel != READER_PANEL_BACKGROUND_PREVIEW)
         ui_reader_background_paint(fb, (EpdRect){0,0,UI_LOCK_WIDTH,UI_LOCK_HEIGHT}, true);
@@ -4775,19 +4737,22 @@ static void render(app_ctx_t* ctx, uint8_t* fb) {
 #endif
     unlock_draw();
 }
-static EpdRect reader_status_area(void) { return (EpdRect){0,0,UI_LOCK_WIDTH,UI_NAV_READER_STATUS_HEIGHT}; }
+// 时间位于页脚：按分钟只重画页脚区域。/ The clock lives in the footer: minute changes repaint only the footer area.
+static EpdRect reader_status_area(void) { return progress_rect(); }
 static bool reader_status_visible(void) {
-    return s_view==READING && s_text && app_settings_book_status_enabled();
+    return s_view==READING && s_text && app_settings_book_footer_enabled() && reader_footer_status();
 }
 static void reader_status_paint(uint8_t *fb) {
-    EpdRect area=reader_status_area();
-    ui_fill_rect_fast(area,UI_GRAY_WHITE,fb);
-    ui_nav_reader_status(fb);
-    if (s_reader_panel!=READER_PANEL_BACKGROUND_PREVIEW && app_settings_book_background_path()[0])
-        ui_reader_background_paint(fb,area,true);
+    draw_reader_footer(fb,s_page);
 }
 static app_redraw_t reader_clock_tick(app_ctx_t *ctx) {
     if (!reader_status_visible() || (ctx->touch && ctx->touch->touched)) return APP_REDRAW_NONE;
+    // 页脚会被工具条、面板和缩放覆盖；覆盖期间不重画，关闭时整页重绘已带当前时间。
+    // Tools, panels and zoom cover the footer; skip while covered, as closing repaints the current time.
+    if (s_toolbar || s_clear_confirm || s_reader_panel!=READER_PANEL_NONE || s_zoom_active) return APP_REDRAW_NONE;
+#if DPREADER_BOARD_METALIO47
+    if (reader_viewport_active()) return APP_REDRAW_NONE;
+#endif
     if (ui_nav_clock_minute()==s_reader_clock_minute) return APP_REDRAW_NONE;
     s_reader_clock_painted_minute=ui_nav_clock_minute();
     lock_draw(); reader_status_paint(ctx->fb); unlock_draw();
@@ -6755,7 +6720,7 @@ static app_redraw_t toggle_reader_bar(bool status) {
         release_page_images();
         save_progress();
     } else {
-        copy_text(s_reader_notice, sizeof(s_reader_notice), status ? "Không đổi được thanh trạng thái" : "Không đổi được chân trang");
+        copy_text(s_reader_notice, sizeof(s_reader_notice), status ? "Không đổi được giờ" : "Không đổi được chân trang");
         s_reader_notice_until = esp_timer_get_time() / 1000 + 1800;
     }
     return APP_REDRAW_FULL;
