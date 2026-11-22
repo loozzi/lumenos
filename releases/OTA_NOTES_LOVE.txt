@@ -1,1 +1,1 @@
-LumenOS 1.5.13 Love Book: Thêm màn Hết sách; âm lượng chuyển trang danh sách; chạm bất kỳ đâu để đóng chú thích, vuốt hoặc dùng âm lượng để đọc chú thích dài.
+LumenOS 1.5.15 Love Book: Bỏ thanh trạng thái phía trên trang đọc, thêm chỗ cho chữ. Chân trang gọn một hàng: tên chương bên trái; số trang, giờ và % bên phải theo cài đặt.
