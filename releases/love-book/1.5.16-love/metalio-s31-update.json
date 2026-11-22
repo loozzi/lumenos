@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.16-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.15-love",
+  "notes": "LumenOS 1.5.16 Love Book: Trang chủ vuốt phải để chuyển trang chính; vuốt trái vẫn mở menu Pop. Giữ trang đọc gọn của 1.5.15.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "ecea0e924a62b688c190275eadfe5df9e6353db8ed527fe8be1433508494f939",
+      "md5": "d616ede99b83a02be765fd23d037ad9e"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "ecadd6c3696eb5a01cffd6e3a9de76c60fa7c4380419ca5fb1e8c6d23ffb5566",
+      "md5": "896bd30999cf7f65cc44f2152409c333"
+    }
+  },
+  "clean_image": {
+    "sha256": "50efbaa46eda4630e36b14ef080a19df757cb9efa1ee4e388e27263aacc07829",
+    "md5": "9ddfe71b8bdf49058960013a2ab6ffd6"
+  },
+  "size": 4911808,
+  "sha256": "c18b09d615db022bf6a62c5c488dcf4705cc0a20064e4d4a2ba8a347b86b7a8b",
+  "md5": "80f33d4d65d854d710d4cb85f54c261d"
+}

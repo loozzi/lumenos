@@ -1,1 +1,1 @@
-LumenOS 1.5.16 Love Book: Trang chủ vuốt phải để chuyển trang chính; vuốt trái vẫn mở menu Pop. Giữ trang đọc gọn của 1.5.15.
+LumenOS 1.5.17 Love Book: Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng (tia sét khi sạc), bật/tắt cùng "Giờ & pin ở chân trang". Giữ vuốt ở Trang chủ của 1.5.16.
