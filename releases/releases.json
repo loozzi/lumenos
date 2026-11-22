@@ -2,6 +2,41 @@
   "schema": 1,
   "releases": [
     {
+      "version": "1.5.15",
+      "source_commit": "f5b85779a8beb3ba53f01d93ac0191ede5ed1b5b",
+      "path": "releases/1.5.15",
+      "files": {
+        "dpReader_metalio47_firmware.bin": {
+          "size": 4991856,
+          "sha256": "019220caf7f9696ddfb33be3954656a24de2f9a5dd9d5ea538087abc91d164dd"
+        },
+        "bootloader.bin": {
+          "size": 22448,
+          "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5"
+        },
+        "partitions.bin": {
+          "size": 3072,
+          "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade"
+        },
+        "storage-empty.bin": {
+          "size": 5898240,
+          "sha256": "60f05b73cdc78c3fc4a547982710366c6d59494bdc846c209150c11c0c879c65"
+        },
+        "dpReader-metalio47-1.5.15-USB.zip": {
+          "size": 8581505,
+          "sha256": "429c20cd7a7487459e771a9e339e04ed221f6f04eb0ae4336a6d8765c1840c9c"
+        },
+        "SHA256SUMS.txt": {
+          "size": 618,
+          "sha256": "34fd9ee47568f84e05623c2cad1045faf4916b0a2a11e017c8813bf0d832cd2b"
+        },
+        "metalio-s31-update.json": {
+          "size": 1511,
+          "sha256": "9a6057225a5bdc8fa46b4fe0b303980301d503be5da43594080cf0231362022c"
+        }
+      }
+    },
+    {
       "version": "1.5.14",
       "source_commit": "b024a7f4be46ffaab32c5ff50d288887329b1aea",
       "path": "releases/1.5.14",
@@ -1067,5 +1102,5 @@
       }
     }
   ],
-  "previous_version": "1.5.14"
+  "previous_version": "1.5.15"
 }
