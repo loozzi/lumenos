@@ -1,1 +1,1 @@
-LumenOS 1.5.17: Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng (tia sét khi sạc), bật/tắt cùng "Giờ & pin ở chân trang". Giữ vuốt ở Trang chủ của 1.5.16.
+LumenOS 1.5.18: Pin còn 15% trở xuống hiện % nền đen; 8%: giảm đèn, tự khóa sau 1 phút; 3%: lưu tiến độ rồi tắt máy. Cập nhật cần pin 30% hoặc cắm sạc. Màn hình rảnh chờ lâu hơn để đỡ hao pin.
