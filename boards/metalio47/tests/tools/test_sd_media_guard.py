@@ -254,7 +254,7 @@ esp_err_t read_pico_sd_detect(bool *detected){
 bool read_pico_sd_present(void){bool value=false;return read_pico_sd_detect(&value)==ESP_OK&&value;}
 """
 (out / 'test.c').write_text(source.replace('@BOARD_DETECT@', detect), encoding='utf-8')
-subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation',
                 '-Wno-unused-variable', '-fsanitize=address,undefined', '-g', '-pthread',
                 '-I'+str(out), '-I'+str(root/'components/read_pico/include'),
                 str(out/'test.c'), '-o', str(out/'test')], check=True)

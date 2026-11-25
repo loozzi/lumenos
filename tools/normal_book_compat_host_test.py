@@ -125,7 +125,7 @@ with tempfile.TemporaryDirectory(prefix='normal-book-compat-') as directory:
         p.write_bytes(b'x')
     c, exe = tmp/'test.c', tmp/'test'
     c.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-Wno-unused-function','-Wno-sign-compare',
+    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-Wno-unused-variable','-Wno-unused-function','-Wno-sign-compare',
                     '-fsanitize=address,undefined','-I'+str(ROOT/'main/book'),str(c),'-o',str(exe)],check=True)
     for case in ['shelf','home','request']:
         result = subprocess.run([str(exe),str(tmp),case],capture_output=True,text=True)

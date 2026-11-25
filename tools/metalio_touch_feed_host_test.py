@@ -136,5 +136,5 @@ with tempfile.TemporaryDirectory() as directory:
     for name in ('driver/gpio.h','driver/i2c_master.h','esp_err.h','metalio_hw.h','freertos/FreeRTOS.h','freertos/task.h','freertos/semphr.h','esp_log.h'):
         f=p/name;f.parent.mkdir(parents=True,exist_ok=True);f.write_text('#include "stub.h"\n')
     (p/'test.c').write_text(UNIT.replace('DRIVER',str(ROOT/'components/cst836u/metalio_ft6336.c')))
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(p),'-I'+str(ROOT/'components/cst836u/include'),str(p/'test.c'),str(ROOT/'components/cst836u/metalio_touch_decode.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-I'+str(p),'-I'+str(ROOT/'components/cst836u/include'),str(p/'test.c'),str(ROOT/'components/cst836u/metalio_touch_decode.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

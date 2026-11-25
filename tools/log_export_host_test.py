@@ -104,11 +104,16 @@ static metalio_cpu_stats_t metalio_cpu_stats(void){return (metalio_cpu_stats_t){
 static int esp_clk_tree_src_get_freq_hz(int src,int precision,uint32_t *hz){(void)src;(void)precision;*hz=80000000;return 0;}
 #define SOC_MOD_CLK_CPU 1
 #define ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED 1
+// 中文：1.5.19 电量/延迟计数使用真实实现，低电量保护用桩。/ English: real 1.5.19 power/latency counters; stubbed battery guard.
+#include "metalio_power_stats.h"
+static int battery_guard_level(void){return 1;}
+static int battery_guard_remaining_minutes(void){return 321;}
 static void metalio_sleep_previous_summary(char *out,size_t n){snprintf(out,n,"sleep_previous test");}
 #endif
 '''
 for name in ('log_export_vprintf','log_export_clear','log_snapshot','log_export_to_sd'):
  unit+=function(name,source).replace('/sdcard/','')+'\n'
+unit+=(root/'components/metalio_hw/metalio_power_stats.c').read_text()+'\n'
 unit+=r'''
 static int sink(const char *fmt,va_list a){(void)fmt;(void)a;return 0;}
 static void emit(const char *fmt,...){va_list a;va_start(a,fmt);log_export_vprintf(fmt,a);va_end(a);}
@@ -117,9 +122,13 @@ int main(void){
  char path[64],error[128];
  cache_ready=false;emit("CACHE_OFF");assert(s_log_total_written==0);
  log_export_clear();char scratch[LOG_BUF_SIZE];assert(log_snapshot(scratch)==0);cache_ready=true;
+ metalio_power_note_wait(true,1200);metalio_power_note_scan(METALIO_SCAN_GC);metalio_power_note_latency(METALIO_LATENCY_TURN,75);
  emit("BEFORE_SD\n");inject=true;
  assert(log_export_to_sd(path,sizeof(path),error,sizeof(error))==ESP_OK);
  assert(strstr(saved,"BEFORE_SD")&&!strstr(saved,"DURING_SD"));
+ // 1.5.19：导出包含电量与延迟计数。/ The export includes power and latency counters.
+ assert(strstr(saved,"Power: wait_idle_ms=1200 waits_idle=1 ")&&strstr(saved,"scans GC=1 GL=0 DU=0")&&strstr(saved,"battery_level=1 remaining_min=321"));
+ assert(strstr(saved,"Latency turn: <50=0 <100=1 ")&&strstr(saved,"p50<=100 p95<=100")&&strstr(saved,"Latency boot: <50=0"));
  assert(!depth&&allocated==freed);
  inject=false;
  for(int i=0;i<6000;++i)emit("%06d\n",i);
@@ -148,5 +157,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(unit);binary=p.with_suffix('')
- subprocess.run(['cc','-DDPREADER_BOARD_METALIO47=1','-std=c11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-DDPREADER_BOARD_METALIO47=1','-std=c11','-Wall','-Wextra','-Werror','-I'+str(root/'components/metalio_hw/include'),str(p),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],cwd=tmp,check=True)

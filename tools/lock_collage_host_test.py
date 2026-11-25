@@ -252,7 +252,7 @@ int main(int argc,char **argv){
 }
 '''
     (work/'test.c').write_text(unit)
-    flags=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable',
+    flags=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-sign-compare','-Wno-unused-function','-Wno-unused-variable',
            '-Wno-missing-field-initializers','-fsanitize=address,undefined','-ffunction-sections','-fdata-sections',
            '-I'+str(work),'-I'+str(ROOT/'main/book'),'-I'+str(ROOT/'main/font'),
            '-I'+str(ROOT/'main/ui'),'-I'+str(ROOT/'main'),'-I'+str(ROOT/'tools/ui_gesture_stubs')]

@@ -46,6 +46,8 @@ static void xSemaphoreGive(void*p){assert(p);++unlocks;}
 static const void *reader_page_cache_find(size_t p,unsigned g,size_t bytes){assert(g==10&&bytes==100);unsigned bit=p==s_page+1?1:p==s_page+2?2:4;return cache_mask&bit?(void*)1:NULL;}
 static int fake_gettimeofday(struct timeval*t,void*z){(void)z;t->tv_sec=1800000059;t->tv_usec=900000;return 0;}
 #define gettimeofday fake_gettimeofday
+// 中文：书架分支由 battery_power_host_test 单独验证。/ English: the shelf branch is verified by battery_power_host_test.
+static int64_t shelf_next_tick_ms(app_ctx_t*c){(void)c;return 0;}
 '''+function('reader_next_tick_ms',r/'main/apps/app_book.c')+r'''
 int main(void){app_ctx_t ctx={10000};
  int64_t next=reader_next_tick_ms(&ctx);assert(next==10100&&locks==unlocks);

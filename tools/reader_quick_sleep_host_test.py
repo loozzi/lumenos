@@ -45,6 +45,10 @@ typedef int esp_err_t;
 static bool s_lock_keys_restore_pending,s_lock_power_wake_pending;
 static unsigned failures,resumes,latches;
 static int esp_sleep_disable_wakeup_source(int x){assert(x==99);return 0;}
+// 中文：AI 键唤醒（RC 之后新增）在恢复时关闭。/ English: the AI-key wake added later is disabled on restore.
+#define METALIO_AI_KEY_GPIO 7
+static unsigned ai_wake_disables;
+static int gpio_wakeup_disable(int pin){assert(pin==METALIO_AI_KEY_GPIO);++ai_wake_disables;return 0;}
 static int metalio_restore_key_io(void){if(failures){--failures;return -1;}return 0;}
 static void read_pico_pmu_keys_resume(void){++resumes;}
 static void read_pico_pmu_latch_power_wakeup(void){++latches;}

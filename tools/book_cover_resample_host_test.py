@@ -85,7 +85,11 @@ with tempfile.TemporaryDirectory() as tmp:
     native_png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',684,1216,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(native_raw))+chunk(b'IEND',b'')
     (tmp/'native.png').write_bytes(native_png)
     vendor=root/'managed_components/espressif__libpng/libpng'
-    if not vendor.exists():vendor=Path(os.environ.get('DPREADER_LIBPNG_PATH','/private/tmp/kiikoread-rc90-lock-build-20261011/managed_components/espressif__libpng/libpng'))
+    if not vendor.exists() and os.environ.get('DPREADER_LIBPNG_PATH'):vendor=Path(os.environ['DPREADER_LIBPNG_PATH'])
+    # 中文：未设置时从已有的 ESP-IDF 构建树查找 libpng（只读）。/ English: otherwise reuse libpng from an existing ESP-IDF build tree (read-only).
+    if not vendor.exists():
+        found=[c for base in (root,*root.parents) for c in sorted(base.glob('build/**/managed_components/espressif__libpng/libpng')) if (c/'scripts/pnglibconf.h.prebuilt').is_file()]
+        if found:vendor=found[0]
     assert vendor.exists(),'Build IDF once to resolve libpng'
     (tmp/'pnglibconf.h').write_bytes((vendor/'scripts/pnglibconf.h.prebuilt').read_bytes())
     names='png pngerror pngget pngmem pngpread pngread pngrio pngrtran pngrutil pngset pngtrans pngwrite pngwio pngwtran pngwutil'.split()

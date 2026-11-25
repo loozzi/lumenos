@@ -6,7 +6,8 @@ from pathlib import Path
 import os,re,struct,subprocess,tempfile,zlib
 from home_cover_cache_host_test import function
 r=Path(__file__).resolve().parents[1]
-board=os.environ.get("DPREADER_TEST_BOARD","pico")
+# 中文：仓库只剩 S31 板；Pico 需显式设置环境变量。/ English: only the S31 board remains; Pico must be requested explicitly.
+board=os.environ.get("DPREADER_TEST_BOARD","metalio47")
 assert board in ("pico","metalio47")
 c=r/'main/book/book_cover.c'
 u=r'''
@@ -290,7 +291,13 @@ with tempfile.TemporaryDirectory() as d:
  near=b''.join(b'\0'+b''.join(bytes((255,255,255,0)) if x<16 and y<16 else bytes((96,96,96,252)) if y<16 else bytes((255,255,255,128)) if x<16 else bytes((192,192,192,250)) for x in range(32)) for y in range(32))
  (d/'near.png').write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',32,32,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(near))+chunk(b'IEND',b''))
  vendor=r/'managed_components/espressif__libpng/libpng'
- if not vendor.exists():vendor=Path(os.environ.get('DPREADER_LIBPNG_PATH','/private/tmp/kiikoread-rc90-lock-build-20261011/managed_components/espressif__libpng/libpng'))
+ if not vendor.exists() and os.environ.get('DPREADER_LIBPNG_PATH'):vendor=Path(os.environ['DPREADER_LIBPNG_PATH'])
+ # 中文：未设置时从本仓库或上层已有的 ESP-IDF 构建树查找 libpng（只读）。/ English: otherwise reuse libpng from an existing ESP-IDF build tree here or in a parent checkout (read-only).
+ if not vendor.exists():
+  pattern='build/**/managed_components/espressif__libpng/libpng'
+  found=[c for base in (r,*r.parents) for c in sorted(base.glob(pattern)) if (c/'scripts/pnglibconf.h.prebuilt').is_file()]
+  if found:vendor=found[0]
+ assert (vendor/'scripts/pnglibconf.h.prebuilt').is_file(),'libpng not found; build the firmware once or set DPREADER_LIBPNG_PATH'
  (d/'pnglibconf.h').write_bytes((vendor/'scripts/pnglibconf.h.prebuilt').read_bytes())
  names='png pngerror pngget pngmem pngpread pngread pngrio pngrtran pngrutil pngset pngtrans pngwrite pngwio pngwtran pngwutil'.split()
  subprocess.run(['cc','-std=gnu11','-O2','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-misleading-indentation','-fsanitize=address,undefined','-DDPREADER_BOARD_METALIO47='+str(int(board=='metalio47')),'-DPNG_ARM_NEON_OPT=0','-DPNG_INTEL_SSE_OPT=0','-DCACHE_ROOT="'+str(d/'cache')+'"','-I'+str(d),'-I'+str(vendor),str(d/'test.c')]+[str(vendor/(n+'.c')) for n in names]+['-lz','-lm','-o',str(d/'test')],check=True)

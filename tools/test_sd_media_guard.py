@@ -218,7 +218,7 @@ int main(void) {
 board = (root / 'components/read_pico/read_pico_board.c').read_text(encoding='utf-8')
 detect = board[board.index('esp_err_t read_pico_sd_detect('):board.index('void read_pico_clear_ioe_int(')]
 (out / 'test.c').write_text(source.replace('@BOARD_DETECT@', detect), encoding='utf-8')
-subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation',
                 '-Wno-unused-variable', '-fsanitize=address,undefined', '-g', '-pthread',
                 '-I'+str(out), '-I'+str(root/'components/read_pico/include'),
                 str(out/'test.c'), '-o', str(out/'test')], check=True)

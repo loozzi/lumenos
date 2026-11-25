@@ -12,6 +12,7 @@
 #include "metalio_sleep.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "metalio_power_stats.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -370,6 +371,7 @@ static unsigned s_brightness_cap=100;
 void metalio_frontlight(unsigned brightness,unsigned warmth) {
     if (!fl_ready) return;
     if (brightness == 0) {
+        metalio_power_note_lamp(0, esp_timer_get_time());
         light_suspended=true;metalio_light_schedule_invalidate();
         ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
         ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
@@ -378,6 +380,7 @@ void metalio_frontlight(unsigned brightness,unsigned warmth) {
     if (brightness>100) brightness=100;
     if (brightness>s_brightness_cap) brightness=s_brightness_cap;
     if (warmth>100) warmth=100;
+    metalio_power_note_lamp(brightness, esp_timer_get_time());
     // 参考 76 版限制总功率到半幅。/ Keep the reference 76 half-scale power limit.
     unsigned total=brightness*1023/200;
     ledc_set_duty(LEDC_LOW_SPEED_MODE,LEDC_CHANNEL_0,total*(100-warmth)/100);

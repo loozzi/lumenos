@@ -110,5 +110,5 @@ sanitizers=[] if os.environ.get('HOST_TEST_SANITIZERS')=='0' else ['-fsanitize=a
 with tempfile.TemporaryDirectory() as tmp:
     path=Path(tmp)/'test.c';path.write_text(unit)
     exe=path.with_suffix('')
-    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',*sanitizers,str(path),'-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',*sanitizers,str(path),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

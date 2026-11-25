@@ -13,10 +13,12 @@ assert base64.b64decode(uri)==source
 assert '<title>LumenOS' in portal and '<strong>LumenOS</strong>' in portal
 web=(ROOT/'web/index.html').read_text()
 assert '<title>LumenOS' in web and 'assets/lumen-logo.png' in web
-assert 'Các gói trực tuyến bên dưới là bản dpReader đã phát hành' in web
+# 1.5.0 时网页注明下载为旧 dpReader 包；自 1.5.1 起 LumenOS 发布自己的正式版。/ 1.5.0 labelled downloads as legacy dpReader; LumenOS publishes its own releases since 1.5.1.
+assert 'Các gói trực tuyến bên dưới là bản dpReader đã phát hành' not in web
 assert 'nemmanquy' not in web
 board=json.loads((ROOT/'boards/metalio47/board.json').read_text())
 assert board['name']=='LumenOS Metalio 4.7' and board['project']=='dpReader'
+assert '>v'+board['version']+'<' in web, 'Web Flash must name the current Full version'
 assert board['settings_namespace']=='metalio_s31' and board['image_chip_id']==32
 config=(ROOT/'boards/metalio47/dpreader_board_config.h').read_text()
 for name,value in [('PROJECT','dpReader'),('PRODUCT_NAME','LumenOS'),('SETTINGS_NAMESPACE','metalio_s31'),('LOCK_NAMESPACE','metalio_lock'),('STARTUP_NAMESPACE','metalio_start'),('BACKUP_PREFIX','dpReader-settings')]:

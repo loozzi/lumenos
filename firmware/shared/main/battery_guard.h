@@ -33,6 +33,11 @@ unsigned battery_guard_auto_lock_cap(void);
 int battery_guard_remaining_minutes(void);
 /// 是否允许开始固件升级。/ Whether a firmware update may start.
 bool battery_guard_update_ok(void);
+/// 待提示的低电量等级（提示/省电各一次，充电或回升后重置）；无则为 NORMAL。
+/// Low-battery level awaiting a one-time notice (warning and saver once each, reset on charge or recovery); NORMAL when none.
+battery_level_t battery_guard_pending_notice(void);
+/// 确认已显示该等级的提示。/ Acknowledge that the notice for this level was shown.
+void battery_guard_ack_notice(battery_level_t level);
 /// 锁屏时关机延迟的上限（毫秒）；0表示沿用用户设定。
 /// Lock power-off delay cap in milliseconds; 0 keeps the user's setting.
 int64_t battery_guard_lock_off_cap_ms(void);

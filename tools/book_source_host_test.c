@@ -50,9 +50,11 @@ int main(int argc, char **argv) {
     const char gbk[] = { (char)0xd6,(char)0xd0,(char)0xce,(char)0xc4,'\n' };
     write_bytes(gbk, sizeof(gbk)); assert(book_open(path) == ESP_OK);
     char *out; size_t len; assert(book_chapter_load(0, &out, &len) == ESP_OK);
-    assert(strcmp(out, "中文\n") == 0); free(out); book_close();
+    // 中文：越南语版自 v1.0.0-vn 去掉 GBK 码表；该文件按 UTF-8 读取，每个无效字节按冻结规则替换为 U+FFFD。
+    // English: the Vietnamese build dropped the GBK table in v1.0.0-vn; the file reads as UTF-8 and each invalid byte becomes U+FFFD per the frozen rule.
+    assert(len == 13 && strcmp(out, "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\n") == 0); free(out); book_close();
     char tiny[5] = {0};
-    assert(gbk_to_utf8(gbk, sizeof(gbk), tiny, 4) == 3); assert(strcmp(tiny, "中") == 0);
+    assert(gbk_to_utf8(gbk, sizeof(gbk), tiny, 4) == 3); assert(strcmp(tiny, "\xef\xbf\xbd") == 0);
     assert(gbk_to_utf8("\x81", 1, tiny, sizeof(tiny)) == 3); assert(strcmp(tiny, "\xef\xbf\xbd") == 0);
     s = "\xef\xbb\xbf" "Chapter 1\r\nx\xff\nChapter 2\r\ny";
     write_bytes(s, strlen(s)); assert(book_open(path) == ESP_OK); assert(book_chapter_count() == 2);
@@ -64,8 +66,8 @@ int main(int argc, char **argv) {
     memcpy(large + 65535, "中\n", 4); write_bytes(large, 65539); roundtrip(large, 65539);
     large[65535] = (char)0xd6; large[65536] = (char)0xd0; large[65537] = '\n';
     write_bytes(large, 65538); assert(book_open(path) == ESP_OK);
-    assert(book_chapter_load(0, &out, &len) == ESP_OK); assert(len == 65539);
-    assert(!memcmp(out + 65535, "中\n", 4)); free(out); free(large); book_close();
+    assert(book_chapter_load(0, &out, &len) == ESP_OK); assert(len == 65542);
+    assert(!memcmp(out + 65535, "\xef\xbf\xbd\xef\xbf\xbd\n", 7)); free(out); free(large); book_close();
     FILE *f = fopen(path, "wb"); assert(f);
     for (size_t i = 0; i < 2200; ++i) fprintf(f, "Chapter %zu\nbody\n", i);
     fclose(f); assert(book_open(path) == ESP_OK); assert(book_chapter_count() <= 2048); book_close();

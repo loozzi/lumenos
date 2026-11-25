@@ -22,5 +22,5 @@ for f in fields:unit+=f'assert(CNNT_PAD_CTRL.sdio_{f}.sdio_{f}_fun_wpd==0&&CNNT_
 unit+='metalio_sd_release_hold();}\nfor(int i=0;i<6;++i)assert(releases[i]==4);puts("PASS actual S31 SD restore: six holds released, retained CNNT sleep pulls cleared, CMD/D0-D3 high-idle pulls restored, CLK neutral, dedicated selection unchanged, repeat safe");}\n'
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

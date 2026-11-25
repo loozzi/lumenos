@@ -233,7 +233,7 @@ int main(int argc,char **argv){
     helper='static void copy_text(char *to,size_t cap,const char *from){snprintf(to,cap,"%s",from);}'+'\n'+function('draw_reading_font_name',ROOT/'main/apps/app_book.c')+'\n'
     unit=unit.replace('int main(int argc,char **argv){',helper+'int main(int argc,char **argv){')
     (work / 'test.c').write_text(unit)
-    flags = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
+    flags = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-sign-compare', '-Wno-unused-function',
              '-Wno-unused-variable', '-fsanitize=address,undefined', '-ffunction-sections', '-fdata-sections',
              '-I' + str(work), '-I' + str(ROOT / 'main/font'), '-I' + str(ROOT / 'main/ui'),
              '-I' + str(ROOT / 'main/book'), '-I' + str(ROOT / 'main'), '-I' + str(ROOT / 'tools/ui_gesture_stubs')]

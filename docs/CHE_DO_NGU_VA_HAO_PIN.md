@@ -50,6 +50,31 @@ vào SOC của BQ27220 (`pmu_battery_percent`). Đang sạc thì bỏ mọi hạ
   vòng UI dài hơn 2 giây (ngủ khóa, thao tác chặn) không được tính. Cần SOC giảm ít
   nhất 3 % trong ít nhất 20 phút thức; không lưu qua khởi động lại; SOC tăng thì đặt lại mốc.
 
+- Từ 1.5.19, khi chân trang không hiện pin (công tắc **Giờ & pin ở chân trang** tắt), trang đọc hiện thẻ thông báo khoảng 3 giây ở mốc cảnh báo và mốc tiết kiệm, mỗi mốc một lần cho mỗi lần xả pin (`battery_guard_pending_notice`/`battery_guard_ack_notice`). Sạc pin hoặc pin hồi về mức thấp hơn thì lần sau nhắc lại. Mức nguy hiểm không có thông báo này, vì đã có màn "Pin đã cạn".
+
+## Tự đo pin trên máy (từ 1.5.19)
+
+Mục **Cài đặt → Nhật ký & Chẩn đoán → Xuất log ra thẻ nhớ** ghi thêm các dòng `Power:` và `Latency` (bộ đếm `metalio_power_stats`, chỉ cộng dồn trong RAM, không lưu qua khởi động lại):
+
+| Trường | Ý nghĩa |
+| --- | --- |
+| `wait_idle_ms`, `waits_idle` | Tổng thời gian và số lượt chờ được phép hạ xung CPU |
+| `wait_legacy_ms`, `waits_legacy` | Tổng thời gian và số lượt chờ theo nhịp 8/40 ms |
+| `scans GC/GL/DU` | Số lần quét màn hình theo từng chế độ |
+| `light_sleeps`, `light_sleep_ms`, `maintenance_wakes` | Số lần, tổng thời gian ngủ khóa và số lần thức bảo trì 60 giây |
+| `lamp_on_ms`, `lamp_level_ms` | Thời gian đèn bật, và tích phân mức sáng × thời gian (đã tính giới hạn tiết kiệm) |
+| `lock_soc`, `unlock_soc` | Pin lúc khóa và lúc mở khóa gần nhất |
+| `Latency turn/ui/unlock/boot` | Histogram và p50/p95: lật trang, thao tác ở trang khác (từ lúc xử lý input tới khi hiển thị xong), mở khóa (tới khung hình đầu), khởi động (tới khi UI sẵn sàng) |
+
+Cách đo:
+
+1. Rút USB. Giữ cùng sách, font, độ sáng và trạng thái Wi-Fi/Bluetooth giữa các lần so sánh.
+2. Khởi động lại máy, sạc đầy hoặc ghi lại % pin ban đầu.
+3. Chạy từng kịch bản rồi xuất log ngay sau đó: (a) đọc 30 phút, lật trang mỗi 30 giây; (b) để ở Trang chủ 10 phút; (c) khóa máy 8 giờ; (d) đọc 30 phút bằng remote Bluetooth.
+4. So sánh % pin giảm, `wait_idle_ms` so với `wait_legacy_ms`, số lần quét màn hình và `lamp_level_ms` giữa các bản firmware. Công thức quy đổi dòng điện trung bình ở đầu tài liệu này vẫn dùng được nếu đo được dòng điện bằng thiết bị ngoài.
+
+Bộ đếm chỉ ghi nhận; không thay đổi bất kỳ quyết định ngủ, hạ xung hay làm mới màn hình nào.
+
 ### Hạng mục đã xem xét nhưng không thay đổi
 
 - Lát hẹn giờ 60 giây trong lúc ngủ khóa: mỗi lần thức bảo trì chỉ vài chục ms, chiếm

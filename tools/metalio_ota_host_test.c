@@ -15,6 +15,9 @@ static bool missing,fail_write,fail_end;
 static unsigned begins,aborts,commits;
 
 static size_t written;
+// 中文：1.5.18 低电量升级门槛的可控桩。/ English: controllable stub for the 1.5.18 low-battery update gate.
+static bool low_battery;
+bool battery_guard_update_ok(void) {return !low_battery;}
 const esp_app_desc_t *esp_app_get_description(void) {return &current;}
 const esp_partition_t *esp_ota_get_running_partition(void) {return NULL;}
 const esp_partition_t *esp_ota_get_next_update_partition(void *x) {(void)x;return missing?NULL:&inactive;}
@@ -62,6 +65,8 @@ int main(void) {
     inactive.size=100; assert(pico_ota_inspect(path,&info)==ESP_ERR_INVALID_SIZE); inactive.size=0x500000;
     fail_write=true; assert(pico_ota_install(path,message,sizeof(message))!=ESP_OK&&aborts==1&&commits==0); fail_write=false;
     fail_end=true; assert(pico_ota_install(path,message,sizeof(message))!=ESP_OK&&commits==0); fail_end=false;
+    // 低电量未充电时不开始写入，也不切换启动槽。/ Low battery without charging never begins writing or switches the boot slot.
+    { unsigned b=begins; low_battery=true; assert(pico_ota_install(path,message,sizeof(message))==ESP_ERR_INVALID_STATE&&begins==b&&commits==0&&strstr(message,"30%")); low_battery=false; }
     assert(pico_ota_install(path,message,sizeof(message))==ESP_OK&&written==image_size&&commits==1);
     FILE *f=fopen(path,"wb");assert(f);fputc(ESP_IMAGE_HEADER_MAGIC,f);fclose(f);
     unsigned before=begins; assert(pico_ota_install(path,message,sizeof(message))==ESP_ERR_INVALID_SIZE&&begins==before);

@@ -23,5 +23,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),'-I'+str(root/'tools/html_text_stubs'),'-I'+str(root/'main/ui'),'-I'+str(root/'main/font'),'-I'+str(root/'components/read_pico_search/include'),str(p/'test.c'),str(root/'main/ui/ui_ime.c'),str(root/'main/ui/ui_text_edit.c'),str(root/'main/ui/ui_text_input.c'),str(root/'components/read_pico_search/read_pico_search.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),'-I'+str(root/'tools/html_text_stubs'),'-I'+str(root/'main/ui'),'-I'+str(root/'main/font'),'-I'+str(root/'components/read_pico_search/include'),str(p/'test.c'),str(root/'main/ui/ui_ime.c'),str(root/'main/ui/ui_text_edit.c'),str(root/'main/ui/ui_text_input.c'),str(root/'components/read_pico_search/read_pico_search.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

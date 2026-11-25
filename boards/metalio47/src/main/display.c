@@ -39,6 +39,7 @@
  */
 
 #include "metalio_cpu.h"
+#include "metalio_power_stats.h"
 #include "display.h"
 #include "read_pico_board.h"
 #include "ota_online.h"
@@ -122,6 +123,8 @@ void rails_idle_check(int64_t now_ms) {
 // 20-phase full / vendor DU uses FULL timing; the 8-frame FOLLOW DU used for ink trails uses FAST.
 static void use_scan_for(const EpdWaveform* waveform, enum EpdDrawMode mode) {
     const bool fast = (mode & 0xF) == MODE_DU && waveform == &E0470_FOLLOW_WAVEFORM;
+    // 只计数，供日志导出估算刷屏耗电。/ Count only, so log export can estimate display energy.
+    metalio_power_note_scan((mode & 0xF) == MODE_GC16 ? METALIO_SCAN_GC : (mode & 0xF) == MODE_DU ? METALIO_SCAN_DU : METALIO_SCAN_GL);
     read_pico_epd_use_scan(fast ? READ_PICO_EPD_SCAN_FAST : READ_PICO_EPD_SCAN_FULL);
     // 高层刷新保持整屏扫描；两条63行可用队列在第127行入队前启动。
     // High-level updates scan the full panel; two 63-slot queues start before line 127 is enqueued.

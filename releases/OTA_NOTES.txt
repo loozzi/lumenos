@@ -1,1 +1,1 @@
-LumenOS 1.5.18: Pin còn 15% trở xuống hiện % nền đen; 8%: giảm đèn, tự khóa sau 1 phút; 3%: lưu tiến độ rồi tắt máy. Cập nhật cần pin 30% hoặc cắm sạc. Màn hình rảnh chờ lâu hơn để đỡ hao pin.
+LumenOS 1.5.19: Khi tắt chân trang, trang đọc nhắc pin yếu ở 15% và 8%. Kệ sách đỡ hao pin khi để yên. Xuất log có thêm số liệu điện năng và độ trễ để tự đo pin.

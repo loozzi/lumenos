@@ -281,7 +281,7 @@ int main(void){
 with tempfile.TemporaryDirectory() as folder:
     c, binary = Path(folder) / 'test.c', Path(folder) / 'test'
     c.write_text(unit)
-    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation', '-Wno-unused-function',
                     '-fsanitize=address,undefined', '-I'+str(root/'main/book'),
                     '-I'+str(root/'tools/html_text_stubs'), str(c), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

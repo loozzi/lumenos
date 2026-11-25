@@ -13,6 +13,19 @@ from home_cover_cache_host_test import function
 
 ROOT = Path(__file__).resolve().parents[1]
 
+def s31_nav_block():
+    """中文：2026-11-17 起 S31 底栏为胶囊+圆键，整体取用该板实现。/ English: since 2026-11-17 the S31 bar is a capsule plus round key; reuse its whole implementation."""
+    text = (ROOT/'main/ui/ui_nav.c').read_text()
+    start = text.index('/* ---- S31 胶囊底栏 / S31 capsule navigation ---- */')
+    # 源码中 S31 块以 #else 结束；板级视图已展开条件编译，则以下一个函数为界。
+    # In source the S31 block ends at #else; board views expand conditionals, so stop at the next function.
+    ends = [i for i in (text.find('#else\nEpdRect ui_nav_tab_rect(int tab) {', start), text.find('static time_t status_time(void) {', start)) if i > 0]
+    end = min(ends)
+    labels = text[text.index('static const char *const s_nav_labels[]'):]
+    labels = labels[:labels.index(';')+1]
+    return labels + '\n' + text[start:end]
+
+
 DRAW = r'''
 #include <assert.h>
 #include <stdbool.h>
@@ -73,7 +86,11 @@ static void ui_text(uint8_t *fb,int x,int y,int px,const char *s,int align,bool 
 static void ui_image_bw_rect(uint8_t *fb,EpdRect r){(void)fb;(void)r;}
 static void *heap_caps_malloc(size_t n,unsigned caps){assert(caps==3&&n<=4096);if(oom)return NULL;void*p=malloc(n);assert(p);++live;return p;}
 static void heap_caps_free(void*p){if(p){--live;free(p);}}
-static const char *labels[]={"Trang chủ","Kệ sách","Tệp tin","Cài đặt"};
+#define EPD_DRAW_ALIGN_LEFT 0
+// 中文：S31 胶囊底栏需要的文字与矩形工具桩。/ English: text/rect helper stubs used by the S31 capsule bar.
+static int ui_text_fixed_width_px(int px,const char *s){return px*(int)strlen(s)/2;}
+static void ui_text_fixed_vc(uint8_t *fb,int x,int y,int px,const char *s,int align,bool inv){(void)fb;(void)x;(void)y;(void)px;(void)align;(void)inv;assert(s&&*s);++texts;}
+static EpdRect ui_inset_rect(EpdRect r,int inset){return (EpdRect){r.x+inset,r.y+inset,r.width-2*inset,r.height-2*inset};}
 static int ui_nav_hit(uint16_t x,uint16_t y);
 '''
 
@@ -123,20 +140,21 @@ int main(void){
   for(int tab=0;tab<4;tab++){
    if(simple&&tab!=0&&tab!=3)continue;
    memset(frame,0x33,sizeof(frame));ui_click_feedback_begin(frame);texts=0;ui_nav_draw(frame,tab);
-   assert(texts==(simple?2:4)&&!live);
+   // 2026-11-17 胶囊底栏：只有选中项（精简模式为“Đọc tiếp”）带文字。/ Capsule bar: only the selection (simple: "Đọc tiếp") carries a label.
+   assert(texts==(simple?1:(tab==3?0:1))&&!live);
    for(int y=0;y<UI_NAV_REFRESH_END;y++)for(int x=0;x<684;x++)assert(frame[y*684+x]==0x33);
-   for(int y=UI_NAV_REFRESH_END;y<UI_NAV_TOP+8;y++)for(int x=0;x<684;x++)assert(frame[y*684+x]==255);
+   for(int y=UI_NAV_REFRESH_END;y<UI_NAV_TOP+6;y++)for(int x=0;x<684;x++)assert(frame[y*684+x]==255); // white guard above the capsule
    for(int y=UI_NAV_REFRESH_END;y<1216;y++)assert(frame[y*684]==255&&frame[y*684+683]==255);
    assert(frame[1212*684+342]==255);
    int slots=simple?2:4;
    for(int i=0;i<slots;i++){
-    int id=simple?(i?3:0):i,cx=(2*i+1)*684/(2*slots);
-    assert(frame[(UI_NAV_TOP+87)*684+cx]==(id==tab?0xbb:0xff));
-    assert(ui_nav_hit(cx,UI_NAV_TOUCH_TOP)==id);
+    int id=simple?(i?3:0):i;EpdRect icon=ui_nav_tab_rect(id);
+    assert(icon.width==60&&icon.height==60&&icon.y>=UI_NAV_TOP);
+    assert(ui_nav_hit(icon.x+30,UI_NAV_TOUCH_TOP)==id&&ui_nav_hit(icon.x+30,icon.y+30)==id);
    }
    memcpy(baseline,frame,sizeof(frame));EpdRect dirty;
-   int cx=simple?(tab==0?171:513):(2*tab+1)*684/8;
-   assert(ui_click_feedback_press(frame,cx,1140,&dirty));
+   EpdRect target=ui_nav_tab_rect(tab);
+   assert(ui_click_feedback_press(frame,target.x+30,target.y+30,&dirty));
    assert(live==1&&dirty.y>=UI_NAV_REFRESH_END);
    assert(ui_click_feedback_release(frame,&dirty)&&!live&&!memcmp(frame,baseline,sizeof(frame)));
   }
@@ -157,7 +175,7 @@ int main(void){
  (void)ui_click_feedback_nav_tick(frame,200,&dirty);assert(!live&&!ui_click_feedback_nav_pending());
  ui_click_feedback_reset();
  reader_cases();
- puts("PASS: actual contrast mapping at100/110/120/130/140%, floating material tones, white guard, all4/2-tab selections/hits; exact press restoration;16 cross-page feedback baselines;OOM cleanup");
+ puts("PASS: actual contrast mapping at100/110/120/130/140%, floating material tones, white guard, S31 capsule 4/2-slot labels/hits; exact press restoration;16 cross-page feedback baselines;OOM cleanup");
 }
 '''
 
@@ -230,9 +248,10 @@ def run(tmp, name, source, more=()):
 with tempfile.TemporaryDirectory() as folder:
     tmp = Path(folder)
     feedback = re.sub(r'^#include[^\n]*\n', '', (ROOT/'main/ui/ui_click_feedback.c').read_text(), flags=re.M)
+    feedback = 'EpdRect ui_nav_tab_rect(int tab);\n' + feedback
     kit=ROOT/'main/ui/ui_kit.c'
     book=ROOT/'main/apps/app_book.c'
-    draw = DRAW+feedback+'\n'+function('ui_contrast_gray',kit)+'\n'+function('floating_material_ink',kit)+'\n'+function('ui_soft_card_color',kit)+'\n'+function('ui_draw_soft_card',kit)+'\n'+function('ui_draw_floating_capsule',kit)+'\n'+function('ui_nav_hit', ROOT/'main/ui/ui_nav.c')+'\n'+function('icon', ROOT/'main/ui/ui_nav.c')+'\n'+function('ui_nav_draw', ROOT/'main/ui/ui_nav.c')+READER+'\n'+function('tool_rect',book)+'\n'+function('draw_reader_tool_icon',book)+'\n'+function('draw_reader_tools',book)+READER_CASES+CASES
+    draw = DRAW+feedback+'\n'+function('ui_contrast_gray',kit)+'\n'+function('floating_material_ink',kit)+'\n'+function('ui_soft_card_color',kit)+'\n'+function('ui_draw_soft_card',kit)+'\n'+function('ui_draw_floating_capsule',kit)+'\n'+s31_nav_block()+'\n'+function('ui_nav_hit', ROOT/'main/ui/ui_nav.c')+READER+'\n'+function('tool_rect',book)+'\n'+function('draw_reader_tool_icon',book)+'\n'+function('draw_reader_tools',book)+READER_CASES+CASES
     run(tmp, 'floating-draw', draw)
     harness = (ROOT/'tools/display_navigation_host_test.c').read_text().split('int main(void)')[0]
     # 中文：原区域替身的横条扩展范围改为内容截止线；其余波形及内存断言保留。/ English: Region shim now stops at the body boundary rather than extending through the obsolete marker; retain waveform/memory assertions.
