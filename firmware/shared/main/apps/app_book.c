@@ -228,6 +228,8 @@ static ui_online_fonts_t s_online_fonts;
 #include "read_pico_transfer.h"
 #include "read_pico_search.h"
 #include "settings.h"
+#include "battery_guard.h"
+#include "read_pico_pmu.h"
 #include "book/book_reader_input.h"
 #include "ttf_font.h"
 #include "ui_kit.h"
@@ -9791,6 +9793,26 @@ static app_redraw_t on_tick(app_ctx_t* ctx) {
             return APP_REDRAW_AREA;
         }
     }
+#if DPREADER_BOARD_METALIO47
+    // 用户2026-11-25（1.5.19）：页脚电池未显示时，低电量与省电各提示一次（3秒），复用现有提示卡。
+    // User 2026-11-25 (1.5.19): when the footer battery is hidden, announce warning and saver once each (3 s) with the existing toast.
+    if (s_view == READING && s_text && s_reader_display_ready && !s_reader_notice[0] && !s_toolbar && !s_clear_confirm &&
+        s_reader_panel == READER_PANEL_NONE && !s_reader_choice.open && !book_notes_active() && !ctx->consumed &&
+        !(ctx->touch && ctx->touch->touched) && !(reader_footer_visible() && reader_footer_status())) {
+        const battery_level_t notice = battery_guard_pending_notice();
+        const int pct = pmu_battery_percent(read_pico_pmu_get());
+        if (notice != BATTERY_LEVEL_NORMAL && pct >= 0) {
+            battery_guard_ack_notice(notice);
+            snprintf(s_reader_notice, sizeof(s_reader_notice), notice == BATTERY_LEVEL_SAVER
+                ? "Pin còn %d%%, đã giảm đèn để tiết kiệm" : "Pin còn %d%%, hãy sạc sớm", pct);
+            s_reader_notice_until = ctx->now_ms + 3000;
+            render(ctx, ctx->fb);
+            s_area = (EpdRect){32, 140, 620, 152};
+            s_mode = MODE_GL16;
+            return APP_REDRAW_AREA;
+        }
+    }
+#endif
     if (s_reader_notice[0] && ctx->now_ms >= s_reader_notice_until) {
         s_reader_notice[0] = 0;
         if (s_view == READING) {
@@ -9910,7 +9932,33 @@ static app_redraw_t on_tick(app_ctx_t* ctx) {
     return clock;
 }
 #if DPREADER_BOARD_METALIO47
+// 用户2026-11-25（1.5.19）：书架在扫描、封面批次/解码/揭示/预取、锁屏封面预热、按键模式、
+// 分类菜单、确认框、开书、OPDS 与笔记都结束后声明空闲；截止时间为下一分钟或1秒。Love Book 无书架。
+// User 2026-11-25 (1.5.19): the shelf declares idle once scans, cover batches/decode/reveal/prefetch,
+// lock-cover warm-up, key mode, category menu, confirmations, opening, OPDS and notes are all done;
+// the deadline is the next minute or 1 s. Love Book has no shelf.
+static int64_t shelf_next_tick_ms(app_ctx_t *ctx) {
+#if DPREADER_LOVE_BOOK
+    (void)ctx;
+    return 0;
+#else
+    if(s_view!=SHELF || app_settings_simple_ui() || s_scan_pending || s_requested_open[0] || s_requested_home_sync ||
+       s_fonts_reload_pending || s_clear_confirm || s_batch_confirm || s_delete_confirm || s_category_menu ||
+       s_shelf_key_mode || s_shelf_key_paint_pending || s_shelf_feedback_pending || s_cover_batch_present_pending ||
+       s_cover_pending_mask || s_cover_decode_mask || (app_settings_lock_style()==2 && s_cover_warm_mask) ||
+       opds_session_active() || book_notes_active() ||
+       s_cover_prefetch_leaf!=ctx->leaf || s_cover_prefetch_step<shelf_rows()*2)return 0;
+    int64_t next=ctx->now_ms+1000;
+    struct timeval wall;
+    if(gettimeofday(&wall,NULL)==0 && wall.tv_sec>=1704067200) {
+        int64_t minute=ctx->now_ms+60000-(wall.tv_sec%60)*1000-wall.tv_usec/1000+5;
+        if(minute<next)next=minute;
+    }
+    return next;
+#endif
+}
 static int64_t reader_next_tick_ms(app_ctx_t *ctx) {
+    if(s_view==SHELF)return shelf_next_tick_ms(ctx);
     if(s_view!=READING || !s_text || !s_reader_display_ready || s_presented_view!=READING ||
        s_toolbar || s_clear_confirm || s_reader_panel!=READER_PANEL_NONE || s_reader_choice.open ||
        s_requested_open[0] || s_scan_pending || s_fonts_reload_pending || s_background_prepare_pending ||

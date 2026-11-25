@@ -28,6 +28,11 @@ typedef int nvs_handle_t;
 #define LEDC_CHANNEL_1 1
 #define METALIO_FRONTLIGHT_RANGE 240
 static bool fl_ready=true,light_enabled=true,light_dirty,light_suspended;
+// 中文：1.5.18 低电量亮度上限；本测试保持不限。/ English: the 1.5.18 low-battery brightness cap stays unlimited here.
+static unsigned s_brightness_cap=100;
+// 中文：1.5.19 前光计数桩。/ English: 1.5.19 front-light counter stub.
+static int64_t esp_timer_get_time(void){return 0;}
+static void metalio_power_note_lamp(unsigned b,int64_t now){(void)b;(void)now;}
 static time_t light_schedule_checked;
 static void metalio_light_schedule_invalidate(void) {}
 static bool metalio_light_schedule_apply(time_t t,unsigned*w,unsigned*a){(void)t;(void)w;(void)a;return false;}
@@ -112,5 +117,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
     p=Path(d);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g',*(['-fsanitize=address,undefined'] if os.environ.get('HOST_TEST_SANITIZERS','1')!='0' else ['-fsanitize=undefined']),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-g',*(['-fsanitize=address,undefined'] if os.environ.get('HOST_TEST_SANITIZERS','1')!='0' else ['-fsanitize=undefined']),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

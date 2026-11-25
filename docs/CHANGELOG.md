@@ -1,3 +1,11 @@
+## LumenOS 1.5.19 · Phát hành chính thức · 2026-11-25 (chỉ Full)
+
+- Trang đọc: khi chân trang không hiện pin, nhắc pin yếu một lần ở mốc 15% và 8% bằng thẻ thông báo khoảng 3 giây. Sạc pin thì lần xả sau nhắc lại. Không hiện khi đang mở thanh công cụ, bảng cài đặt, ghi chú hay đang chạm.
+- Kệ sách khai báo `next_tick_ms` khi đã quét xong, bìa đã chuẩn bị, hiện và prefetch xong, không có menu, xác nhận, OPDS hay ghi chú. Từ đó vòng UI được chờ tới 1 giây và hạ xung sau 1,5 giây yên. Trang đọc vẫn dùng ngưỡng 400 ms.
+- Xuất log (Cài đặt → Nhật ký & Chẩn đoán → Xuất log ra thẻ nhớ) có thêm khối số liệu điện năng và độ trễ (`metalio_power_stats`): thời gian chờ hạ xung và chờ thường, số lần quét GC/GL/DU, số lần và thời gian ngủ khóa, lần thức bảo trì, thời gian và mức đèn, pin lúc khóa/mở khóa, mức bảo vệ pin, ước tính thời gian đọc, và histogram độ trễ lật trang/thao tác/mở khóa/khởi động với p50/p95. Các bộ đếm không ảnh hưởng đến bất kỳ quyết định nào.
+- Kiểm thử: thêm `tools/run_s31_release_suites.py`, cổng chạy mọi host test S31 trừ các mục có ghi lý do trong `tools/s31_suite_manifest.json`. Sửa nhiều fixture lỗi thời: đường dẫn và cờ linker chỉ có trên macOS, chuỗi giao diện tiếng Việt, thanh điều hướng hình viên thuốc, OPDS tải nền, GBK đã bỏ, cùng các stub cho hàm mới.
+- Chỉ phát hành bản Full. Love Book giữ nguyên 1.5.18-love.
+
 ## LumenOS 1.5.18 / 1.5.18-love · Phát hành chính thức · 2026-11-25
 
 - Pin yếu: từ 15% trở xuống (không sạc), số % trên thanh trạng thái và cạnh vạch pin ở chân trang trang đọc chuyển sang nền đen. Ngưỡng có độ trễ 2% để không nhấp nháy.

@@ -55,7 +55,7 @@ static uint32_t read_pico_pmu_lock_key_serial(void){return serial;}
 static bool read_pico_pmu_take_key_wakeup(void){return double_key;}
 static void ui_fill_round_rect(uint8_t*f,EpdRect r,int radius,uint8_t v){assert(radius==28);for(int y=0;y<r.height;++y)for(int x=0;x<r.width;++x)epd_draw_pixel(r.x+x,r.y+y,v,f);}
 static void ui_draw_round_rect(uint8_t*f,EpdRect r,int rad,uint8_t v){(void)f;(void)r;(void)rad;(void)v;}
-static void ui_text_fixed_vc(uint8_t*f,int x,int y,int px,const char*t,int align,bool bold){assert(px==28&&align==1&&!bold&&!strcmp(t,"双击电源键解锁"));epd_draw_pixel(x,y,0,f);}
+static void ui_text_fixed_vc(uint8_t*f,int x,int y,int px,const char*t,int align,bool bold){assert(px==28&&align==1&&!bold&&!strcmp(t,"Nhấn đúp nút nguồn để mở khóa"));epd_draw_pixel(x,y,0,f);}
 '''
 source=s.read_text();a=source.index('static EpdiyHighlevelState *s_lock_hint_hl;');b=source.index('static uint8_t lock_hint_pixel',a)
 unit+='static EpdiyHighlevelState *s_lock_hint_hl;\n'+source[source.index('static struct {',a):b]

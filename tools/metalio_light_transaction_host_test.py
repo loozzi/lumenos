@@ -61,6 +61,9 @@ static bool lock_prepare_key_wake(bool light){assert(light);if(fail())return fal
 static int esp_sleep_enable_timer_wakeup(uint64_t us){assert(us>0&&us<=60000000);++timer_arms;if(fail_rearm&&timer_arms==2)return -2;timer_us=us;if(usb_at_timer)usb=true;return fail()?-2:ESP_OK;}
 static int metalio_sleep_cut_rails(uint16_t *s,bool switch_vout){assert(!switch_vout);*s=123;rails=true;++cut;return fail()?-2:ESP_OK;}
 static int metalio_hold_for_light_sleep(void){return fail()?-2:ESP_OK;}
+// 中文：1.5.19 浅睡计数，只记录次数。/ English: 1.5.19 light-sleep counter; record calls only.
+static unsigned sleep_notes;
+static void metalio_power_note_light_sleep(uint32_t ms,unsigned wakes){(void)ms;(void)wakes;++sleep_notes;}
 static int metalio_light_sleep_start(void){
  assert(pins&&rails&&keys&&touch&&lcd&&!media);assert(++sleeps<=181);
  sleep_count_for_irq=sleeps;clock_us+=(int64_t)timer_us;return fail()?-2:ESP_OK;

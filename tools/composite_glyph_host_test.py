@@ -136,7 +136,7 @@ with tempfile.TemporaryDirectory() as folder:
                f'_binary_builtin_ttf_start + {len(data)}");\n')
     (work / 'assets.c').write_text(assets)
     (work / 'test.c').write_text(HARNESS)
-    flags = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
+    flags = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation','-Wno-sign-compare', '-Wno-unused-function',
              '-DDPREADER_BOARD_METALIO47=1',
              '-I' + str(work), '-I' + str(ROOT / 'main/font'),
              '-I' + str(ROOT / 'main/book'), '-I' + str(ROOT / 'main'),

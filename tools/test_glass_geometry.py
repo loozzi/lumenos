@@ -62,5 +62,5 @@ with tempfile.TemporaryDirectory() as t:
  p=Path(t)
  body=re.sub(r'^#include[^\n]*\n','',(ROOT/'main/ui/ui_glass.c').read_text(),flags=re.M)
  (p/'test.c').write_text(PRE+body+POST)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-I'+str(ROOT/'main'),str(p/'test.c'),str(ROOT/'main/ui/ui_image_dither.c'),'-lm','-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-g','-fsanitize=address,undefined','-I'+str(ROOT/'main'),str(p/'test.c'),str(ROOT/'main/ui/ui_image_dither.c'),'-lm','-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

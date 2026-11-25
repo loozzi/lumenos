@@ -25,6 +25,11 @@ void nvs_close(int h){assert(h==1);}
 #define LEDC_CHANNEL_0 0
 #define LEDC_CHANNEL_1 1
 static bool fl_ready=true,light_enabled,light_dirty,light_suspended;
+// 中文：1.5.18 低电量亮度上限；本测试保持不限。/ English: the 1.5.18 low-battery brightness cap stays unlimited here.
+static unsigned s_brightness_cap=100;
+// 中文：1.5.19 前光计数桩。/ English: 1.5.19 front-light counter stub.
+static int64_t esp_timer_get_time(void){return 0;}
+static void metalio_power_note_lamp(unsigned b,int64_t now){(void)b;(void)now;}
 static uint8_t saved_brightness=30,saved_warmth=50;
 static uint16_t brightness_position=72,warmth_position=120,last_on_position=72;
 static time_t light_schedule_checked,wall;

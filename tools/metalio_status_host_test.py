@@ -47,8 +47,12 @@ static bool pmu_battery_charging(const pmu_snapshot_t *p){assert(p==&state);retu
 static void read_pico_transfer_get_status(read_pico_transfer_status_t *s){s->network_ready=network;s->mode=1;s->state=network?1:0;}
 
 static const char *app_settings_status_signature(void){return "S31";}
+typedef enum{BATTERY_LEVEL_NORMAL,BATTERY_LEVEL_WARN,BATTERY_LEVEL_SAVER,BATTERY_LEVEL_CRITICAL}battery_level_t;
+static battery_level_t guard_level;static int inverted_percent;
+static battery_level_t battery_guard_level(void){return guard_level;}
 static void ui_text_fixed_vc(uint8_t *p,int x,int y,int px,const char *s,int align,bool b){
- (void)p;(void)align;(void)b;assert(y==expected_center&&px>0);
+ (void)p;(void)align;assert(y==expected_center&&px>0);
+ if(b&&s[0]&&s[strlen(s)-1]=='%')++inverted_percent;
  if(x==342)snprintf(center_label,sizeof(center_label),"%s",s);
 }
 static int ui_text_fixed_width_px(int px,const char *s){return px*(int)strlen(s)/2;}
@@ -71,7 +75,7 @@ static int ui_text_fixed_context_width_px(int px,const char *text,const char *sa
 static bool ui_font_has_text(const char *text){(void)text;return true;}
 static int ui_font_text_width_px(int px,const char *text){return ui_text_fixed_width_px(px,text);}
 '''
-unit+=nav[nav.index('static bool s_status_reading;'):nav.index('static const char *const labels[]')]
+unit+=nav[nav.index('static bool s_status_reading;'):nav.index('static const char *const s_nav_labels[]')]
 for name,path in [('ui_status_mark_visible' ,'main/ui/ui_kit.c'),('ui_status_visible','main/ui/ui_kit.c'),('ui_clear_page','main/ui/ui_kit.c'),('power_signature','main/ui/ui_nav.c'),('status_width','main/ui/ui_nav.c'),('ui_nav_status_area','main/ui/ui_nav.c'),('ui_nav_refresh_power','main/ui/ui_nav.c'),('status_time','main/ui/ui_nav.c'),('clock_text','main/ui/ui_nav.c'),('draw_status','main/ui/ui_nav.c'),('ui_nav_status','main/ui/ui_nav.c'),('ui_nav_reader_status','main/ui/ui_nav.c'),('ui_nav_redraw_status','main/ui/ui_nav.c')]:
  unit+=function(name,root/path)+'\n'
 unit+=r'''
@@ -104,6 +108,12 @@ int main(void){
  ui_nav_redraw_status(fb);assert(header_clears==clear_before&&!ui_status_visible(fb));
  expected_center=40;ui_nav_status(fb);
  assert(ui_nav_status_area().y==12&&ui_nav_status_area().height==56);
+ // 1.5.18：低电量未充电时百分比反色；充电或正常电量不反色。/ Low battery without charging inverts the percentage; charging or normal levels do not.
+ inverted_percent=0;soc=12;charging=false;guard_level=BATTERY_LEVEL_WARN;ui_nav_status(fb);assert(inverted_percent==1);
+ charging=true;ui_nav_status(fb);assert(inverted_percent==1);
+ charging=false;guard_level=BATTERY_LEVEL_NORMAL;ui_nav_status(fb);assert(inverted_percent==1);
+ soc=-1;guard_level=BATTERY_LEVEL_WARN;ui_nav_status(fb);assert(inverted_percent==1);guard_level=BATTERY_LEVEL_NORMAL;
+ puts("PASS: low-battery percentage inverts only below the warning level without charging");
  puts("PASS: actual charge insertion/removal/SOC-change detection, zero repeated redraw, standard and compact reader header-only crops, low-SOC black well/white bolt outline, immersive/fullscreen suppression, offscreen preview isolation");
 }
 '''

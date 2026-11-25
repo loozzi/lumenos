@@ -29,7 +29,7 @@ static uint8_t pixels[FRAME_BYTES],panel[FRAME_BYTES],style,background=0x32;
 static bool pin,decode_ok=true,transfer_ok=true,ble_ok=true,output_ok=true,white_ok=true,boot_cache,cache_ok;
 static unsigned old_style,draws[4],presents,outputs,auths,begins,ends,resumes,cleared,waits,saves,lamp_off,lamp_restore,white_outputs,white_faults,image_clears;
 static bool ota_busy,s_boot_power_on=true,s_boot_power_wake;
-static bool pico_online_busy(void){return ota_busy;}
+__attribute__((unused)) static bool pico_online_busy(void){return ota_busy;}
 static void app_settings_record_pin_lock(uint32_t t){(void)t;}
 static bool pico_boot_lock_pending(void){return false;}
 static int app_settings_wake_presses(void){return 1;}
@@ -51,6 +51,19 @@ static bool book_ticket_draw(uint8_t*f,bool allow_decode){assert(allow_decode==a
 static bool ui_wallpaper_prepare_lock(uint8_t*f,const char*p){assert(!strcmp(p,app_settings_wallpaper_path()));return art(1,f);}
 static bool book_lock_collage_prepare(uint8_t*f){return art(2,f);}
 static bool book_lock_bookmark_draw(uint8_t*f,const char*p){assert(!strcmp(p,app_settings_bookmark_path()));return art(3,f);}
+// 中文：锁屏前的资源准备（OTA/字体/无线/封面暂停）由 metalio_lock_resume/wifi_sleep_gate 等测试覆盖；此处只计数。
+// English: lock resource preparation is covered by the resume/radio gate tests; this test only counts it.
+static unsigned prepares,signatures;static bool prepare_fail;
+// 中文：1.5.19 锁屏/解锁电量计数桩。/ English: 1.5.19 lock/unlock battery counter stubs.
+typedef struct{unsigned battery_mv;}pmu_snapshot_t;
+static pmu_snapshot_t pmu_snapshot={3800};
+static const pmu_snapshot_t *read_pico_pmu_get(void){return &pmu_snapshot;}
+static int pmu_battery_percent(const pmu_snapshot_t*p){(void)p;return 50;}
+static unsigned lock_notes,unlock_marks;
+static void metalio_power_note_lock(bool locking,int soc,unsigned mv){(void)locking;assert(soc==50&&mv==3800);++lock_notes;}
+static void metalio_power_mark_unlock(int64_t now){(void)now;++unlock_marks;}
+static bool app_lock_prepare_resources(void){++prepares;return !prepare_fail&&!ota_busy;}
+static void book_lock_signature_draw(uint8_t*f){(void)f;++signatures;}
 static void ui_wallpaper_cache_commit(const uint8_t*f){assert(style==1&&presents==1&&!memcmp(f,panel,FRAME_BYTES));}
 static void book_lock_collage_cache_commit(const uint8_t*f){assert(style==2&&presents==1&&!memcmp(f,panel,FRAME_BYTES));}
 static void epd_hl_set_all_white(EpdiyHighlevelState*h){(void)h;memset(pixels,255,FRAME_BYTES);}

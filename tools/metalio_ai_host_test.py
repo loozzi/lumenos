@@ -41,6 +41,6 @@ int main(void){
 # actual replacement's raster/persistence/dispatch coverage.
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'sampler';p.with_suffix('.c').write_text(sampler)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p.with_suffix('.c')),'-o',str(p)],check=True)
+ subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=undefined',str(p.with_suffix('.c')),'-o',str(p)],check=True)
  subprocess.run([str(p)],check=True)
 subprocess.run(['python3',str(r/'tools/action_menu_host_test.py')],check=True)

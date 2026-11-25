@@ -224,7 +224,8 @@ Host tests và build thành công không thay thế nghiệm thu phần cứng.
   - Cài đặt (`settings_next_tick_ms`): chỉ trang gốc, không có sửa màn hình, ảnh đại
     diện, BOOT, khởi động lại sau cập nhật, đặt lại, cuộn chờ hiển thị hay cập nhật cục bộ.
   - Màn chọn sách Love Book: khi đã đọc xong danh sách thư mục.
-- Kệ sách (`app_book` ngoài trang đọc) và mọi trang con vẫn trả 0, giữ nhịp 8/40 ms.
+- Kệ sách (`shelf_next_tick_ms`, từ 1.5.19): chỉ khi `s_view == SHELF` và không ở giao diện đơn giản. Trả 0 khi đang quét thẻ, đang yêu cầu mở sách hay đồng bộ, đang tải lại font, có hộp xác nhận, menu danh mục, chế độ phím kệ, phản hồi chạm, đang chờ hiện lô bìa, `s_cover_pending_mask`/`s_cover_decode_mask` khác 0, đang làm ấm bìa cho màn khóa ghép bìa, đang có phiên OPDS hoặc ghi chú, hoặc prefetch bìa chưa xong trên trang đang xem. Hạn là biên phút kế tiếp hoặc 1 giây. Kệ sách dùng ngưỡng yên 1,5 giây như các trang khác; chỉ phần đọc sách dùng 400 ms. Love Book luôn trả 0.
+- Mọi trang con vẫn trả 0, giữ nhịp 8/40 ms.
 - Trong lượt chờ tĩnh, planner dùng `app_wait_ms_capped(..., APP_WAIT_STATIC_CAP_MS)`.
   Kiểm tra media, nhóm mạng/lịch đèn và thử font có hạn 1 giây. Phím nguồn dự phòng
   có hạn 1 giây khi `read_pico_pmu_key_irq_ready()`, nếu không thì giữ 200 ms. Sự kiện

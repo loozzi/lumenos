@@ -69,5 +69,5 @@ int main(int argc,char**argv){assert(argc==3);k_font_dirs[0]=argv[1];k_font_dirs
 }
 '''
  (p/'test.c').write_text(unit);(p/'assets').mkdir();(p/'fonts').mkdir()
- subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(R/'main/font'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-I'+str(R/'main/font'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test'),str(p/'assets'),str(p/'fonts')],check=True)

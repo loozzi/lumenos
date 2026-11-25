@@ -132,7 +132,7 @@ with tempfile.TemporaryDirectory(prefix='s31-txt16-') as folder:
     fixture('gbk','第一章 起点\n中文\n第二章 终点\n再见'.encode('gbk'),'第一章 起点\n中文\n第二章 终点\n再见',3,0)
     manifest=t/'manifest';manifest.write_text(''.join(rows))
     c=t/'test.c';c.write_text(unit);exe=t/'test'
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-g','-fsanitize=address,undefined',
                     '-DDPREADER_BOARD_METALIO47=1','-I'+str(t),'-I'+str(r/'main/book'),'-I'+str(r/'main'),
                     '-I'+str(r/'tools/book_epub_stubs'),str(c),str(r/'main/book/gbk.c'),'-o',str(exe)],check=True)
     subprocess.run([str(exe),str(manifest)],check=True)

@@ -38,6 +38,10 @@
 #include "ble_page_turner.h"
 #include "crash_note.h"
 #include "settings.h"
+#include "battery_guard.h"
+#if DPREADER_BOARD_METALIO47
+#include "metalio_power_stats.h"
+#endif
 
 #define LOG_BUF_SIZE (32 * 1024)
 
@@ -253,6 +257,27 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
         (unsigned long)(hz/1000000),clock_err,cpu.enabled,cpu.ui_pinned,cpu.unsafe,
         (unsigned long)cpu.idle_windows,(unsigned long)cpu.rejected,(unsigned long)cpu.wakes,
         (unsigned long)cpu.leases,(unsigned long)cpu.faults,cpu.last_error);
+    // 用户2026-11-25：导出电量/延迟计数，供用户在真机上自行估算耗电。
+    // User 2026-11-25: export power/latency counters so the user can estimate drain on the device.
+    metalio_power_stats_t power=metalio_power_stats(esp_timer_get_time());
+    fprintf(f,"Power: wait_idle_ms=%llu waits_idle=%lu wait_legacy_ms=%llu waits_legacy=%lu\n",
+        (unsigned long long)power.wait_idle_ms,(unsigned long)power.waits_idle,
+        (unsigned long long)power.wait_legacy_ms,(unsigned long)power.waits_legacy);
+    fprintf(f,"Power: scans GC=%lu GL=%lu DU=%lu light_sleeps=%lu light_sleep_ms=%llu maintenance_wakes=%lu\n",
+        (unsigned long)power.scans[METALIO_SCAN_GC],(unsigned long)power.scans[METALIO_SCAN_GL],(unsigned long)power.scans[METALIO_SCAN_DU],
+        (unsigned long)power.light_sleeps,(unsigned long long)power.light_sleep_ms,(unsigned long)power.maintenance_wakes);
+    fprintf(f,"Power: lamp_on_ms=%llu lamp_level_ms=%llu locks=%lu lock_soc=%d lock_mv=%u unlock_soc=%d unlock_mv=%u battery_level=%u remaining_min=%d\n",
+        (unsigned long long)power.lamp_on_ms,(unsigned long long)power.lamp_level_ms,(unsigned long)power.locks,
+        power.lock_soc,(unsigned)power.lock_mv,power.unlock_soc,(unsigned)power.unlock_mv,
+        (unsigned)battery_guard_level(),battery_guard_remaining_minutes());
+    static const char *const latency_names[METALIO_LATENCY_COUNT]={"turn","ui","unlock","boot"};
+    for(unsigned k=0;k<METALIO_LATENCY_COUNT;++k) {
+        const uint32_t *h=power.latency[k];
+        const uint32_t p50=metalio_power_percentile(h,50),p95=metalio_power_percentile(h,95);
+        fprintf(f,"Latency %s: <50=%lu <100=%lu <200=%lu <400=%lu <800=%lu <1600=%lu slower=%lu p50<=%s%lu p95<=%s%lu\n",latency_names[k],
+            (unsigned long)h[0],(unsigned long)h[1],(unsigned long)h[2],(unsigned long)h[3],(unsigned long)h[4],(unsigned long)h[5],(unsigned long)h[6],
+            p50==UINT32_MAX?">":"",(unsigned long)(p50==UINT32_MAX?1600:p50),p95==UINT32_MAX?">":"",(unsigned long)(p95==UINT32_MAX?1600:p95));
+    }
 #endif
     fprintf(f, "\n");
 

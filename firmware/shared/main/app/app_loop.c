@@ -94,6 +94,9 @@
 #include "read_pico_sd.h"
 #include "settings.h"
 #include "battery_guard.h"
+#if DPREADER_BOARD_METALIO47
+#include "metalio_power_stats.h"
+#endif
 #include "sleep.h"
 #include "time_service.h"
 #include "ui_avatar.h"
@@ -134,6 +137,11 @@
 #define STATIC_PAGE_QUIET_MS 1500
 
 static int64_t s_lock_ignore_until_ms;
+#if DPREADER_BOARD_METALIO47
+// 本轮输入时刻；同一轮内显示完成即记录一次延迟，未显示则在轮末丢弃。
+// Input time of this pass; the next presented frame in the same pass records one latency, else it is dropped at pass end.
+static int64_t s_latency_input_us;
+#endif
 extern const app_desc_t app_transfer;
 extern const app_desc_t app_book;
 extern const app_desc_t app_device_settings;
@@ -696,6 +704,16 @@ void app_present(app_ctx_t* ctx,const app_desc_t* app,app_redraw_t redraw) {
 #endif
     app_present_impl(ctx,app,redraw);
 #if DPREADER_BOARD_METALIO47
+    if (redraw != APP_REDRAW_NONE) {
+        const int64_t presented_us = esp_timer_get_time();
+        const int64_t unlocked_us = metalio_power_take_unlock_mark();
+        if (unlocked_us) metalio_power_note_latency(METALIO_LATENCY_UNLOCK, (uint32_t)((presented_us - unlocked_us) / 1000));
+        if (s_latency_input_us) {
+            metalio_power_note_latency(app == &app_book && app_book_reader_body_visible() ? METALIO_LATENCY_TURN : METALIO_LATENCY_UI,
+                                       (uint32_t)((presented_us - s_latency_input_us) / 1000));
+            s_latency_input_us = 0;
+        }
+    }
     display_system_navigation_set(previous_nav);
     display_system_binary_set(previous);
     display_main_switch_erase_set(prior_erase);
@@ -1346,6 +1364,9 @@ void app_loop_run(const app_loop_config_t* config) {
 #endif
     pico_boot_ready();
     ESP_LOGI(TAG, "UI ready on %s", current->title);
+#if DPREADER_BOARD_METALIO47
+    metalio_power_note_latency(METALIO_LATENCY_BOOT, (uint32_t)(esp_timer_get_time() / 1000));
+#endif
     // 上次崩溃的现场（异常类型与触发地址）：有的话打一遍，串口和屏幕各有一份。
     // The previous panic scene, when there was one: logged here, and shown on the home screen.
     crash_note_log();
@@ -1399,6 +1420,10 @@ void app_loop_run(const app_loop_config_t* config) {
             battery_guard_poll(ctx.now_ms, battery_awake_ms);
         }
 #else
+#endif
+#if DPREADER_BOARD_METALIO47
+        if ((err == ESP_OK && (pressed || released)) || (wake_reasons & (METALIO_UI_WAKE_KEY | METALIO_UI_WAKE_BLE)))
+            s_latency_input_us = esp_timer_get_time();
 #endif
         if (err == ESP_OK && (touch.touched || released)) {
             last_input_ms = ctx.now_ms;
@@ -2353,7 +2378,8 @@ void app_loop_run(const app_loop_config_t* config) {
             metalio_volume_events_pending();
         // 用户2026-11-25：主页/文件/设置等页面也可在声明空闲后长等待；非阅读页需安静1.5秒。
         // User 2026-11-25: Home/Files/Settings may also wait long once they declare idle; non-reader pages need 1.5 s of quiet.
-        const int64_t quiet_ms=current==&app_book?400:STATIC_PAGE_QUIET_MS;
+        // 1.5.19：书架同属 app_book，但按非阅读页处理。/ 1.5.19: the shelf shares app_book but waits like a non-reader page.
+        const int64_t quiet_ms=current==&app_book&&app_book_reader_body_visible()?400:STATIC_PAGE_QUIET_MS;
         bool can_extend=!input_pending && current->next_tick_ms &&
             current_tick_ms==LOOP_TICK_IDLE_MS && ctx.now_ms-last_input_ms>=quiet_ms && err==ESP_OK && !touch.touched && !gesture.active &&
             !pinching && !pinch_input_owned && !pinch_drain && held_key<0 &&
@@ -2379,8 +2405,11 @@ void app_loop_run(const app_loop_config_t* config) {
         int64_t wait_now=esp_timer_get_time()/1000;
         uint32_t wait_ms=app_wait_ms_capped(wait_now,(uint32_t)current_tick_ms,can_extend&&page_deadline>0,
                                    input_pending,deadlines,sizeof(deadlines)/sizeof(deadlines[0]),APP_WAIT_STATIC_CAP_MS);
+        s_latency_input_us=0;
         (void)metalio_cpu_idle_begin(can_extend&&page_deadline>0,wait_ms);
+        const int64_t wait_started_us=esp_timer_get_time();
         wake_reasons=metalio_ui_wake_wait(wait_ms);
+        metalio_power_note_wait(can_extend&&page_deadline>0,(uint32_t)((esp_timer_get_time()-wait_started_us)/1000));
         (void)metalio_cpu_wake();
 #else
         vTaskDelay(pdMS_TO_TICKS(current_tick_ms));

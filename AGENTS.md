@@ -21,6 +21,9 @@ Use tools/build_firmware.py with --board pico|metalio47|all and separate SDK/con
 Đọc [docs/BOARDS.md](docs/BOARDS.md) trước khi dùng tools/build_firmware.py --board pico|metalio47|all. Tách SDK, cấu hình, khóa phụ thuộc và đầu ra. Sửa mã nguồn được duy trì. Dùng board_source_view.py --tests để dựng cây kiểm thử theo từng bo. CI dùng SDK phù hợp và thư mục riêng cho Pico và S31.
 Use the board build driver and isolated SDK/config/lock/artifact directories. Edit maintained sources, not generated device views. Legacy host tests run in the board test view. CI separately builds Pico and S31 with matching SDKs and isolated outputs.
 
+Từ 1.5.19, trước khi giao hoặc phát hành S31 phải chạy `python3 tools/run_s31_release_suites.py`. Script dựng cây test S31, chạy mọi host test trừ các mục có ghi lý do trong `tools/s31_suite_manifest.json`, và trả lỗi nếu có test nằm ngoài danh sách bị đỏ. Không thêm test vào danh sách để né một lỗi mới; khi sửa xong một mục thì xóa nó khỏi danh sách.
+From 1.5.19, run `python3 tools/run_s31_release_suites.py` before any S31 delivery or release. It builds the S31 test view, runs every host suite except the documented entries in `tools/s31_suite_manifest.json`, and fails on any unlisted red suite. Never add a suite to the list to hide a new failure; remove entries once fixed.
+
 Pico cần ESP-IDF v6.1 vì read_pico_flash_hpm.c dùng esp_flash_chips/spi_flash_override.h.
 
 Requires ESP-IDF v6.1. `components/read_pico/read_pico_flash_hpm.c` needs `esp_flash_chips/spi_flash_override.h` (v6 only).

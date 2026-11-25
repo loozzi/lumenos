@@ -27,7 +27,7 @@ struct app_desc_s {
  bool(*menu_handle_enabled)(app_ctx_t*);
  bool(*on_main_key)(app_ctx_t*,int,app_redraw_t*);
  void(*on_enter)(app_ctx_t*),(*on_exit)(app_ctx_t*),(*on_media_lost)(app_ctx_t*),(*on_media_ready)(app_ctx_t*),(*on_before_lock)(app_ctx_t*);
- void(*render)(app_ctx_t*,uint8_t*);app_redraw_t(*on_tick)(app_ctx_t*);
+ void(*render)(app_ctx_t*,uint8_t*);app_redraw_t(*on_tick)(app_ctx_t*);int64_t(*next_tick_ms)(app_ctx_t*);
  app_redraw_t(*on_gesture)(app_ctx_t*,const ui_gesture_event_t*),(*on_key)(app_ctx_t*,int);
 };
 enum {APP_REDRAW_NONE,APP_REDRAW_PAGE,APP_REDRAW_FULL,UI_GESTURE_TAP,UI_GESTURE_SWIPE_L,UI_GESTURE_SWIPE_R,ESP_ERR_NOT_FINISHED};

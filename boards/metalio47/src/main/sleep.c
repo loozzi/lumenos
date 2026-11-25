@@ -69,6 +69,7 @@ void epd_lcd_suspend(void);
 #include "sc7a20h_lab.h"
 #include "settings.h"
 #include "battery_guard.h"
+#include "metalio_power_stats.h"
 #include "online_font.h"
 #include "ui_kit.h"
 #include "ui_image_dither.h"
@@ -599,6 +600,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
         metalio_sleep_trace_phase(METALIO_SLEEP_TRACE_BEFORE_SLEEP);
         ESP_LOGI(TAG,"S31 light sleep: timer only for a deadline; VOUT retained, handles paused, RAM/font/index retained");
         unsigned maintenance=0;
+        const int64_t slept_at=esp_timer_get_time();
         for(;;) {
             if(wake_by && esp_timer_get_time()>=wake_by) break;
             err=metalio_light_sleep_start();
@@ -622,6 +624,7 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
             err=esp_sleep_enable_timer_wakeup(lock_light_sleep_slice_us(wake_by));
             if(err!=ESP_OK) break;
         }
+        metalio_power_note_light_sleep((uint32_t)((esp_timer_get_time()-slept_at)/1000),maintenance);
         ESP_LOGI(TAG,"S31 light wake: maintenance=%u ext1=%u power_confirmed=%u usb=%u result=%s",
             maintenance,(unsigned)key_irq,(unsigned)power_confirmed,(unsigned)metalio_usb_blocks_sleep(),esp_err_to_name(err));
     }
@@ -983,6 +986,10 @@ void enter_lock_and_sleep(
     // Every lock light-sleeps the selected hours before RTC sync and hardware power-off, retaining PIN and reader checkpoints.
     ESP_LOGI(TAG, "lock LIGHT");
     epd_poweroff();
+    {
+        const pmu_snapshot_t *pmu=read_pico_pmu_get();
+        metalio_power_note_lock(true,pmu_battery_percent(pmu),pmu?pmu->battery_mv:0);
+    }
     s_lock_sleep_touch=touch;
     lock_hint_begin(hl);
 #if !DPREADER_LOVE_BOOK
@@ -995,6 +1002,12 @@ void enter_lock_and_sleep(
 #endif
         lock_wait_for_unlock(acc);
     lock_hint_end();
+    {
+        // 解锁时记电量，并标记解锁时刻供首帧延迟统计。/ Record SOC on unlock and mark it for the first-frame latency.
+        const pmu_snapshot_t *pmu=read_pico_pmu_get();
+        metalio_power_note_lock(false,pmu_battery_percent(pmu),pmu?pmu->battery_mv:0);
+        metalio_power_mark_unlock(esp_timer_get_time());
+    }
     s_lock_sleep_touch=NULL;
     s_lock_deep_ready=false;s_lock_frame_cached=false;
     pico_boot_clear_resume();

@@ -26,7 +26,7 @@ static bool display_pipeline_enabled(void){return false;}
 #include "app.h"
 typedef struct{int x,y,width,height;}EpdRect;
 enum EpdDrawError{EPD_DRAW_SUCCESS,EPD_DRAW_ERROR};
-enum{APP_REDRAW_NONE,APP_REDRAW_AREA,APP_REDRAW_PAGE,APP_REDRAW_FULL,MODE_GL16,MODE_DU,HOME_ROOT,HOME_GOAL,HOME_COMPONENT,HOME_TIME};
+enum{APP_REDRAW_NONE,APP_REDRAW_AREA,APP_REDRAW_PAGE,APP_REDRAW_FULL,MODE_GL16,MODE_DU,HOME_ROOT,HOME_GOAL,HOME_COMPONENT,HOME_TIME,HOME_POP_MENU,HOME_ADD_BOOKS,HOME_UTILITIES,HOME_UTILITY_PICK};
 typedef int app_redraw_t;
 typedef enum{APP_HOME_FOLDER,APP_HOME_CLOCK,APP_HOME_ASTERISK=2,APP_HOME_MOON=4,APP_HOME_KEHAI=5,APP_HOME_DALI=6,APP_HOME_CAT=7,APP_HOME_HOUSE=8,APP_HOME_COMPONENT_COUNT}app_home_component_t;
 typedef enum{UI_HOME_CLOCK_PS1995,UI_HOME_CLOCK_ASTERISK,UI_HOME_CLOCK_MOON,UI_HOME_CLOCK_KEHAI,UI_HOME_CLOCK_DALI,UI_HOME_CLOCK_CAT,UI_HOME_CLOCK_HOUSE,UI_HOME_CLOCK_COUNT}ui_home_clock_style_t;
@@ -38,7 +38,7 @@ static int64_t s_motion_ms=-100;
 static unsigned clock_phase_now(struct tm *d){return (unsigned)d->tm_sec*10+subphase;}
 static bool clock_motion_due(app_ctx_t *ctx){return ctx->now_ms<=0||ctx->now_ms<s_motion_ms||ctx->now_ms-s_motion_ms>=100;}
 static EpdRect ui_rect_union(EpdRect a,EpdRect b){if(!a.width)return b;if(!b.width)return a;int x=a.x<b.x?a.x:b.x,y=a.y<b.y?a.y:b.y,right=a.x+a.width>b.x+b.width?a.x+a.width:b.x+b.width,bottom=a.y+a.height>b.y+b.height?a.y+a.height:b.y+b.height;return(EpdRect){x,y,right-x,bottom-y};}
-static const app_home_component_t s_components[]={APP_HOME_MOON,APP_HOME_CLOCK,APP_HOME_KEHAI,APP_HOME_CAT,APP_HOME_DALI,APP_HOME_ASTERISK,APP_HOME_HOUSE,APP_HOME_FOLDER};
+__attribute__((unused)) static const app_home_component_t s_components[]={APP_HOME_MOON,APP_HOME_CLOCK,APP_HOME_KEHAI,APP_HOME_CAT,APP_HOME_DALI,APP_HOME_ASTERISK,APP_HOME_HOUSE,APP_HOME_FOLDER};
 #define HOME_COMPONENT_OPTIONS (sizeof(s_components)/sizeof(s_components[0]))
 static EpdRect s_pressed;
 static int picker_bodies,picker_controls;
@@ -56,11 +56,30 @@ static int pushed_mode;
 static const int *display_main_gray_waveform(void){return &hold_gray;}
 static const int *display_main_bw_waveform(void){return &hold_binary;}
 static EpdRect s_area,pushed;
+// 中文：主页弹出菜单（RC 之后新增）不在本测试范围，只提供最小桩。/ English: the Home pop menu postdates this test; provide minimal stubs only.
+static bool s_pop_menu_pending;
+static EpdRect pop_menu_rect(void){return (EpdRect){0,0,0,0};}
+static void render_pop_menu(uint8_t *fb){(void)fb;}
 static bool s_clock_pending,s_home_force_full_once,s_press_pending,fail,s_reading_days_valid=true;
 static int64_t s_clock_minute=-2,minute=100;
 static int paints,clock_paints,pushes,fulls,clock_faces,record_reads;
 static struct tm s_date={.tm_year=126,.tm_yday=285},date={.tm_year=126,.tm_yday=285};
-static int app_settings_home_component(void){return widget;}
+static app_home_component_t app_settings_home_component(void){return (app_home_component_t)widget;}
+// 中文：简洁界面与票根状态在本测试中关闭。/ English: simple UI and the ticket status stay disabled in this test.
+static bool app_settings_simple_ui(void){return false;}
+static bool app_settings_simple_full_ui(void){return false;}
+static EpdRect simple_ticket_status_rect(void){return (EpdRect){0,0,0,0};}
+static void draw_simple_ticket_status(uint8_t *fb){(void)fb;}
+static int s_ticket_battery=-2;
+static bool utility_notice_expire(int64_t now_ms){(void)now_ms;return false;}
+// 中文：S31 的水波翻页模式在本测试中保持关闭。/ English: the S31 Water transition stays off in this test.
+enum{APP_MAIN_REFRESH_NORMAL,APP_MAIN_REFRESH_FAST,APP_MAIN_REFRESH_WATER};
+static int app_settings_main_refresh_mode(void){return APP_MAIN_REFRESH_NORMAL;}
+static int E0470_TURN_BTT;
+__attribute__((unused)) static enum EpdDrawError update_display_water_turn(void *hl,EpdRect a,int dir){(void)hl;(void)a;(void)dir;return EPD_DRAW_SUCCESS;}
+typedef struct{int unused;}pmu_snapshot_t;
+static const pmu_snapshot_t *read_pico_pmu_get(void){return NULL;}
+static int pmu_battery_percent(const pmu_snapshot_t *p){(void)p;return -1;}
 static bool fast;
 static bool app_settings_main_fast_refresh(void){return fast;}
 static int64_t ui_nav_clock_minute(void){return minute;}
@@ -69,7 +88,7 @@ static void refresh_days(void){s_date=date;++record_reads;}
 static void epd_fill_rect(EpdRect area,int gray,uint8_t *fb){(void)fb;assert(gray==255&&area.x>=0&&area.y>=0&&area.x+area.width<=684&&area.y+area.height<=1216);}
 static void ui_fill_rect_fast(EpdRect area,int gray,uint8_t *fb){epd_fill_rect(area,gray,fb);}
 static void clock_base_prepare(void){}
-static void component_prepare_neighbor(app_ctx_t *ctx){(void)ctx;}
+__attribute__((unused)) static void component_prepare_neighbor(app_ctx_t *ctx){(void)ctx;}
 static void ui_nav_clock_draw(uint8_t *fb){(void)fb;++clock_paints;}
 static void ui_home_clock_style_draw_region(uint8_t *fb,EpdRect rect,const struct tm *d,bool binary,ui_home_clock_style_t style,EpdRect crop){(void)fb;(void)d;(void)style;assert(binary==fast);assert(rect.width==320||rect.width==420||rect.width==460);assert(crop.width<=rect.width&&crop.height<=rect.height);++clock_faces;}
 static EpdRect ui_home_clock_phase_area(EpdRect rect,unsigned a,unsigned b){(void)a;(void)b;return(EpdRect){rect.x+80,rect.y+40,42,48};}
@@ -83,7 +102,7 @@ static void guard_draw_result(void *hl,enum EpdDrawError result){(void)hl;(void)
 static enum EpdDrawError update_display_full(void *hl){(void)hl;++fulls;return EPD_DRAW_SUCCESS;}
 static enum EpdDrawError update_display_fast_page(void *hl){(void)hl;return EPD_DRAW_SUCCESS;}
 static void render(app_ctx_t *ctx,uint8_t *fb){(void)ctx;(void)fb;++paints;}
-'''+('\nstatic int64_t s_component_warm_after_ms;\nstatic int64_t fake_clock_us;\nstatic int64_t esp_timer_get_time(void){return fake_clock_us;}\n' if 'esp_timer_get_time' in present else '')+helpers+'\n'+present+'\n'+tick+r'''
+'''+('\nstatic int64_t s_component_warm_after_ms;\nstatic int64_t fake_clock_us;\n__attribute__((unused)) static int64_t esp_timer_get_time(void){return fake_clock_us;}\n' if 'esp_timer_get_time' in present else '')+helpers+'\n'+present+'\n'+tick+r'''
 int main(void){assert(!display_pipeline_enabled());
  app_ctx_t ctx={0};present(&ctx,APP_REDRAW_FULL);assert(s_clock_minute==100&&paints==1&&fulls==1);
  for(int i=0;i<100;++i)assert(on_tick(&ctx)==APP_REDRAW_NONE);
@@ -94,14 +113,15 @@ int main(void){assert(!display_pipeline_enabled());
  minute=102;fail=true;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);
  assert(s_clock_minute==101&&on_tick(&ctx)==APP_REDRAW_AREA);fail=false;present(&ctx,APP_REDRAW_AREA);assert(s_clock_minute==102);
  widget=APP_HOME_CLOCK;minute=103;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);
- assert(clock_faces==1&&paints==1&&pushed.x==78&&pushed.y==684&&pushed.width==198&&pushed.height==198);
- s_view=HOME_GOAL;minute=104;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);assert(clock_faces==1);
+ // 中文：1.2.5 起主页根视图以“实用工具”取代时钟组件，换分钟只局部刷新状态栏时钟。
+ // English: since 1.2.5 the Home root shows utilities instead of a clock widget; a minute change repaints only the status clock.
+ assert(clock_faces==0&&pushed.x==24&&pushed.y==18&&pushed.width==156&&pushed.height==44);
+ s_view=HOME_GOAL;minute=104;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);assert(clock_faces==0&&pushed.x==24&&pushed.width==156);
  s_view=HOME_ROOT;minute=105;date.tm_yday++;assert(on_tick(&ctx)==APP_REDRAW_PAGE&&record_reads==1);present(&ctx,APP_REDRAW_PAGE);
- fast=true;minute=106;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);assert(clock_faces==2&&pushed.width==198&&pushed.height==198);
+ fast=true;minute=106;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);assert(clock_faces==0&&pushed.x==24&&pushed.width==156);
  s_date=date;widget=APP_HOME_KEHAI;s_view=HOME_ROOT;present(&ctx,APP_REDRAW_PAGE);int old_paints=paints,old_faces=clock_faces;
- date.tm_sec=1;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(paints==old_paints&&clock_faces==old_faces+1&&pushed.width==42&&pushed.height==48);
- assert(pushed_wave==&E0470_FOLLOW_WAVEFORM&&pushed_mode==MODE_DU);
- date.tm_sec=2;fail=true;on_tick(&ctx);present(&ctx,APP_REDRAW_AREA);assert(s_widget_stamp!=date_stamp(&date));fail=false;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(s_widget_stamp==date_stamp(&date));
+ // 根视图已无动态时钟组件：秒变化不触发重绘。/ The root no longer carries a motion clock widget: a second change does not redraw.
+ date.tm_sec=1;assert(on_tick(&ctx)==APP_REDRAW_NONE&&paints==old_paints&&clock_faces==old_faces);
 @PICKER_SECONDS_TEST@
  s_view=HOME_GOAL;date.tm_sec=4;assert(on_tick(&ctx)==APP_REDRAW_NONE);
  s_view=HOME_TIME;s_date=date;present(&ctx,APP_REDRAW_PAGE);old_paints=paints;date.tm_sec=5;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(paints==old_paints&&time_paints==1&&pushed.y<=840&&pushed.y+pushed.height==938);
@@ -115,12 +135,9 @@ int main(void){assert(!display_pipeline_enabled());
  fail=true;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(s_component_pending&&paints==old_paints&&picker_bodies==1);
  fail=false;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(!s_component_pending&&paints==old_paints&&picker_bodies==2&&pushed.y==260&&pushed.height==812&&pushed_wave==&hold_gray);
  s_press_pending=true;s_pressed=s_area=(EpdRect){36,472,64,64};int faces=clock_faces;present(&ctx,APP_REDRAW_AREA);assert(picker_controls==1&&clock_faces==faces&&paints==old_paints);s_press_pending=false;
- s_view=HOME_ROOT;widget=APP_HOME_KEHAI;ctx.now_ms=1000;s_date=date;present(&ctx,APP_REDRAW_PAGE);subphase=1;ctx.now_ms=1050;assert(on_tick(&ctx)==APP_REDRAW_NONE);ctx.now_ms=1100;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(s_widget_phase_shown==(unsigned)date.tm_sec*10+1&&pushed_wave==&E0470_FOLLOW_WAVEFORM);subphase=7;ctx.now_ms=1500;assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);assert(s_widget_phase_shown==(unsigned)date.tm_sec*10+7);ctx.now_ms=0;subphase=0;
- for(int binary=0;binary<2;++binary)for(unsigned i=0;i<HOME_COMPONENT_OPTIONS-1;++i){
-  fast=binary;widget=s_components[i];s_view=HOME_ROOT;s_date=date;present(&ctx,APP_REDRAW_PAGE);minute++;date.tm_min++;
-  assert(on_tick(&ctx)==APP_REDRAW_AREA);present(&ctx,APP_REDRAW_AREA);
-  if(!ui_home_clock_has_motion(clock_style(widget)))assert(pushed_wave==(binary?&hold_binary:&hold_gray)&&pushed_mode==(binary?MODE_DU:MODE_GL16));
- }
+ // 中文：1.2.5 起主页根视图无时钟组件，原根视图动态/各样式换分钟用例已移除；状态栏时钟由上方用例覆盖。
+ // English: the Home root has had no clock widget since 1.2.5; root motion/per-style minute cases were removed, the status clock is covered above.
+ widget=APP_HOME_FOLDER;
 
 
 @STATIC_PREVIEW_TEST@
@@ -139,8 +156,8 @@ unit=unit.replace('@PICKER_CROP_TEST@', r"""
  assert(!s_component_pending&&pushed.y+pushed.height==976&&pushed_wave==&hold_gray&&pushed_mode==MODE_GL16&&paints==old_paints&&pushes==before_pushes+2);
  s_clock_minute=minute;assert(on_tick(&ctx)==APP_REDRAW_NONE);
 """ if 'component_prepare_neighbor(ctx)' in tick else '')
-if 'component_prepare_neighbor(ctx)' not in tick:unit=unit.replace('static void component_prepare_neighbor(app_ctx_t *ctx){(void)ctx;}', '')
+if 'component_prepare_neighbor(ctx)' not in tick:unit=unit.replace('__attribute__((unused)) static void component_prepare_neighbor(app_ctx_t *ctx){(void)ctx;}', '')
 with tempfile.TemporaryDirectory() as directory:
  c=Path(directory)/'clock.c';binary=c.with_suffix('');c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),str(c),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=c11','-DDPREADER_BOARD_METALIO47=1','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),str(c),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

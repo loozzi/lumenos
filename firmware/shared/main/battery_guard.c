@@ -15,6 +15,7 @@
 static battery_guard_state_t s_guard = {.base_pct = -1, .last_pct = -1};
 static int64_t s_shutdown_retry_at_ms;
 static bool s_cap_applied;
+static battery_level_t s_notified;
 
 void battery_guard_poll(int64_t now_ms, int64_t awake_ms) {
 #if DPREADER_BOARD_METALIO47
@@ -22,6 +23,8 @@ void battery_guard_poll(int64_t now_ms, int64_t awake_ms) {
     const int pct = pmu_battery_percent(pmu);
     const bool charging = pmu_battery_charging(pmu);
     (void)battery_guard_update(&s_guard, pct, charging, now_ms, awake_ms);
+    // 充电或电量回升到较低等级时，允许下次再次提示。/ Charging or recovering to a lower level re-arms the notices.
+    if (s_guard.level < s_notified) s_notified = s_guard.level;
     // 只在等级跨越省电线时改上限，避免每轮重写LEDC。/ Change the cap only when crossing the saver line, never rewriting LEDC each pass.
     const bool cap = s_guard.level >= BATTERY_LEVEL_SAVER;
     if (cap != s_cap_applied) {
@@ -35,6 +38,15 @@ void battery_guard_poll(int64_t now_ms, int64_t awake_ms) {
 }
 
 battery_level_t battery_guard_level(void) { return s_guard.level; }
+
+battery_level_t battery_guard_pending_notice(void) {
+    const battery_level_t level = s_guard.level;
+    return (level == BATTERY_LEVEL_WARN || level == BATTERY_LEVEL_SAVER) && level > s_notified ? level : BATTERY_LEVEL_NORMAL;
+}
+
+void battery_guard_ack_notice(battery_level_t level) {
+    if (level > s_notified) s_notified = level;
+}
 
 bool battery_guard_shutdown_due(int64_t now_ms) {
     return s_guard.shutdown_due && now_ms >= s_shutdown_retry_at_ms;

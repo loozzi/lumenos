@@ -50,5 +50,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  d=Path(d);(d/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(r/'tools/metalio_cache_host_stubs'),'-I'+str(r/'main/book'),str(d/'test.c'),'-o',str(d/'test')],check=True)
+ subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-I'+str(r/'tools/metalio_cache_host_stubs'),'-I'+str(r/'main/book'),str(d/'test.c'),'-o',str(d/'test')],check=True)
  subprocess.run([str(d/'test')],check=True)

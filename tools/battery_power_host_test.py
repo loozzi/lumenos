@@ -136,6 +136,21 @@ int main(void){
  fake_chg=true;battery_guard_poll(91000,0);
  assert(battery_guard_level()==BATTERY_LEVEL_NORMAL&&!battery_guard_shutdown_due(200000)&&cap_calls==2&&last_cap==100);
  assert(battery_guard_update_ok()&&battery_guard_remaining_minutes()==-1);
+ // 1.5.19 一次性提示：提示/省电各一次，充电后重新启用。/ One-time notices: warning and saver once each, re-armed by charging.
+ fake_chg=false;fake_pct=50;battery_guard_poll(100000,0);assert(battery_guard_pending_notice()==BATTERY_LEVEL_NORMAL);
+ fake_pct=14;battery_guard_poll(101000,0);assert(battery_guard_pending_notice()==BATTERY_LEVEL_WARN);
+ battery_guard_poll(102000,0);assert(battery_guard_pending_notice()==BATTERY_LEVEL_WARN); // stays pending until shown
+ battery_guard_ack_notice(BATTERY_LEVEL_WARN);assert(battery_guard_pending_notice()==BATTERY_LEVEL_NORMAL);
+ fake_pct=13;battery_guard_poll(103000,0);assert(battery_guard_pending_notice()==BATTERY_LEVEL_NORMAL);
+ fake_pct=8;battery_guard_poll(104000,0);assert(battery_guard_pending_notice()==BATTERY_LEVEL_SAVER);
+ battery_guard_ack_notice(BATTERY_LEVEL_SAVER);fake_pct=2;battery_guard_poll(105000,0);
+ assert(battery_guard_pending_notice()==BATTERY_LEVEL_NORMAL); // critical uses the shutdown frame, not a toast
+ fake_chg=true;battery_guard_poll(106000,0);fake_chg=false;fake_pct=14;battery_guard_poll(107000,0);
+ assert(battery_guard_pending_notice()==BATTERY_LEVEL_WARN); // a new discharge re-arms
+ // Skipping straight to saver announces saver once (not warning afterwards).
+ fake_chg=true;battery_guard_poll(108000,0);fake_chg=false;fake_pct=7;battery_guard_poll(109000,0);
+ assert(battery_guard_pending_notice()==BATTERY_LEVEL_SAVER);battery_guard_ack_notice(BATTERY_LEVEL_SAVER);
+ fake_pct=12;battery_guard_poll(110000,0);assert(battery_guard_level()==BATTERY_LEVEL_WARN&&battery_guard_pending_notice()==BATTERY_LEVEL_NORMAL);
  puts("runtime ok");return 0;
 }
 '''
@@ -144,6 +159,7 @@ LIGHT = r'''
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #define LEDC_LOW_SPEED_MODE 0
 #define LEDC_CHANNEL_0 0
 #define LEDC_CHANNEL_1 1
@@ -152,6 +168,9 @@ static void ledc_stop(int m,int c,int l){(void)m;(void)c;(void)l;++stops;}
 static void ledc_set_duty(int m,int c,unsigned d){(void)m;duty[c]=d;}
 static void ledc_update_duty(int m,int c){(void)m;(void)c;}
 static void metalio_light_schedule_invalidate(void){}
+static unsigned lamp_notes,last_lamp=999;
+static int64_t esp_timer_get_time(void){return 0;}
+static void metalio_power_note_lamp(unsigned b,int64_t now){(void)now;++lamp_notes;last_lamp=b;}
 static bool fl_ready=true,light_suspended,light_enabled=true;
 static unsigned brightness_position=80,warmth_position=0;
 static void frontlight_apply_position(unsigned b,unsigned w);
@@ -162,13 +181,13 @@ static void frontlight_apply_position(unsigned b,unsigned w){++applies;metalio_f
 int main(void){
  metalio_frontlight(80,0);assert(duty[0]==80*1023/200);
  metalio_frontlight_set_cap(40);assert(applies==1&&duty[0]==40*1023/200);
- metalio_frontlight(90,0);assert(duty[0]==40*1023/200);
+ metalio_frontlight(90,0);assert(duty[0]==40*1023/200&&last_lamp==40); // counters record the capped output
  metalio_frontlight(20,0);assert(duty[0]==20*1023/200);
  metalio_frontlight_set_cap(40);assert(applies==1); // unchanged cap does nothing
  light_suspended=true;metalio_frontlight_set_cap(100);assert(applies==1); // locked: no relight
  light_suspended=false;metalio_frontlight(90,0);assert(duty[0]==90*1023/200);
  metalio_frontlight_set_cap(0);metalio_frontlight(90,0);assert(duty[0]==1*1023/200); // cap floor stays lit
- metalio_frontlight(0,0);assert(stops==2&&light_suspended); // off path untouched
+ metalio_frontlight(0,0);assert(stops==2&&light_suspended&&last_lamp==0&&lamp_notes>0); // off path untouched, lamp counted off
  puts("light ok");return 0;
 }
 '''
@@ -252,9 +271,56 @@ int main(void){
 }
 '''
 
+SHELF = r'''
+#include <assert.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <sys/time.h>
+typedef struct { int64_t now_ms; int leaf; } app_ctx_t;
+static long fake_sec=1800000010,fake_usec=0;
+static int fake_gettimeofday(struct timeval*t,void*z){(void)z;t->tv_sec=fake_sec;t->tv_usec=fake_usec;return 0;}
+#define gettimeofday fake_gettimeofday
+#define DPREADER_LOVE_BOOK 0
+enum{SHELF,READING};
+static int s_view=SHELF,lock_style=0,s_cover_prefetch_leaf=2,s_cover_prefetch_step=8;
+static bool simple,opds,notes,s_scan_pending,s_requested_home_sync,s_fonts_reload_pending,s_clear_confirm,s_batch_confirm,
+ s_delete_confirm,s_category_menu,s_shelf_key_mode,s_shelf_key_paint_pending,s_shelf_feedback_pending,s_cover_batch_present_pending;
+static unsigned s_cover_pending_mask,s_cover_decode_mask,s_cover_warm_mask;
+static char s_requested_open[8];
+static bool app_settings_simple_ui(void){return simple;}
+static int app_settings_lock_style(void){return lock_style;}
+static bool opds_session_active(void){return opds;}
+static bool book_notes_active(void){return notes;}
+static int shelf_rows(void){return 4;}
+''' + function('shelf_next_tick_ms', ROOT / 'main/apps/app_book.c') + r'''
+int main(void){
+ app_ctx_t c={50000,2};
+ assert(shelf_next_tick_ms(&c)==51000); // 10 s into the minute: the 1 s cap wins
+ fake_sec=1800000059;fake_usec=800000;assert(shelf_next_tick_ms(&c)==50205); // 59.8 s: minute boundary +5 ms
+ fake_sec=1800000010;fake_usec=0;
+ bool *gates[]={&simple,&opds,&notes,&s_scan_pending,&s_requested_home_sync,&s_fonts_reload_pending,&s_clear_confirm,&s_batch_confirm,
+  &s_delete_confirm,&s_category_menu,&s_shelf_key_mode,&s_shelf_key_paint_pending,&s_shelf_feedback_pending,&s_cover_batch_present_pending};
+ for(unsigned i=0;i<sizeof(gates)/sizeof(*gates);i++){*gates[i]=true;assert(!shelf_next_tick_ms(&c));*gates[i]=false;}
+ unsigned *masks[]={&s_cover_pending_mask,&s_cover_decode_mask};
+ for(unsigned i=0;i<2;i++){*masks[i]=1;assert(!shelf_next_tick_ms(&c));*masks[i]=0;}
+ s_requested_open[0]='x';assert(!shelf_next_tick_ms(&c));s_requested_open[0]=0;
+ // Lock-cover warm-up only matters for the collage lock style.
+ s_cover_warm_mask=3;assert(shelf_next_tick_ms(&c));lock_style=2;assert(!shelf_next_tick_ms(&c));s_cover_warm_mask=0;assert(shelf_next_tick_ms(&c));lock_style=0;
+ // Prefetch must have finished on the visible leaf (rows*2 steps).
+ s_cover_prefetch_step=7;assert(!shelf_next_tick_ms(&c));s_cover_prefetch_step=8;
+ c.leaf=3;assert(!shelf_next_tick_ms(&c));c.leaf=2;
+ s_view=READING;assert(!shelf_next_tick_ms(&c));s_view=SHELF;
+ fake_sec=5;assert(shelf_next_tick_ms(&c)==51000); // invalid wall clock: no minute alignment
+ puts("shelf ok");return 0;
+}
+'''
+
+
 if __name__ == '__main__':
     inc = [ROOT / 'main', ROOT / 'main/app']
     run('battery guard levels/hysteresis/critical confirmation/charging/estimate/update gate + static wait cap', LOGIC, inc)
-    run('battery guard runtime: cap transitions only, auto-lock and lock power-off caps, shutdown backoff, charging release', RUNTIME, inc, RUNTIME_HEADERS)
+    run('battery guard runtime: cap transitions only, auto-lock and lock power-off caps, shutdown backoff, charging release, one-time warning/saver notices', RUNTIME, inc, RUNTIME_HEADERS)
     run('front-light output cap: clamps without changing positions, no relight while locked, off path unchanged', LIGHT, inc)
     run('page idle declarations: Home/Files/Settings/picker veto pending work and align to minute/space deadlines', PAGES, inc)
+    run('shelf idle declaration: scans/covers/prefetch/warm-up/key mode/menus/confirmations/OPDS/notes veto; minute-aligned deadline', SHELF, inc)
