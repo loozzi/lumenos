@@ -169,6 +169,8 @@ static app_redraw_t tick(app_ctx_t *ctx) {
     if(read_pico_sd_io_ready()&&s_default_directory)default_directory();
     s_pending=false;scan_page();return APP_REDRAW_PAGE;
 }
+// 目录读取完成后无周期工作，声明空闲。/ No periodic work after the listing finishes, so declare idle.
+static int64_t next_tick(app_ctx_t *ctx) { return s_pending?0:ctx->now_ms+1000; }
 static void render(app_ctx_t *ctx,uint8_t *fb) {
     (void)ctx;ui_clear_page(fb);ui_nav_status(fb);ui_nav_back(fb,36,78);
 #if DPREADER_LOVE_BOOK
@@ -298,5 +300,5 @@ const app_desc_t app_book_picker={
 #if DPREADER_LOVE_BOOK
     .on_before_lock=cancel_delete,
 #endif
-    .render=render,.on_tick=tick,.on_gesture=gesture,.on_key=key,
+    .render=render,.on_tick=tick,.next_tick_ms=next_tick,.on_gesture=gesture,.on_key=key,
 };

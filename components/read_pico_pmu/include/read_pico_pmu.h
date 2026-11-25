@@ -175,6 +175,8 @@ typedef struct {
 esp_err_t read_pico_pmu_init(i2c_master_bus_handle_t bus_handle, const read_pico_pmu_config_t* config);
 esp_err_t read_pico_pmu_deinit(void);
 bool read_pico_pmu_ready(void);
+/// 按键扩展口中断已挂接（按键事件会主动唤醒界面）。/ The key expander IRQ is attached, so key events wake the UI.
+bool read_pico_pmu_key_irq_ready(void);
 const pmu_snapshot_t* read_pico_pmu_get(void);
 /// 锁屏消费过的短按序号，仅作提示；不能据此解锁。/ Locked short-input serial for hints only, never an unlock signal.
 uint32_t read_pico_pmu_lock_key_serial(void);

@@ -18,7 +18,8 @@ host; chưa có số đo pin, độ trễ quang học hoặc nghiệm thu trên 
   mở sách → hiển thị → tác vụ radio. Planner không tự đổi clock hoặc waveform/VCOM;
   từRC22, chính sách CPU riêng sử dụng cửa sổ chờ, xem [CPU_POWER_POLICY.md](CPU_POWER_POLICY.md).
 
-Trần 200 ms là thời gian UI **có thể chờ khi không có input**, không phải
+Từ `1.5.18` trần là 1 giây cho mọi trang đã khai báo `next_tick_ms` (xem §9).
+Trần 200 ms (nay là 1 giây) là thời gian UI **có thể chờ khi không có input**, không phải
 khoảng nghỉ bắt buộc giữa hai lần lật trang. Độ trễ tổng vẫn gồm lấy mẫu,
 chống dội, điều phối task, dựng nội dung và quét màn hình; cần đo trên máy thật.
 
@@ -209,3 +210,28 @@ Trước khi kết luận không tăng độ trễ trên thiết bị, cần so 
 - Đo chênh lệch bộ đếm UI, thời gian radio bật, dòng pin và peak SRAM riêng.
 
 Host tests và build thành công không thay thế nghiệm thu phần cứng.
+
+## 9. Mở rộng từ 1.5.18: trang tĩnh ngoài trình đọc và trần 1 giây
+
+- Trang có `next_tick_ms` khác `NULL` đều được xét. Trình đọc vẫn cần 400 ms yên sau
+  input; các trang khác cần `STATIC_PAGE_QUIET_MS` = 1,5 giây.
+- Trang đã khai báo:
+  - Trang chủ (`home_next_tick_ms`): chỉ ở màn gốc, không có quét thẻ, bìa đang chờ,
+    lượt bìa đầu, thành phần/đồng hồ/widget đang chờ, nhấn, menu pop, làm mới cưỡng bức,
+    đồng hồ động hay ảnh đại diện. Hạn là biên phút kế tiếp hoặc lúc hết thông báo tiện ích.
+  - Tệp (`files_next_tick_ms`): không ở chế độ đổi tên, đã quét xong; ở màn gốc thẻ, hạn
+    theo chu kỳ 15 giây làm mới dung lượng, còn khi dung lượng chưa hợp lệ thì giữ nhịp cũ.
+  - Cài đặt (`settings_next_tick_ms`): chỉ trang gốc, không có sửa màn hình, ảnh đại
+    diện, BOOT, khởi động lại sau cập nhật, đặt lại, cuộn chờ hiển thị hay cập nhật cục bộ.
+  - Màn chọn sách Love Book: khi đã đọc xong danh sách thư mục.
+- Kệ sách (`app_book` ngoài trang đọc) và mọi trang con vẫn trả 0, giữ nhịp 8/40 ms.
+- Trong lượt chờ tĩnh, planner dùng `app_wait_ms_capped(..., APP_WAIT_STATIC_CAP_MS)`.
+  Kiểm tra media, nhóm mạng/lịch đèn và thử font có hạn 1 giây. Phím nguồn dự phòng
+  có hạn 1 giây khi `read_pico_pmu_key_irq_ready()`, nếu không thì giữ 200 ms. Sự kiện
+  phím nguồn vẫn đánh thức UI qua `METALIO_UI_WAKE_KEY`.
+- `app_wait_ms()` giữ trần 200 ms để tương thích với các bộ test cũ.
+
+Kiểm tra host: `tools/battery_power_host_test.py` (khai báo của các trang và trần chờ),
+`tools/reader_wait_loop_host_test.py`, cùng kịch bản trong
+`boards/metalio47/tests/tools/app_loop_host_test.c`: trang tĩnh chờ 500–1000 ms sau
+1,5 giây yên; trang không khai báo hoặc trả 0 giữ nhịp ≤40 ms; chạm trở về 8 ms.

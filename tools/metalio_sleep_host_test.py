@@ -14,6 +14,8 @@ static void crash_report_poll(_Bool allow_sd){assert(!allow_sd);}
 #define APP_LOCK_OFF_AFTER_US ((int64_t)hours*INT64_C(3600000000))
 static unsigned hours=1;
 static unsigned app_settings_sleep_off_hours(void){return hours;}
+static int64_t battery_cap_ms;
+static int64_t battery_guard_lock_off_cap_ms(void){return battery_cap_ms;}
 typedef int app_wake_source_t;
 enum {APP_WAKE_NONE,APP_WAKE_KEY,APP_WAKE_PICKUP,APP_WAKE_TIMEOUT};
 typedef void *sc7a20h_handle_t;
@@ -47,7 +49,7 @@ static int lock_light_sleep_once(void*a,void*t,bool*k,int64_t until){
  clock_us+=step;*k=light_key||(recover_at>=0&&clock_us>=recover_at);return light_fail&&!*k?-1:0;
 }
 static int lock_resume_media_io(unsigned ms){assert(ms==0);return 0;}
-static int app_enter_host_sleep(int m){assert(m==APP_SLEEP_OFF);assert(clock_us>=APP_LOCK_OFF_AFTER_US);deep_calls++;if(deep_success)longjmp(deep_jump,1);return -1;}
+static int app_enter_host_sleep(int m){assert(m==APP_SLEEP_OFF);assert(clock_us>=(battery_cap_ms?battery_cap_ms*1000:APP_LOCK_OFF_AFTER_US));deep_calls++;if(deep_success)longjmp(deep_jump,1);return -1;}
 typedef int esp_err_t;
 static unsigned quiesce_failures;
 static bool book_cover_jobs_quiesce(unsigned ms){assert(ms==2000);if(quiesce_failures){--quiesce_failures;return false;}return true;}
@@ -78,7 +80,7 @@ unit+='\nstatic bool ble_fail;static unsigned ble_checks;static bool wifi_fail;s
 unit+=function('app_light_sleep_wait_timed',root/'main/sleep.c')
 unit+=function('lock_wait_for_unlock',root/'boards/metalio47/src/main/sleep.c')+'\n'
 unit+=r'''
-static void reset(void){ble_fail=wifi_fail=false;ble_checks=wifi_checks=0;hours=1;quiesce_failures=0;hint_window=false;s_lock_hint.pending_at=s_lock_hint.until=0;clock_us=0;recover_at=key_at=plug_at=-1;frontlight_calls=motion_reads=sensor_on=sensor_off=reconnects=scheduler_yields=0;pickup=usb=powered=stale_motion=false;light_calls=deep_calls=cached_marks=0;light_step=0;deep_success=false;cached_error=0;pin=s_lock_frame_cached=s_lock_io_pending=false;light_key=light_fail=s_lock_deep_ready=false;s_lock_sleep_touch=NULL;s_lock_keys_restore_pending=false;}
+static void reset(void){battery_cap_ms=0;ble_fail=wifi_fail=false;ble_checks=wifi_checks=0;hours=1;quiesce_failures=0;hint_window=false;s_lock_hint.pending_at=s_lock_hint.until=0;clock_us=0;recover_at=key_at=plug_at=-1;frontlight_calls=motion_reads=sensor_on=sensor_off=reconnects=scheduler_yields=0;pickup=usb=powered=stale_motion=false;light_calls=deep_calls=cached_marks=0;light_step=0;deep_success=false;cached_error=0;pin=s_lock_frame_cached=s_lock_io_pending=false;light_key=light_fail=s_lock_deep_ready=false;s_lock_sleep_touch=NULL;s_lock_keys_restore_pending=false;}
 static void settled(void){assert(frontlight_calls==(last_wake==APP_WAKE_NONE?1:2));}
 int main(void){
  reset();s_lock_sleep_touch=(void*)1;s_lock_deep_ready=true;quiesce_failures=1;key_at=100000;
@@ -107,6 +109,17 @@ int main(void){
  assert(deep_calls==1&&light_calls>0&&light_calls<=hours*60&&clock_us>=APP_LOCK_OFF_AFTER_US&&clock_us<APP_LOCK_OFF_AFTER_US+2000000&&cached_marks==(c&&!p));
  assert(frontlight_calls==1); // A timer-to-off handoff never restores the lamp or reports an unlock.
  }
+ // Low battery shortens only this lock's handoff: saver caps a 24 h setting at ten minutes, critical hands off within seconds.
+ for(int level=0;level<2;level++){
+ reset();hours=24;battery_cap_ms=level?5000:600000;s_lock_sleep_touch=(void*)1;s_lock_deep_ready=true;light_step=60000000;deep_success=true;
+ if(!setjmp(deep_jump)){app_light_sleep_wait_timed(NULL,0);assert(0);}
+ assert(deep_calls==1&&clock_us>=battery_cap_ms*1000&&clock_us<battery_cap_ms*1000+2000000&&frontlight_calls==1);
+ }
+ // Without a checkpoint the capped handoff still waits for the save, never powering off early.
+ reset();hours=1;battery_cap_ms=5000;s_lock_sleep_touch=(void*)1;light_step=60000000;key_at=200000000;
+ assert(app_light_sleep_wait_timed(NULL,0)==APP_WAKE_KEY&&!deep_calls);settled();
+ // A timed (non-lock) wait ignores the battery cap.
+ reset();battery_cap_ms=5000;assert(app_light_sleep_wait_timed(NULL,1000)==APP_WAKE_TIMEOUT&&!deep_calls);settled();
  // A real wake immediately before the deadline wins over the handoff.
  reset();s_lock_sleep_touch=(void*)1;s_lock_deep_ready=true;light_step=60000000;recover_at=APP_LOCK_OFF_AFTER_US-1000000;
  assert(app_light_sleep_wait_timed(NULL,0)==APP_WAKE_KEY&&!deep_calls);settled();

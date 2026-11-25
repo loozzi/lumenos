@@ -1544,8 +1544,29 @@ static void home_exit(app_ctx_t *ctx){(void)ctx;book_cover_jobs_cancel(s_cover_g
 #include "firmware/full/ui/home.inc"
 #endif
 
+// 主页根视图在扫描、封面、头像、组件与按压反馈都结束后声明空闲；截止时间取下一分钟边界或提示过期。
+// The Home root declares idle after scans, covers, avatar, components and press feedback finish; the deadline is the next minute or notice expiry.
+static int64_t home_next_tick_ms(app_ctx_t *ctx) {
+    if (s_view != HOME_ROOT || s_scan_pending || s_cover_waiting || s_cover_next == 0 ||
+        s_component_pending || s_clock_pending || s_press_pending || s_pop_menu_pending ||
+        s_time_pending || s_widget_pending || s_home_force_full_once || visible_motion_clock()) return 0;
+#if !DPREADER_LOVE_BOOK
+    if (s_avatar_pending) return 0;
+#endif
+    int64_t due = ctx->now_ms + 1000;
+    struct timeval tv;
+    if (gettimeofday(&tv, NULL) == 0 && tv.tv_sec >= 1704067200) {
+        const int64_t into = (int64_t)(tv.tv_sec % 60) * 1000 + tv.tv_usec / 1000;
+        const int64_t minute = ctx->now_ms + (60000 - into) + 5;
+        if (minute < due) due = minute;
+    }
+    if (s_utility_notice[0] && s_utility_notice_until && s_utility_notice_until < due)
+        due = s_utility_notice_until > ctx->now_ms ? s_utility_notice_until : ctx->now_ms;
+    return due;
+}
+
 const app_desc_t app_dashboard={
     .title="Trang chủ Home",.detail="Đọc tiếp, Tiện Ích & Giá sách",.enter_full=false,.owns_keys=true,.menu_handle_enabled=no_menu_handle,
     .main_page_visible=main_page_visible,.navigation_enabled=home_navigation_enabled,.persistent_navigation=true,.on_enter=on_enter,.on_exit=home_exit,.on_media_lost=on_media_lost,.on_media_ready=on_media_ready,
-    .render=render,.present=present,.on_tick=on_tick,.on_gesture=on_gesture,.on_key=on_key,.area_hint=area_hint,
+    .render=render,.present=present,.on_tick=on_tick,.next_tick_ms=home_next_tick_ms,.on_gesture=on_gesture,.on_key=on_key,.area_hint=area_hint,
 };

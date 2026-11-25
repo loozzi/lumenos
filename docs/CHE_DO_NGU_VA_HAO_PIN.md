@@ -4,7 +4,7 @@ Phạm vi: Metalio E-ink 4 Plus / ESP32-S31, mã nguồn firmware hiện tại. 
 
 | Trạng thái | Hành vi thực tế | Kiểu hao pin dự kiến |
 | --- | --- | --- |
-| Đang đọc / Home, chưa khóa | CPU và các tài nguyên giao diện vẫn hoạt động; đèn, Wi-Fi, BLE tùy cài đặt. Từ RC22 bật PM để cho phép CPU 160 MHz trong lượt chờ đọc tĩnh đủ điều kiện, giữ 320 MHz khi hoạt động; không bật tự ngủ nhẹ. | Vẫn tiêu thụ pin khi màn hình đứng yên. Đèn và phiên mạng làm tăng tiêu thụ; hình không đổi không đồng nghĩa CPU đã ngủ. |
+| Đang đọc / Home, chưa khóa | CPU và các tài nguyên giao diện vẫn hoạt động; đèn, Wi-Fi, BLE tùy cài đặt. Từ RC22 bật PM để cho phép CPU hạ xung (hiện 80 MHz) trong lượt chờ tĩnh đủ điều kiện, giữ 320 MHz khi hoạt động; không bật tự ngủ nhẹ. | Vẫn tiêu thụ pin khi màn hình đứng yên. Đèn và phiên mạng làm tăng tiêu thụ; hình không đổi không đồng nghĩa CPU đã ngủ. |
 | Khóa / ngủ nhẹ | Tắt đèn, ngừng radio, tạm dừng file/font, ngừng LCD, cho cảm ứng ngủ, hạ hai rail qua IO expander rồi gọi light sleep. Giữ RAM và ngữ cảnh để trở lại trang đang đọc. Có lát timer tối đa 60 giây để kiểm tra USB/đường đánh thức. | Thấp hơn trạng thái hoạt động, nhưng RAM và mạch đánh thức vẫn cần điện; timer/đánh thức giả có thể tạo các đợt tăng dòng. |
 | Ngủ nhẹ n giờ rồi tắt nguồn | Chọn 1–24 giờ, mặc định 1 giờ. Đây là lựa chọn mặc định S31. Khóa thường cũng dùng quy trình theo số giờ đã chọn. Hết thời gian: lưu/đồng bộ cần thiết rồi thử tắt nguồn phần cứng. Nếu tắt nguồn chưa thành công, giữ khóa/ngủ nhẹ và thử lại; không tự công bố đã tắt. | n giờ đầu là hao pin ngủ nhẹ; sau khi tắt nguồn thành công là mức chờ thấp hơn. Thời gian giữ RAM tùy số giờ đã chọn. |
 | Ngắt nguồn hoàn toàn | Lựa chọn trong menu Tắt nguồn; lưu tiến độ/checkpoint, đồng bộ RTC, đóng I/O, tắt đèn/nguồn màn rồi gọi điều khiển nguồn S31. Bật lại bằng nút nguồn và khởi động lại. | Dự kiến thấp nhất trong các trạng thái nghỉ: mạch nguồn/RTC và tự xả pin vẫn tồn tại, không được coi là 0 mA tuyệt đối. |
@@ -23,3 +23,42 @@ Chưa có cơ sở để công bố mA, % pin/ngày hoặc số ngày chờ. Đ�
 Mã nguồn đối chiếu: [ngủ/khóa S31](../boards/metalio47/src/main/sleep.c), [điều khiển rail và nguồn](../components/metalio_hw/metalio_hw.c), [điều kiện USB](../components/metalio_hw/metalio_usb.c), [giao diện chọn chế độ](../main/apps/app_device_settings.c), [khóa tự động](../main/app/app_loop.c).
 
 Chính sách và giới hạn thử CPU xem [CPU_POWER_POLICY.md](CPU_POWER_POLICY.md).
+
+## Bảo vệ pin yếu (từ 1.5.18)
+
+Mã: [battery_guard_logic.h](../firmware/shared/main/battery_guard_logic.h),
+[battery_guard.c](../firmware/shared/main/battery_guard.c). Chỉ chạy trên S31 và chỉ dựa
+vào SOC của BQ27220 (`pmu_battery_percent`). Đang sạc thì bỏ mọi hạn chế ngay.
+
+| Mức | Điều kiện | Hành vi |
+| --- | --- | --- |
+| Cảnh báo | ≤15 % (rời mức khi ≥17 %) | % trên thanh trạng thái và cạnh vạch pin chân trang đổi sang nền đen |
+| Tiết kiệm | ≤8 % (rời mức khi ≥10 %) | Đèn tối đa 40 % (không đổi giá trị đã lưu), tự khóa tối đa 1 phút kể cả khi tắt tự khóa, khóa máy tắt nguồn sau 10 phút |
+| Nguy hiểm | ≤3 % liên tục 20 giây | Lưu tiến độ (`on_before_lock` và checkpoint), vẽ màn "Pin đã cạn" bằng GC, rồi `app_enter_host_sleep(APP_SLEEP_OFF)`. Khóa máy ở mức này tắt nguồn sau khoảng 5 giây nếu checkpoint đã sẵn |
+
+- Không tắt máy khi có VBUS (`metalio_usb_blocks_sleep()`), khi đang cập nhật/đồng bộ
+  (`pico_online_busy`), khi đang ở chế độ tải xuống/USB storage, khi đang phục hồi thẻ
+  hay khi đang chạm. Tắt nguồn thất bại thì thử lại sau 60 giây.
+- Dữ liệu SOC không hợp lệ không bao giờ đẩy lên mức nguy hiểm, và hủy bước xác nhận.
+- Mức chỉ được xét khi máy đang thức. Trong một lần khóa dài, mức được tính một lần lúc
+  khóa; giới hạn mặc định "tắt nguồn sau n giờ" vẫn là lớp bảo vệ chính.
+- Khi đang khóa (ngủ nhẹ), bấm nút nguồn để đánh thức. Sau khi máy đã tắt nguồn (hết
+  n giờ, chọn Ngắt nguồn hoàn toàn hoặc tắt vì cạn pin) thì **nhấn giữ** nút nguồn để
+  bật, đúng như dòng chữ trên màn tắt máy.
+- OTA tải xuống và cài từ thẻ nhớ bị từ chối khi SOC <30 % mà không cắm sạc.
+- Ước tính thời gian đọc còn lại chỉ tính thời gian máy thức: các khoảng cách giữa hai
+  vòng UI dài hơn 2 giây (ngủ khóa, thao tác chặn) không được tính. Cần SOC giảm ít
+  nhất 3 % trong ít nhất 20 phút thức; không lưu qua khởi động lại; SOC tăng thì đặt lại mốc.
+
+### Hạng mục đã xem xét nhưng không thay đổi
+
+- Lát hẹn giờ 60 giây trong lúc ngủ khóa: mỗi lần thức bảo trì chỉ vài chục ms, chiếm
+  dưới 0,1 % thời gian. Kéo dài lát này thì gần như không tiết kiệm được gì mà lại đụng
+  tới lịch sử reset do glitch nguồn của bản 1.2.3, nên giữ nguyên.
+- Đọc trạng thái sạc mỗi 2 giây: chỉ là vài lượt I²C ngắn, ghép vào vòng UI vốn đã thức,
+  nên giữ nguyên để icon sạc hiện ngay khi cắm.
+- Tham số kết nối BLE: trước đây đặt khi kết nối thì bị controller từ chối (HCI 0x12).
+  Slave latency chỉ giúp thiết bị ngoại vi tiết kiệm, không giúp máy đọc vốn là central.
+  Tăng interval thì đổi lấy độ trễ phím, nên giữ mặc định của stack.
+- Tự ngủ nhẹ / tickless idle: chưa bật. Việc giữ LCD/DMA, PSRAM 200 MHz và đèn LEDC
+  qua light sleep cần đo trên thiết bị; mô phỏng host không chứng minh được an toàn điện.

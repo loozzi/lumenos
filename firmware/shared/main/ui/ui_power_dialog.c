@@ -227,3 +227,13 @@ void ui_power_final_draw(uint8_t *fb, bool restarting) {
     ui_text(fb, cx, 548, 48, restarting ? "Đang khởi động lại" : "LumenOS đã tắt máy", EPD_DRAW_ALIGN_CENTER, false);
     if (!restarting) ui_text(fb, cx, 624, 26, "Nhấn giữ nút nguồn để bật máy", EPD_DRAW_ALIGN_CENTER, false);
 }
+
+// 电量耗尽关机的定稿画面：断电后墨水屏保留这张提示。/ Final frame for an exhausted battery; the e-ink panel keeps it after power is cut.
+void ui_power_battery_empty_draw(uint8_t *fb) {
+    ui_clear_page(fb);
+    const int cx = UI_LOCK_WIDTH / 2;
+    ui_draw_icon(fb, cx, 486, 72, UI_ICON_POWER, UI_GRAY_BLACK);
+    ui_text(fb, cx, 548, 48, "Pin đã cạn", EPD_DRAW_ALIGN_CENTER, false);
+    ui_text(fb, cx, 624, 26, "LumenOS đã lưu tiến độ đọc và tắt máy", EPD_DRAW_ALIGN_CENTER, false);
+    ui_text(fb, cx, 672, 26, "Hãy sạc pin, rồi nhấn giữ nút nguồn để bật máy", EPD_DRAW_ALIGN_CENTER, false);
+}

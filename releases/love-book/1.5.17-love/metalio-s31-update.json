@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "love-book",
+  "version": "1.5.17-love",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/love-book/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.16-love",
+  "notes": "LumenOS 1.5.17 Love Book: Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng (tia sét khi sạc), bật/tắt cùng \"Giờ & pin ở chân trang\". Giữ vuốt ở Trang chủ của 1.5.16.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "ecea0e924a62b688c190275eadfe5df9e6353db8ed527fe8be1433508494f939",
+      "md5": "d616ede99b83a02be765fd23d037ad9e"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "0b34ae8e82ad48bcefc99077ed1d037972e833475a6f32488da7f53fcd3bc6b8",
+      "md5": "a8082a515adc5c48062d43dd7ab5e55d"
+    }
+  },
+  "clean_image": {
+    "sha256": "f34ca4fc0a8aca918b145da0be97d837c4ebb0d79db0d7aefcdf871aa6e5e763",
+    "md5": "4b1449fc6ff0e5c924c1d5bff98e3406"
+  },
+  "size": 4912704,
+  "sha256": "02707af9a46d0df7b03bdc5596c56e25f9b264f632f82f55c057c5bc1baf95c1",
+  "md5": "090b1c77acf560bdb33431b322c1c763"
+}

@@ -39,6 +39,23 @@ void ui_power_dialog_draw(uint8_t* fb,const ui_power_dialog_t *dialog) {(void)fb
 void ui_power_dialog_draw_controls(uint8_t* fb,const ui_power_dialog_t *dialog,EpdRect dirty) {(void)fb;(void)dialog;(void)dirty;++power_controls_draws;}
 void ui_power_dialog_end(void){}
 void ui_power_final_draw(uint8_t* fb,bool restarting) {(void)fb;(void)restarting;++power_final_draws;}
+#include "battery_guard.h"
+// 低电量：可控的关机请求与省电自动锁上限。/ Low battery: controllable shutdown request and saver auto-lock cap.
+static int battery_shutdown_step=-1,battery_empty_draws,battery_defers;
+static unsigned battery_lock_cap;
+static bool usb_blocks,key_irq;
+static int step;
+void battery_guard_poll(int64_t now,int64_t awake){(void)now;(void)awake;}
+battery_level_t battery_guard_level(void){return BATTERY_LEVEL_NORMAL;}
+bool battery_guard_shutdown_due(int64_t now){(void)now;return battery_shutdown_step>=0&&step>=battery_shutdown_step;}
+void battery_guard_shutdown_deferred(int64_t now){(void)now;++battery_defers;battery_shutdown_step=-1;}
+unsigned battery_guard_auto_lock_cap(void){return battery_lock_cap;}
+int battery_guard_remaining_minutes(void){return -1;}
+bool battery_guard_update_ok(void){return true;}
+int64_t battery_guard_lock_off_cap_ms(void){return 0;}
+bool metalio_usb_blocks_sleep(void){return usb_blocks;}
+bool read_pico_pmu_key_irq_ready(void){return key_irq;}
+void ui_power_battery_empty_draw(uint8_t* fb){(void)fb;++battery_empty_draws;}
 
 static jmp_buf done;
 static uint8_t frame[128],panel_marker;
@@ -47,7 +64,7 @@ static unsigned clean_action_fulls;
 typedef struct { int x, y, count, error; } sample_t;
 static sample_t samples[32];
 static int release_position_step=-1;
-static int sample_count, step, ticks, enters, exits, touch_calls, keys[3], events[16];
+static int sample_count, ticks, enters, exits, touch_calls, keys[3], events[16];
 static int menus, highlights, restores, fulls, mode, tick_consumed[32];
 static int long_keys;
 static uint8_t idle_minutes;
@@ -251,7 +268,8 @@ int cst836u_read(void* h, cst836u_touch_t* t) {
 int cst836u_get_info(void* h,cst836u_info_t* i) {(void)h;(void)i;return 0;}
 const char* esp_err_to_name(int e) {(void)e;return "test";}
 int64_t esp_timer_get_time(void) {return time_offset+(int64_t)(step+1)*time_step;}
-void vTaskDelay(int ms) {(void)ms;if (++step>=sample_count) longjmp(done,1);}
+static int delays[32];
+void vTaskDelay(int ms) {if(step>=0&&step<32)delays[step]=ms;if (++step>=sample_count) longjmp(done,1);}
 void cst836u_wait_sample(void *h,unsigned timeout_ms){(void)h;vTaskDelay((int)timeout_ms);}
 
 bool continuous_du_init(void) {return true;}
@@ -387,6 +405,8 @@ static void reset(void) {
     full_tick=lock_due=font_due=shake_activity=false;time_offset=0;time_step=10000;du_areas=gl_areas=0;
     memset(samples,0,sizeof(samples));memset(keys,0,sizeof(keys));memset(events,0,sizeof(events));memset(tick_consumed,0,sizeof(tick_consumed));
     release_position_step=-1;
+    memset(delays,0,sizeof(delays));
+    battery_shutdown_step=-1;battery_empty_draws=battery_defers=0;battery_lock_cap=0;usb_blocks=key_irq=false;
     sample_count=step=ticks=enters=exits=touch_calls=menus=highlights=restores=fulls=mode=0;
     request_on_touch=request_on_tick=menu_on_tick=menu_on_touch=cancel_clobber=false;response=APP_REDRAW_NONE;
     first=(app_desc_t){.title="first",.render=render,.on_enter=enter,.on_exit=leave,.on_touch=touch,.on_tick=tick,.on_key=key};
@@ -403,6 +423,8 @@ static void home_case(void) {
     first.on_enter=home_enter;first.render=home_render;first.on_tick=NULL;first.on_touch=NULL;
 }
 static bool product_menu_disabled(app_ctx_t *ctx) {(void)ctx;return false;}
+static int64_t far_tick(app_ctx_t*c){return c->now_ms+5000;}
+static int64_t zero_tick(app_ctx_t*c){(void)c;return 0;}
 static void before_lock(app_ctx_t *ctx) {(void)ctx;if(check_clean_action)assert(frame[0]==0x11&&panel_marker==0x11);++before_locks;}
 static bool main_first(app_ctx_t* ctx) {(void)ctx;return main_source_visible;}
 static bool main_second(app_ctx_t* ctx) {(void)ctx;return main_target_visible;}
@@ -617,6 +639,45 @@ int main(void) {
     add(0,0,0,0);add(0,0,0,0);run();assert(idle_locks==1&&wake_clean_requests==1); /* Activity is consumed once, not latched. */
     reset();idle_minutes=0;time_step=600000000;
     add(0,0,0,0);add(0,0,0,0);run();assert(!idle_locks);
+    // 低电量省电：本次运行把关闭的自动锁收为1分钟。/ Saver caps a disabled auto-lock to one minute for this run.
+    reset();idle_minutes=0;battery_lock_cap=1;time_step=60000000;first.on_before_lock=before_lock;
+    add(0,0,0,0);add(0,0,0,0);run();assert(idle_locks==1&&before_locks==1);
+    reset();idle_minutes=10;battery_lock_cap=1;time_step=60000000;
+    add(0,0,0,0);add(0,0,0,0);run();assert(idle_locks==1);
+    // 危险电量：先保存，再画耗尽画面，并走既有关机。/ Critical: save, draw the empty frame, then use the existing power-off.
+    reset();battery_shutdown_step=1;first.on_before_lock=before_lock;
+    add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);run();
+    assert(shutdowns==1&&before_locks==1&&battery_empty_draws==1&&!power_final_draws&&!idle_locks);
+    // 外接电源时从不关机，只退避。/ Never power off on external power; defer instead.
+    reset();battery_shutdown_step=1;usb_blocks=true;
+    add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);run();assert(!shutdowns&&battery_defers==1&&!battery_empty_draws);
+    // 联网更新或下载会话进行中不打断。/ An online update or download session is never interrupted.
+    reset();battery_shutdown_step=1;online_busy=true;
+    add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);run();assert(!shutdowns&&!battery_empty_draws);
+    reset();battery_shutdown_step=1;download_session=true;
+    add(0,0,0,0);add(0,0,0,0);add(0,0,0,0);run();assert(!shutdowns&&!battery_empty_draws);
+    // 静态页声明空闲且安静1.5秒后，单次等待放宽到1秒；未声明或返回0的页面保持原节拍。
+    // A static page that declares idle waits up to 1 s after 1.5 s of quiet; pages without a declaration keep the legacy tick.
+    reset();first.next_tick_ms=far_tick;time_step=500000;
+    for(int i=0;i<8;i++){add(0,0,0,0);}
+    run();
+    for(int i=0;i<8;i++)printf("wait[%d]=%d\n",i,delays[i]);
+    assert(delays[0]<=40&&delays[1]<=40&&delays[2]<=40);
+    assert(delays[5]>40&&delays[5]<=1000&&delays[6]>40&&delays[6]<=1000);
+    reset();time_step=500000;for(int i=0;i<8;i++){add(0,0,0,0);}
+    run();
+    for(int i=0;i<8;i++)assert(delays[i]<=40);
+    reset();first.next_tick_ms=zero_tick;time_step=500000;for(int i=0;i<8;i++){add(0,0,0,0);}
+    run();
+    for(int i=0;i<8;i++)assert(delays[i]<=40);
+    // 触摸立即回到8ms节拍。/ Touch returns to the 8 ms tick immediately.
+    reset();first.next_tick_ms=far_tick;time_step=500000;
+    for(int i=0;i<6;i++){add(0,0,0,0);}
+    add(100,100,1,0);add(100,100,1,0);run();
+    assert(delays[6]<=8&&delays[7]<=8);
+    // 触摸进行中等待抬起。/ An active touch waits for release.
+    reset();battery_shutdown_step=0;
+    add(100,100,1,0);add(100,100,1,0);run();assert(!shutdowns&&!battery_empty_draws);
     reset();idle_minutes=1;time_step=600000000;online_busy=true;
     add(0,0,0,0);add(0,0,0,0);run();assert(!idle_locks);
     reset();idle_minutes=1;time_step=600000000;download_session=true;

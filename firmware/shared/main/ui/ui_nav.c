@@ -16,6 +16,7 @@
  * User revision: fit status signatures to widths safe for the system and built-in UI faces; reading reuses a small metrics table without reloading the system font.
  */
 #include "ui_nav.h"
+#include "battery_guard.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -454,7 +455,14 @@ static void draw_status(uint8_t *fb, bool compact) {
         ui_draw_icon(fb, right + 627, status_center_y, 22, UI_ICON_ZAP, UI_GRAY_WHITE);
 
     }
-    ui_text_fixed_vc(fb, right + 595, status_center_y, UI_STATUS_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, false);
+    // 低电量未充电时百分比改为黑底白字，作为不打断操作的提示。
+    // Below the warning level and not charging, invert the percentage as a non-blocking cue.
+    const bool battery_low = !charging && gauge_percent >= 0 && battery_guard_level() >= BATTERY_LEVEL_WARN;
+    if (battery_low) {
+        const int pill_w = status_number_width(percent) + 12;
+        ui_fill_round_rect(fb, (EpdRect){right + 601 - pill_w, status_center_y - 13, pill_w, 26}, 8, UI_GRAY_BLACK);
+    }
+    ui_text_fixed_vc(fb, right + 595, status_center_y, UI_STATUS_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, battery_low);
     ui_status_mark_visible(fb);
     s_power_signature=(gauge_percent+1)*8+(charging?4:0)+(wifi_visible?2:0)+(bluetooth_visible?1:0);
 }
@@ -476,15 +484,30 @@ void ui_nav_clock_text(char *out, size_t capacity) { if (out && capacity) clock_
 #define FOOTER_BATTERY_W 32
 #define FOOTER_BATTERY_H 18
 #define FOOTER_NUB_W 3
+// 低电量百分比字号，与小电池等高。/ Low-battery percentage size, matching the small battery height.
+#define FOOTER_PERCENT_PX 18
 int ui_nav_battery_signature(void) {
     const pmu_snapshot_t *pmu = read_pico_pmu_get();
     return (pmu_battery_percent(pmu) + 1) * 2 + (pmu_battery_charging(pmu) ? 1 : 0);
 }
 int ui_nav_footer_battery_draw(uint8_t *fb, int right, int cy) {
     const int x = right - FOOTER_NUB_W - 1 - FOOTER_BATTERY_W;
-    if (!fb) return x;
     const pmu_snapshot_t *pmu = read_pico_pmu_get();
     const int gauge = pmu_battery_percent(pmu);
+    // 用户2026-11-25：低电量未充电时在小电池左侧补一个黑底百分比，提醒尽快充电。
+    // User 2026-11-25: below the warning level and not charging, add an inverted percentage left of the battery.
+    int left = x;
+    if (gauge >= 0 && !pmu_battery_charging(pmu) && battery_guard_level() >= BATTERY_LEVEL_WARN) {
+        char percent[8];
+        snprintf(percent, sizeof(percent), "%d%%", gauge);
+        const int pill_w = ui_text_fixed_width_px(FOOTER_PERCENT_PX, percent) + 12;
+        left = x - 6 - pill_w;
+        if (fb) {
+            ui_fill_round_rect(fb, (EpdRect){left, cy - FOOTER_BATTERY_H / 2 - 2, pill_w, FOOTER_BATTERY_H + 4}, 6, UI_GRAY_BLACK);
+            ui_text_fixed_vc(fb, x - 12, cy, FOOTER_PERCENT_PX, percent, EPD_DRAW_ALIGN_RIGHT, true);
+        }
+    }
+    if (!fb) return left;
     const EpdRect body = {x, cy - FOOTER_BATTERY_H / 2, FOOTER_BATTERY_W, FOOTER_BATTERY_H};
     ui_draw_round_rect(fb, body, 4, UI_GRAY_BLACK);
     ui_fill_round_rect(fb, (EpdRect){x + FOOTER_BATTERY_W + 1, cy - 4, FOOTER_NUB_W, 8}, 1, UI_GRAY_BLACK);
@@ -497,7 +520,7 @@ int ui_nav_footer_battery_draw(uint8_t *fb, int right, int cy) {
         if (width > 0)
             ui_fill_round_rect(fb, (EpdRect){x + 4, body.y + 4, width, FOOTER_BATTERY_H - 8}, 2, UI_GRAY_BLACK);
     }
-    return x;
+    return left;
 }
 
 int ui_nav_hit(uint16_t x, uint16_t y) {

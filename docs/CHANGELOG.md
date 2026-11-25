@@ -1,3 +1,13 @@
+## LumenOS 1.5.18 / 1.5.18-love · Phát hành chính thức · 2026-11-25
+
+- Pin yếu: từ 15% trở xuống (không sạc), số % trên thanh trạng thái và cạnh vạch pin ở chân trang trang đọc chuyển sang nền đen. Ngưỡng có độ trễ 2% để không nhấp nháy.
+- Từ 8% trở xuống: đèn nền giới hạn 40%, tự khóa sau 1 phút, và khóa máy sẽ tắt nguồn sau 10 phút. Chỉ áp dụng trong phiên; cài đặt đã lưu không đổi, cắm sạc là bỏ ngay.
+- Từ 3% trở xuống, kéo dài 20 giây: lưu tiến độ, hiện màn "Pin đã cạn", rồi tắt nguồn theo đường tắt máy sẵn có. Không tắt khi đang cắm sạc, đang cập nhật, đang tải xuống hay đang chạm. Nếu tắt nguồn thất bại thì thử lại sau 60 giây.
+- Cập nhật OTA và cập nhật từ thẻ nhớ bị từ chối khi pin dưới 30% mà không cắm sạc; vẫn kiểm tra được bản mới.
+- Trang thông tin thiết bị hiện "Còn khoảng … giờ/phút đọc", tính từ mức hao pin đo được trong thời gian máy thức (cần ít nhất 20 phút và giảm 3%).
+- Chờ khi rảnh: Trang chủ (gốc), Tệp, Cài đặt (gốc) và màn chọn sách của Love Book khai báo `next_tick_ms` khi không còn việc chờ, nên vòng UI có thể chờ lâu và cho CPU hạ xung như ở trang đọc, sau 1,5 giây yên. Khi rảnh, mỗi lượt chờ dài tối đa 1 giây (trước là 200 ms). Kiểm tra thẻ nhớ, mạng/lịch đèn và font chạy mỗi 1 giây; phím nguồn dự phòng mỗi 1 giây khi đã có ngắt. Chạm, phím và Bluetooth vẫn đánh thức ngay. Kệ sách và các trang con giữ nhịp cũ.
+- Chưa đo dòng điện trên thiết bị, nên không công bố mức tiết kiệm pin cụ thể.
+
 ## LumenOS 1.5.17 / 1.5.17-love · Phát hành chính thức · 2026-11-22
 
 - Chân trang trang đọc thêm vạch pin nhỏ ở cuối hàng, không ghi số %; khi sạc hiện tia sét. Bật/tắt cùng giờ bằng công tắc **Giờ & pin ở chân trang** (đổi tên từ "Giờ ở chân trang").

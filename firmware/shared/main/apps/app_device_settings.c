@@ -51,6 +51,7 @@
 #include "app_registry.h"
 #include "app_transfer_mode.h"
 #include "settings.h"
+#include "battery_guard.h"
 #include "factory_reset.h"
 #include "book_cover_jobs.h"
 #if DPREADER_BOARD_METALIO47
@@ -2238,11 +2239,16 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
         ui_text_caption(fb,(EpdRect){56,350,572,54},20,heap_line,EPD_DRAW_ALIGN_LEFT,false);
         const pmu_snapshot_t *pmu = read_pico_pmu_get();
-        char bat_line[80];
+        char bat_line[112];
         if (pmu) {
             int pct = pmu_battery_percent(pmu);
             bool chg = pmu_battery_charging(pmu);
-            snprintf(bat_line, sizeof(bat_line), "Pin: %d%% (%u mV) %s", pct >= 0 ? pct : 0, (unsigned)pmu->battery_mv, chg ? "· Đang sạc" : "");
+            // 估算只在有足够放电样本且未充电时显示。/ Show the estimate only with enough discharge samples and no charging.
+            int remaining = battery_guard_remaining_minutes();
+            char estimate[40] = "";
+            if (remaining >= 60) snprintf(estimate, sizeof(estimate), " · Còn khoảng %d giờ đọc", (remaining + 30) / 60);
+            else if (remaining >= 0) snprintf(estimate, sizeof(estimate), " · Còn khoảng %d phút đọc", remaining);
+            snprintf(bat_line, sizeof(bat_line), "Pin: %d%% (%u mV) %s%s", pct >= 0 ? pct : 0, (unsigned)pmu->battery_mv, chg ? "· Đang sạc" : "", estimate);
         } else {
             snprintf(bat_line, sizeof(bat_line), "Pin: Đang đo...");
         }
@@ -4249,6 +4255,17 @@ static bool settings_present(app_ctx_t *ctx, app_redraw_t redraw) {
     return false;
 }
 
+// 只有设置首页且没有待办（屏幕修复、头像、BOOT、升级重启、重置）时才声明空闲；子页沿用原节拍。
+// Declare idle only on the settings root with no pending repair/avatar/BOOT/restart/reset work; subpages keep the legacy tick.
+static int64_t settings_next_tick_ms(app_ctx_t *ctx) {
+    if (s_page != SETTINGS_MAIN || s_panel_repair_pending || s_boot_pending || s_upgrade_restart ||
+        s_reset_pending || s_scroll_present_pending || s_local_pending) return 0;
+#if !DPREADER_LOVE_BOOK
+    if (s_avatar_pending) return 0;
+#endif
+    return ctx->now_ms + 1000;
+}
+
 const app_desc_t app_device_settings = {
 #if DPREADER_BOARD_METALIO47
     .binary_ui = true,
@@ -4260,6 +4277,6 @@ const app_desc_t app_device_settings = {
     .main_page_visible = main_page_visible, .edge_back_enabled = settings_edge_back,
     .back_swipe_area=settings_back_swipe_area,
     .persistent_navigation=true,.navigation_enabled=settings_navigation_enabled,
-    .on_enter = on_enter, .on_exit = settings_exit, .on_before_lock = on_before_lock, .render = render, .on_tick = on_tick, .on_gesture = on_gesture, .on_key = on_key,
+    .on_enter = on_enter, .on_exit = settings_exit, .on_before_lock = on_before_lock, .render = render, .on_tick = on_tick, .next_tick_ms = settings_next_tick_ms, .on_gesture = on_gesture, .on_key = on_key,
     .present = settings_present, .on_media_lost=settings_media_lost, .on_media_ready=settings_media_ready,
 };

@@ -51,6 +51,7 @@ dpreader_board_sources(dpreader_selected_sources "${CMAKE_CURRENT_LIST_DIR}" "ap
         "ota_release.c"
         "display.c"
         "anti_fade.c"
+        "battery_guard.c"
         "display_main_waveform.c"
         "display_reader_waveform.c"
         "metalio_text_ripple.c"

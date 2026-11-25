@@ -1,0 +1,1 @@
+../firmware/shared/main/battery_guard.h

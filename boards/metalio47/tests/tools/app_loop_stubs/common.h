@@ -61,6 +61,8 @@ bool display_system_navigation_set(bool);
 int epd_rotated_display_height(void);
 void rails_idle_check(int64_t);
 bool read_pico_pmu_ready(void);
+bool read_pico_pmu_key_irq_ready(void);
+bool metalio_usb_blocks_sleep(void);
 esp_err_t read_pico_pmu_poll(void);
 bool ui_nav_refresh_power(uint8_t*);
 EpdRect ui_nav_status_area(void);

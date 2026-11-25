@@ -53,3 +53,5 @@ void ui_power_dialog_end(void);
 void ui_power_dialog_draw(uint8_t *fb, const ui_power_dialog_t *dialog);
 EpdRect ui_power_dialog_rect(void);
 void ui_power_final_draw(uint8_t *fb, bool restarting);
+/// 电量耗尽关机画面。/ Power-off frame for an exhausted battery.
+void ui_power_battery_empty_draw(uint8_t *fb);

@@ -365,6 +365,8 @@ esp_err_t metalio_tps_on(int mv) {
     ESP_LOGI(TAG,"TPS ready REVID=0x%02x saved VCOM=%dmV register readback=%dmV",revision,mv,readback);
     return ESP_OK;
 }
+// 低电量省电时的亮度上限（百分比），100为不限制。/ Low-battery brightness cap in percent; 100 means none.
+static unsigned s_brightness_cap=100;
 void metalio_frontlight(unsigned brightness,unsigned warmth) {
     if (!fl_ready) return;
     if (brightness == 0) {
@@ -374,6 +376,7 @@ void metalio_frontlight(unsigned brightness,unsigned warmth) {
         return;
     }
     if (brightness>100) brightness=100;
+    if (brightness>s_brightness_cap) brightness=s_brightness_cap;
     if (warmth>100) warmth=100;
     // 参考 76 版限制总功率到半幅。/ Keep the reference 76 half-scale power limit.
     unsigned total=brightness*1023/200;
@@ -537,6 +540,15 @@ void metalio_frontlight_schedule_poll(void) {
     frontlight_schedule_update();
     if(before!=brightness_position || warmth!=warmth_position || enabled!=light_enabled)
         frontlight_apply_position(light_enabled?brightness_position:0,warmth_position);
+}
+// 只改输出上限，不改用户保存的亮度；灯亮时立即按新上限重放当前位置。
+// Change only the output cap, never the saved brightness; replay the current position when lit.
+void metalio_frontlight_set_cap(unsigned percent) {
+    if (percent>100) percent=100;
+    if (!percent) percent=1;
+    if (percent==s_brightness_cap) return;
+    s_brightness_cap=percent;
+    if (fl_ready && !light_suspended) frontlight_apply_position(light_enabled?brightness_position:0,warmth_position);
 }
 void metalio_frontlight_restore(void) {
     light_suspended=false;

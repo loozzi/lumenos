@@ -324,6 +324,7 @@ esp_err_t read_pico_pmu_deinit(void) {
     if(key_task) {vTaskDelete(key_task);key_task=NULL;} ready=false; return ESP_OK;
 }
 bool read_pico_pmu_ready(void) { return ready; }
+bool read_pico_pmu_key_irq_ready(void) { return ready && s_key_irq; }
 const pmu_snapshot_t *read_pico_pmu_get(void) { return &state; }
 esp_err_t read_pico_pmu_poll(void) { if (!ready) return ESP_ERR_INVALID_STATE; battery(); return ESP_OK; }
 esp_err_t read_pico_pmu_refresh(void) { esp_err_t e=read_pico_pmu_poll(); (void)rtc_read(); return e; }

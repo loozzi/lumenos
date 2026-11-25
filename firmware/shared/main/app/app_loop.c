@@ -93,6 +93,7 @@
 #include "read_pico_transfer.h"
 #include "read_pico_sd.h"
 #include "settings.h"
+#include "battery_guard.h"
 #include "sleep.h"
 #include "time_service.h"
 #include "ui_avatar.h"
@@ -127,6 +128,10 @@
 // Retry the saved SD font shortly after a card appears or mounts.
 #define FONT_RETRY_INTERVAL_MS 750
 #define MEDIA_POLL_INTERVAL_MS 500
+// 静态等待中周期服务的最长间隔与非阅读页进入长等待前的安静时间。
+// Longest periodic-service interval during static waits, and the quiet time before non-reader pages wait long.
+#define STATIC_SERVICE_POLL_MS 1000
+#define STATIC_PAGE_QUIET_MS 1500
 
 static int64_t s_lock_ignore_until_ms;
 extern const app_desc_t app_transfer;
@@ -1208,6 +1213,26 @@ static void run_power_action(app_ctx_t *ctx, const app_desc_t *current, bool res
     // 关机交接失败时回到可操作原页；不关闭书籍后再重新自动开书。/ A failed shutdown returns to the operable current page without closing/reopening the book.
     app_present(ctx, current, APP_REDRAW_PAGE);
 }
+#if DPREADER_BOARD_METALIO47
+// 电量耗尽：先保存进度，再定稿提示充电的静态画面，然后走既有硬件关机；失败则退避重试。
+// Battery exhausted: save progress, settle a static charge prompt, then use the existing hardware power-off; back off on failure.
+static void run_low_battery_power_off(app_ctx_t *ctx, const app_desc_t *current) {
+    ESP_LOGW(TAG, "battery critical: saving progress and powering off");
+    if(kosync_busy() || !prepare_lock(ctx, current, false)) {
+        battery_guard_shutdown_deferred(esp_timer_get_time() / 1000);
+        app_present(ctx, current, APP_REDRAW_PAGE);
+        return;
+    }
+    ui_power_battery_empty_draw(ctx->fb);
+    guard_draw_result(ctx->hl, update_display_full(ctx->hl));
+    epd_poweroff();
+    pico_boot_clear_resume();
+    esp_err_t error = app_enter_host_sleep(APP_SLEEP_OFF);
+    if (error != ESP_OK) ESP_LOGW(TAG, "battery critical power off deferred: %s", esp_err_to_name(error));
+    battery_guard_shutdown_deferred(esp_timer_get_time() / 1000);
+    app_present(ctx, current, APP_REDRAW_PAGE);
+}
+#endif
 
 bool app_poll_main_navigation(app_ctx_t *ctx) {
     if(!ctx||!ctx->tp)return false;
@@ -1290,6 +1315,11 @@ void app_loop_run(const app_loop_config_t* config) {
     uint32_t last_network_generation = read_pico_transfer_network_generation();
     int64_t last_ble_active_ms = last_input_ms;
     int current_tick_ms = LOOP_TICK_ACTIVE_MS;
+#if DPREADER_BOARD_METALIO47
+    // 续航估算只计清醒时间：两轮间隔超过2秒视为锁屏睡眠或阻塞，不计入。
+    // Runtime estimates count awake time only; gaps over two seconds are lock sleep or blocking.
+    int64_t battery_last_ms = last_input_ms, battery_awake_ms = 0;
+#endif
     uint32_t wake_reasons=0;
     uint32_t last_ble_input = ble_pt_input_serial();
     unsigned idle_minutes = app_settings_auto_lock_minutes();
@@ -1362,6 +1392,12 @@ void app_loop_run(const app_loop_config_t* config) {
             (!touch.touched && !released && ctx.now_ms-last_input_ms>=1200 &&
              !(metalio_ui_wake_pending()&(METALIO_UI_WAKE_TOUCH|METALIO_UI_WAKE_KEY|METALIO_UI_WAKE_BLE)))))
             (void)read_pico_pmu_poll();
+        {
+            const int64_t step = ctx.now_ms - battery_last_ms;
+            if (step > 0 && step <= 2000) battery_awake_ms += step;
+            battery_last_ms = ctx.now_ms;
+            battery_guard_poll(ctx.now_ms, battery_awake_ms);
+        }
 #else
 #endif
         if (err == ESP_OK && (touch.touched || released)) {
@@ -2120,6 +2156,11 @@ void app_loop_run(const app_loop_config_t* config) {
         if (ble_input != last_ble_input) { last_ble_input = ble_input; last_input_ms = ctx.now_ms; last_ble_active_ms = ctx.now_ms; }
         unsigned requested_idle = app_settings_auto_lock_minutes();
 #if DPREADER_BOARD_METALIO47
+        // 省电级只在本次运行收短自动锁屏，不写入设置。/ The saver level shortens auto-lock for this run only, never persisting it.
+        const unsigned battery_lock_cap = battery_guard_auto_lock_cap();
+        if (battery_lock_cap && (requested_idle == 0 || requested_idle > battery_lock_cap)) requested_idle = battery_lock_cap;
+#endif
+#if DPREADER_BOARD_METALIO47
         bool idle_blocked = app_sd_recovery_busy() || usb_storage_active() || app_download_active() || wifi_transferring || ble_pt_connecting() || ble_pt_scanning() || (current == &app_transfer && transfer.state == READ_PICO_TRANSFER_UPLOADING) ||
 #else
         bool idle_blocked = usb_storage_active() || app_download_active() || wifi_transferring || ble_pt_connecting() || ble_pt_scanning() || (current == &app_transfer && transfer.state == READ_PICO_TRANSFER_UPLOADING) ||
@@ -2157,6 +2198,31 @@ void app_loop_run(const app_loop_config_t* config) {
             else app_present(&ctx, current, APP_REDRAW_PAGE);
             read_pico_transfer_network_end();
         }
+#if DPREADER_BOARD_METALIO47
+        if (battery_guard_shutdown_due(ctx.now_ms) && !touch.touched && !usb_storage_active() &&
+            !app_download_active() && !pico_online_busy() && !app_sd_recovery_busy()) {
+            // 插着电源时不关机；充电状态稍后会解除危险级。/ Never power off on external power; charging soon clears the level.
+            if (metalio_usb_blocks_sleep()) battery_guard_shutdown_deferred(ctx.now_ms);
+            else {
+                ai_dismiss(&ctx, current, true);
+                held_key = -1;
+                cancel_gesture(&ctx, current, &gesture);
+                if (menu_pressed >= 0) menu_feedback(&ctx, current, menu_leaf, menu_pressed, false, &feedback);
+                menu_pressed = UI_MENU_HIT_NONE;
+                menu_open = false;
+                if (power_dialog_open) {
+                    power_dialog_open = false;
+                    ui_power_dialog_end();
+                    ui_power_dialog_reset(&power_dialog, false);
+                }
+                main_lock_boundary();
+                run_low_battery_power_off(&ctx, current);
+                ctx.now_ms = esp_timer_get_time() / 1000;
+                last_input_ms = ctx.now_ms;
+                continue;
+            }
+        }
+#endif
         if (menu_open && feedback.updates > 0
             && ctx.now_ms - feedback.last_ms >= UI_SETTLE_IDLE_MS) {
             guard_draw_result(ctx.hl, update_display_area_with(
@@ -2285,8 +2351,11 @@ void app_loop_run(const app_loop_config_t* config) {
 #if DPREADER_BOARD_METALIO47
         bool input_pending=metalio_ui_wake_pending()!=0 || metalio_ai_events_pending() ||
             metalio_volume_events_pending();
-        bool can_extend=!input_pending && current==&app_book && current->next_tick_ms &&
-            current_tick_ms==LOOP_TICK_IDLE_MS && ctx.now_ms-last_input_ms>=400 && err==ESP_OK && !touch.touched && !gesture.active &&
+        // 用户2026-11-25：主页/文件/设置等页面也可在声明空闲后长等待；非阅读页需安静1.5秒。
+        // User 2026-11-25: Home/Files/Settings may also wait long once they declare idle; non-reader pages need 1.5 s of quiet.
+        const int64_t quiet_ms=current==&app_book?400:STATIC_PAGE_QUIET_MS;
+        bool can_extend=!input_pending && current->next_tick_ms &&
+            current_tick_ms==LOOP_TICK_IDLE_MS && ctx.now_ms-last_input_ms>=quiet_ms && err==ESP_OK && !touch.touched && !gesture.active &&
             !pinching && !pinch_input_owned && !pinch_drain && held_key<0 &&
             !menu_open && !power_dialog_open && !s_quick.open && !quick_input_owned && !ai_overlay_open() &&
             !ui_click_feedback_active() && !ui_click_feedback_nav_pending() && !feedback.updates &&
@@ -2298,15 +2367,18 @@ void app_loop_run(const app_loop_config_t* config) {
         read_pico_transfer_get_status(&wait_network);
         can_extend=can_extend && wait_network.state==READ_PICO_TRANSFER_STOPPED && !read_pico_transfer_network_busy();
         int64_t page_deadline=can_extend?current->next_tick_ms(&ctx):0;
-        int64_t deadlines[]={page_deadline,read_pico_pmu_ready()?last_lock_poll_ms+APP_LOCK_POLL_MS:INT64_MAX,
-            last_media_poll_ms+MEDIA_POLL_INTERVAL_MS,last_network_poll_ms+500,
-            last_font_retry_ms+FONT_RETRY_INTERVAL_MS,
+        // 静态等待时，电源键已有中断唤醒则轮询兜底放宽到1秒；介质、网络/灯光日程与字体检查同为1秒。
+        // In static waits the power-key fallback relaxes to 1 s when its IRQ wakes the UI; media, network/light schedule and font checks also use 1 s.
+        const int64_t lock_poll_ms=read_pico_pmu_key_irq_ready()?STATIC_SERVICE_POLL_MS:APP_LOCK_POLL_MS;
+        int64_t deadlines[]={page_deadline,read_pico_pmu_ready()?last_lock_poll_ms+lock_poll_ms:INT64_MAX,
+            last_media_poll_ms+STATIC_SERVICE_POLL_MS,last_network_poll_ms+STATIC_SERVICE_POLL_MS,
+            last_font_retry_ms+STATIC_SERVICE_POLL_MS,
             idle_minutes?last_input_ms+(int64_t)idle_minutes*60000:INT64_MAX,
             anti_fade_next_ms(ctx.now_ms,last_input_ms)};
         // Re-read elapsed monotonic time after rendering; never extend a deadline by scan time.
         int64_t wait_now=esp_timer_get_time()/1000;
-        uint32_t wait_ms=app_wait_ms(wait_now,(uint32_t)current_tick_ms,can_extend&&page_deadline>0,
-                                   input_pending,deadlines,sizeof(deadlines)/sizeof(deadlines[0]));
+        uint32_t wait_ms=app_wait_ms_capped(wait_now,(uint32_t)current_tick_ms,can_extend&&page_deadline>0,
+                                   input_pending,deadlines,sizeof(deadlines)/sizeof(deadlines[0]),APP_WAIT_STATIC_CAP_MS);
         (void)metalio_cpu_idle_begin(can_extend&&page_deadline>0,wait_ms);
         wake_reasons=metalio_ui_wake_wait(wait_ms);
         (void)metalio_cpu_wake();
