@@ -16,12 +16,16 @@ with tempfile.TemporaryDirectory() as folder:
     sdk=Path(folder)
     (sdk/'tools').mkdir();(sdk/'tools/idf.py').write_text('')
     (sdk/'components/soc/esp32s31').mkdir(parents=True)
-    output=subprocess.check_output([sys.executable,str(ROOT/'tools/build_firmware.py'),'--board','metalio47','--idf-metalio47',str(sdk),'--dry-run'],text=True)
-    plans=[json.loads(line) for line in output.splitlines()]
-    assert len(plans)==2
-    for plan,edition in zip(plans,('full','love-book')):
-        command=plan['command'];assert '-DDPREADER_EDITION='+edition in command
-        assert '/'+edition+'/metalio47/build' in command[command.index('-B')+1]
+    def plan(*extra):
+        output=subprocess.check_output([sys.executable,str(ROOT/'tools/build_firmware.py'),'--board','metalio47','--idf-metalio47',str(sdk),'--dry-run',*extra],text=True)
+        return [json.loads(line) for line in output.splitlines()]
+    # 用户2026-11-25：默认只构建 Full；显式 --edition all 仍隔离两版。
+    # User 2026-11-25: the default builds Full only; an explicit --edition all still isolates both editions.
+    for plans,editions in ((plan(),('full',)),(plan('--edition','all'),('full','love-book'))):
+        assert len(plans)==len(editions)
+        for item,edition in zip(plans,editions):
+            command=item['command'];assert '-DDPREADER_EDITION='+edition in command
+            assert '/'+edition+'/metalio47/build' in command[command.index('-B')+1]
 for edition, info in (('full',full),('love-book',love)):
     image=bytearray(288);image[0]=0xe9
     struct.pack_into('<H',image,12,32);struct.pack_into('<I',image,32,0xabcd5432)

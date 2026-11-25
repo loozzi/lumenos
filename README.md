@@ -7,7 +7,7 @@
 **Firmware đọc sách tiếng Việt cho Metalio E-ink 4 Plus 4.7 inch, ESP32-S31.**
 LumenOS là nhánh cá nhân phát triển từ dpReader, dùng logo PNG trắng đen do người dùng cung cấp và tiếp tục duy trì mã nguồn cùng các giấy phép của dự án gốc.
 
-Bản hiện tại: **Full `1.5.18`** và **Love Book `1.5.18-love`** — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
+Bản hiện tại: **Full `1.5.18`** và **Love Book `1.5.18-love`** (Love Book dừng cập nhật ở bản này; từ sau chỉ cập nhật Full) — bản phát hành chính thức trên kênh `loozzi/lumenos` ([Releases](https://github.com/loozzi/lumenos/releases)); chưa nghiệm thu đầy đủ trên thiết bị.
 Mỗi lần giao build mới tăng phiên bản riêng: `1.5.1`, `1.5.2`…; Love Book thêm hậu tố `-love`.
 
 [Cài đặt và sử dụng](docs/CAI_DAT.md) · [Thay đổi theo phiên bản](docs/CHANGELOG.md) · [Hai bản firmware](docs/FIRMWARE_EDITIONS.md) · [Build cho S31](docs/BOARDS.md)
@@ -36,7 +36,7 @@ Hai bản dùng chung trình đọc, phông chữ, tiến độ đọc và phầ
 
 | | Full | Love Book |
 | --- | --- | --- |
-| Phiên bản hiện tại | `1.5.18` | `1.5.18-love` |
+| Phiên bản hiện tại | `1.5.18` | `1.5.18-love` (dừng cập nhật) |
 | Trang chủ | Chọn Đầy đủ hoặc I Love Book | Cố định I Love Book |
 | Mở sách | Tủ sách, lịch sử và trình quản lý tệp | Trình chọn TXT/EPUB theo thư mục |
 | Quản lý kệ sách, kiểu kệ, khóa ghép bìa | Có | Lược bỏ |
@@ -130,14 +130,14 @@ Cần **ESP-IDF 6.1 hỗ trợ `esp32s31`**, toolchain RISC-V và môi trường
 ```bash
 source ~/esp/v6.1/export.sh
 python3 tools/build_firmware.py \
-  --board metalio47 --edition all --local-build \
+  --board metalio47 --edition full --local-build \
   --idf-metalio47 "$IDF_PATH" \
   --python "$(command -v python)" \
   --tools "$HOME/.espressif" \
   --output build/lumenos-1.5.0
 ```
 
-Công cụ tách nguồn dựng, sdkconfig, build và đầu ra cho Full/Love Book; xuất gói vào `Test Build/<version>/`. `--local-build` không stage Web Flash. Trước lần giao tiếp theo, tăng phiên bản trong `boards/metalio47/board.json`, đồng bộ mô tả phiên bản và xác nhận version thực trong Bin. Không ghi đè gói đã giao bằng binary khác cùng số.
+Công cụ tách nguồn dựng, sdkconfig, build và đầu ra cho từng bản (từ sau 1.5.18 chỉ build Full); xuất gói vào `Test Build/<version>/`. `--local-build` không stage Web Flash. Trước lần giao tiếp theo, tăng phiên bản trong `boards/metalio47/board.json`, đồng bộ mô tả phiên bản và xác nhận version thực trong Bin. Không ghi đè gói đã giao bằng binary khác cùng số.
 
 Mã duy trì nằm ở `firmware/shared/`, `firmware/full/`, `firmware/love_book/` và `boards/metalio47/`; không sửa cây sinh trong `build/`. Bắt đầu từ [ONBOARDING](docs/ONBOARDING.md), [cấu trúc firmware](firmware/README.md) và [AGENTS.md](AGENTS.md).
 

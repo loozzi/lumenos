@@ -462,7 +462,9 @@ def build_one(board, args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--board', choices=(*BOARDS, *BOARD_ALIASES, 'all'), default='metalio47')
-    parser.add_argument('--edition', choices=('full', 'love-book', 'all'), default='all')
+    # 用户2026-11-25：之后只更新 Full；Love Book 需显式 --edition love-book/all。
+    # User 2026-11-25: only Full is updated from now on; Love Book needs an explicit --edition love-book/all.
+    parser.add_argument('--edition', choices=('full', 'love-book', 'all'), default='full')
     parser.add_argument('--output', type=Path, help='Build root; edition subdirectories are always isolated')
     parser.add_argument('--python', type=Path, default=Path(sys.executable))
     parser.add_argument('--tools', type=Path)

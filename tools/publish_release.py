@@ -8,12 +8,9 @@ ROOT=Path(__file__).resolve().parents[1]
 # 只发布到本渠道仓库；工作流中必须与 GITHUB_REPOSITORY 一致。
 # Publish only to the channel repository; in Actions it must match GITHUB_REPOSITORY.
 REPO=channel.REPO
-def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--dry-run',action='store_true');args=parser.parse_args()
-    manifest,love=verify_all();version=manifest['version'];tag=channel.tag(version)
-    if not channel.official(version,'full'):raise RuntimeError('Only LumenOS X.Y.Z releases are published from this channel: '+version)
-    workflow_repo=os.environ.get('GITHUB_REPOSITORY')
-    if workflow_repo and workflow_repo!=REPO:raise RuntimeError(f'Workflow repository {workflow_repo} differs from release channel {REPO}')
+def release_assets(manifest, love, root=None):
+    """本次Release附件：冻结后只含Full。/ Assets for this Release; Full only after the Love Book freeze."""
+    root=Path(root or ROOT)
     def assets_for(feed, folder, prefix=''):
         ver=feed['version']
         files=['SHA256SUMS.txt','metalio-s31-update.json','verification.json',f'dpReader-metalio47-{ver}-USB.zip']
@@ -23,9 +20,19 @@ def main():
         else:
             files += ['dpReader_metalio47_firmware.bin','dpReader_metalio47_full.bin',f'dpReader-metalio47-{ver}-TF.zip']
         return [(n if ver in n else prefix+n, folder/n) for n in files]
-    assets=assets_for(manifest,ROOT/'releases')
-    if love:
-        assets+=assets_for(love,ROOT/'releases/love-book','love-book-')
+    assets=assets_for(manifest,root/'releases')
+    if love and not channel.love_frozen(manifest['version']):
+        assets+=assets_for(love,root/'releases/love-book','love-book-')
+    return assets
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--dry-run',action='store_true');args=parser.parse_args()
+    manifest,love=verify_all();version=manifest['version'];tag=channel.tag(version)
+    if not channel.official(version,'full'):raise RuntimeError('Only LumenOS X.Y.Z releases are published from this channel: '+version)
+    workflow_repo=os.environ.get('GITHUB_REPOSITORY')
+    if workflow_repo and workflow_repo!=REPO:raise RuntimeError(f'Workflow repository {workflow_repo} differs from release channel {REPO}')
+    if channel.love_frozen(version) and not channel.love_frozen_untouched(ROOT):
+        raise RuntimeError('releases/love-book differs from the frozen '+channel.LOVE_FROZEN_VERSION+' tag')
+    assets=release_assets(manifest,love)
     names=[n for n,_ in assets]
     assert len(names)==len(set(names)) and all(path.is_file() for _,path in assets)
     if args.dry_run:print('Ready to publish',tag,':',', '.join(names));return
