@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.5.18",
+  "version": "1.5.19",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.5.17",
-  "notes": "LumenOS 1.5.18: Pin còn 15% trở xuống hiện % nền đen; 8%: giảm đèn, tự khóa sau 1 phút; 3%: lưu tiến độ rồi tắt máy. Cập nhật cần pin 30% hoặc cắm sạc. Màn hình rảnh chờ lâu hơn để đỡ hao pin.",
+  "previous_version": "1.5.18",
+  "notes": "LumenOS 1.5.19: Khi tắt chân trang, trang đọc nhắc pin yếu ở 15% và 8%. Kệ sách đỡ hao pin khi để yên. Xuất log có thêm số liệu điện năng và độ trễ để tự đo pin.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "e4cbd3ca77013f9227e9e017b334c026790eae292dccba6c72d747ab4d56480b",
-      "md5": "5528ba16f0331173d3dc2ad65f6d044c"
+      "sha256": "be5be67baa03a298604d5765ae5a8acffdc8b512e3c6fa25a3df7733dabe16ea",
+      "md5": "e1973ff0925ced67d5bc38e812828b07"
     }
   },
   "clean_image": {
-    "sha256": "700477c1e492d8c9e09a10f5eb59b9392e8c0d19acb9a2a006464ecf0bc302ff",
-    "md5": "2b8841c0744bae7214b31f0416cfc0ec"
+    "sha256": "66cfc0d8d1180cf797f3e6cb4d990623f76282a3cdfedd6878dd3cadbec95a34",
+    "md5": "4700a8de9e7fcdd3638fcde3a1322a42"
   },
-  "size": 4996688,
-  "sha256": "fb9a6f63561a26f37a7064fd869cdbe517db1e206a8c6eb7363cd5f305e76f69",
-  "md5": "3e3b05099eea93eb38b8592a38334904"
+  "size": 5000912,
+  "sha256": "b245ecef06ce0a223a7ff2439c9a1e234a44a833628b7efd94ffad79d860c9bb",
+  "md5": "e1772d9f54f3d6723dab0da045f5890e"
 }
