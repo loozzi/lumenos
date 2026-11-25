@@ -92,7 +92,11 @@ def verify_all():
     love_folder=ROOT/'releases/love-book'
     required=tuple(int(x) for x in channel.base(full['version']).split('.')) >= (1,3,3)
     love=verify(love_folder,'love-book') if required or love_folder.exists() else None
-    if love:
+    if love and channel.love_frozen(full['version']):
+        # 冻结后 Love Book 仍须是完整有效的 1.5.18-love，只是不随 Full 升版。
+        # After the freeze Love Book must remain the complete, valid 1.5.18-love; it no longer follows Full.
+        assert love['version']==channel.LOVE_FROZEN_VERSION,love['version']
+    elif love:
         assert channel.base(love['version'])==channel.base(full['version'])
         assert love['version'].endswith('-vn')==full['version'].endswith('-vn')
     return full,love

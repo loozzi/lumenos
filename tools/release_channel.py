@@ -47,6 +47,34 @@ def love_version(full_version):
     return base(full_version) + '-love'
 
 
+# 用户2026-11-25决定：Love Book 停在 1.5.18-love，之后只更新 Full；
+# 其 releases/love-book/ 字节保持不变，继续供已安装设备 OTA 与网页刷机。
+# User decision 2026-11-25: Love Book stops at 1.5.18-love and only Full is updated
+# afterwards; releases/love-book/ stays byte-identical for existing OTA and Web Flash users.
+LOVE_FROZEN_VERSION = '1.5.18-love'
+
+
+def _parts(version):
+    return tuple(int(x) for x in base(version).split('.'))
+
+
+def love_frozen(full_version):
+    """该 Full 正式版是否在 Love Book 冻结之后（只发布 Full）。/ Whether this Full release is after the Love Book freeze (Full only)."""
+    return (not full_version.endswith('-vn')) and _parts(full_version) > _parts(LOVE_FROZEN_VERSION)
+
+
+def love_frozen_untouched(root):
+    """releases/love-book/ 与冻结标签逐字节一致。/ releases/love-book/ matches the freeze tag byte for byte."""
+    import subprocess
+    freeze_tag = tag(LOVE_FROZEN_VERSION)
+    tracked = subprocess.run(['git', 'diff', '--quiet', freeze_tag, '--', 'releases/love-book'], cwd=root)
+    untracked = subprocess.run(['git', 'ls-files', '--others', '--exclude-standard', '--', 'releases/love-book'],
+                               cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+    if tracked.returncode not in (0, 1):
+        raise RuntimeError('Cannot compare releases/love-book with ' + freeze_tag)
+    return tracked.returncode == 0 and not untracked
+
+
 def tag(version):
     """旧版按原 dpReader 标签，新版为 vX.Y.Z。/ Legacy releases keep dpReader tags; new ones use vX.Y.Z."""
     if version.endswith('-vn'):

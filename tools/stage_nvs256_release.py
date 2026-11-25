@@ -27,10 +27,14 @@ def stage():
     if not channel.official(version, 'full'):
         raise ValueError('An official LumenOS Full version X.Y.Z is required')
     packages = []
-    for edition, relative, expected in (
-        ('full', 'releases', version),
-        ('love-book', 'releases/love-book', channel.love_version(version)),
-    ):
+    editions = [('full', 'releases', version)]
+    if channel.love_frozen(version):
+        # 只发布 Full；Love Book 冻结目录不得被改动。/ Full only; the frozen Love Book folder must stay untouched.
+        if not channel.love_frozen_untouched(ROOT):
+            raise ValueError('releases/love-book differs from '+channel.tag(channel.LOVE_FROZEN_VERSION)+'; Love Book is frozen')
+    else:
+        editions.append(('love-book', 'releases/love-book', channel.love_version(version)))
+    for edition, relative, expected in editions:
         package = ROOT/'build/editions'/edition/'packages/metalio47'
         info = validate_bundle(package)
         if info['version'] != expected or info['edition'] != edition:

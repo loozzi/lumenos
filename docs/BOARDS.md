@@ -4,7 +4,7 @@ Mã nguồn S31 được duy trì trên nhánh `main` của [dpReader](https://g
 
 Kho hiện tại build cho `metalio47`. Cấu hình, phân vùng và mã phần cứng nằm trong `boards/metalio47/`. `cmake/board.cmake` chọn trình điều khiển. Trình đọc và giao diện dùng chung nguồn trong `firmware/shared/`. Các tên API `read_pico_*` là định danh nội bộ có từ trước.
 
-Build mặc định tạo cả Full và Love Book, với cấu hình và thư mục đầu ra riêng cho từng bản. Xem [hai bản firmware](FIRMWARE_EDITIONS.md).
+Build mặc định tạo cả Full và Love Book, với cấu hình và thư mục đầu ra riêng cho từng bản. Xem [hai bản firmware](FIRMWARE_EDITIONS.md). Từ sau 1.5.18, người dùng chỉ cập nhật Full: dùng `--edition full`; Love Book dừng ở 1.5.18-love.
 
 ## NVS chung 256 KiB (RC cục bộ)
 
@@ -186,10 +186,10 @@ S31 charging uses a fixed black well with a white bolt outline. Detection retain
 
 Cần Python có đủ phụ thuộc ESP-IDF, SDK 6.1 hỗ trợ `esp32s31` và toolchain RISC-V tương ứng. SDK phải có `components/soc/esp32s31`.
 
-Chạy ở gốc kho. Ví dụ build cả Full và Love Book:
+Chạy ở gốc kho. Từ sau 1.5.18 chỉ build Full; Love Book dừng ở 1.5.18-love (xem [hai bản firmware](FIRMWARE_EDITIONS.md)):
 
 ```sh
-python3 tools/build_firmware.py --board metalio47 --edition all \
+python3 tools/build_firmware.py --board metalio47 --edition full \
   --idf-metalio47 /path/to/esp-idf-s31 \
   --python /path/to/idf-python/bin/python \
   --tools /path/to/idf-tools
@@ -478,8 +478,8 @@ phát hành; việc đổi header không thay hoặc phát hành binary LumenOS.
 
 LumenOS từ phiên bản 1.5.0 dùng số phiên bản độc lập cho mỗi build được giao
 (tiếp theo 1.5.1); Love Book thêm `-love`. Build cục bộ bằng
-`tools/build_firmware.py --board metalio47 --edition all --local-build`,
-xuất hai gói vào `Test Build/<version>/`, không stage hoặc phát hành online.
+`tools/build_firmware.py --board metalio47 --edition full --local-build`
+(từ sau 1.5.18 chỉ Full), xuất gói vào `Test Build/<version>/`, không stage hoặc phát hành online.
 
 ## Wi-Fi đã lưu, chờ đọc và log chẩn đoán
 

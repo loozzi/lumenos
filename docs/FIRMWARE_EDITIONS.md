@@ -2,9 +2,20 @@
 
 Cùng mã nguồn, hai cấu hình biên dịch. Full giữ các chức năng hiện tại. Love Book cố định I Love Book, mở TXT/EPUB trực tiếp bằng trình duyệt Books, giữ tiến độ, USB, WiFi, OPDS và KoSync; bỏ thư viện/kệ sách, thiết lập kiểu kệ và màn hình khóa ghép bìa. Mã nguồn hiện tại không tích hợp TTS ở cả hai bản.
 
+## Chỉ cập nhật Full từ sau 1.5.18 (quyết định 2026-11-25)
+
+Theo yêu cầu của người dùng, Love Book dừng ở **1.5.18-love**. Từ lần sau, chỉ build, giao gói thử và phát hành bản Full (`--edition full`). Các phần dưới đây về build hay phát hành song song hai bản chỉ áp dụng đến 1.5.18.
+
+- Không build, không tăng phiên bản và không phát hành lại bản `-love`.
+- Giữ nguyên `releases/love-book/`: feed OTA, Bin, gói USB, thư mục lịch sử và `releases.json`. Máy Love Book kiểm tra OTA vẫn thấy 1.5.18-love, và Web Flash vẫn cài được bản này.
+- Mã nguồn `firmware/love_book/` và lựa chọn Love Book trên Web Flash vẫn được giữ; chỉ gỡ khi người dùng yêu cầu rõ.
+- Sửa mã dùng chung không cần build hay kiểm tra lại cho Love Book.
+- `build_firmware.py` mặc định `--edition full`; muốn build Love Book phải gọi rõ `--edition love-book` hoặc `--edition all`.
+- Mốc dừng là `LOVE_FROZEN_VERSION` trong `tools/release_channel.py`. Với Full mới hơn 1.5.18, `stage_nvs256_release.py` chỉ stage Full, `publish_release.py` chỉ gắn tài sản Full (Release từ 1.5.19 có 8 tệp), và cả hai từ chối chạy nếu `releases/love-book/` khác tag `v1.5.18`. `verify_metalio_release.py` vẫn kiểm tra Love Book là bản 1.5.18-love hợp lệ; workflow Pages chép nguyên thư mục đó như cũ. Kiểm tra: `tools/release_full_only_host_test.py`.
+
 ## Build và giao gói thử
 
-Dùng `python3 tools/build_firmware.py --board metalio47` với SDK/Python/tools như hướng dẫn BOARDS. Mặc định `--edition all` tạo cả hai; `--edition full` hoặc `--edition love-book` dành cho xác minh riêng. `--output <root>` vẫn tách `<root>/full` và `<root>/love-book`; không chia sẻ sdkconfig/build cache giữa hai bản.
+Dùng `python3 tools/build_firmware.py --board metalio47` với SDK/Python/tools như hướng dẫn BOARDS. Mặc định `--edition all` tạo cả hai; `--edition full` hoặc `--edition love-book` dành cho xác minh riêng. Từ sau 1.5.18 dùng `--edition full` (xem mục trên). `--output <root>` vẫn tách `<root>/full` và `<root>/love-book`; không chia sẻ sdkconfig/build cache giữa hai bản.
 
 Phiên bản gốc nằm ở `boards/metalio47/board.json`. Từ LumenOS 1.5.0, Full dùng `1.5.0`, Love Book dùng `1.5.0-love`. Mỗi lần giao build mới tăng phiên bản riêng (tiếp theo `1.5.1`), không tiếp tục dãy RC của dpReader. Phiên bản nhúng phải khớp metadata và được đọc lại từ Bin. Định danh chip/project và phân vùng S31 được giữ để tương thích dữ liệu cũ.
 
