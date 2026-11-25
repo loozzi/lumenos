@@ -68,6 +68,7 @@ void epd_lcd_suspend(void);
 #include "read_pico_transfer.h"
 #include "sc7a20h_lab.h"
 #include "settings.h"
+#include "battery_guard.h"
 #include "online_font.h"
 #include "ui_kit.h"
 #include "ui_image_dither.h"
@@ -381,7 +382,15 @@ app_wake_source_t app_light_sleep_wait_timed(sc7a20h_handle_t acc,uint32_t timeo
     metalio_frontlight(0,50);
     app_wake_source_t wake=APP_WAKE_NONE;
     bool usb_was_blocked=metalio_usb_blocks_sleep();
-    const int64_t off_at=s_lock_sleep_touch&&!timeout_ms&&app_settings_sleep_off_hours()>0 ? start+(int64_t)app_settings_sleep_off_hours()*INT64_C(3600000000) : 0;
+    int64_t off_at=s_lock_sleep_touch&&!timeout_ms&&app_settings_sleep_off_hours()>0 ? start+(int64_t)app_settings_sleep_off_hours()*INT64_C(3600000000) : 0;
+    // 低电量只收短本次锁屏的关机等待，沿用同一关机与重试流程；不改保存的小时数。
+    // Low battery shortens only this lock's power-off wait through the same handoff/retry; saved hours stay unchanged.
+    const int64_t battery_cap_ms=s_lock_sleep_touch&&!timeout_ms?battery_guard_lock_off_cap_ms():0;
+    if(battery_cap_ms>0) {
+        const int64_t capped=start+battery_cap_ms*1000;
+        if(!off_at || capped<off_at) off_at=capped;
+        ESP_LOGW(TAG,"S31 lock low battery: power-off after %lld ms",(long long)battery_cap_ms);
+    }
     int64_t off_retry_at=off_at;
     bool frame_marked=false;
     unsigned light_failures=0;

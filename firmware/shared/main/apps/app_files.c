@@ -1260,6 +1260,19 @@ static bool files_back_swipe_area(app_ctx_t *ctx,const ui_gesture_event_t *event
 static void files_before_lock(app_ctx_t *ctx) { (void)ctx;s_pager_pressed=UI_PAGER_NONE;s_pager_paint_pending=false; }
 static void files_exit(app_ctx_t *ctx) { files_before_lock(ctx); ui_keyboard_end(); }
 
+
+// 文件页仅在非改名、目录已扫描完时声明空闲；截止时间对齐既有空间统计间隔。
+// Files declares idle only outside rename after the scan; the deadline follows the existing space-refresh interval.
+static int64_t files_next_tick_ms(app_ctx_t *ctx) {
+    if (s_view == FILE_VIEW_RENAME || s_scan_pending) return 0;
+    if (s_folder < 0 && s_sd.mounted) {
+        if (!s_sd.space_valid) return 0;
+        int64_t due = s_space_poll_ms + 15000;
+        return due < ctx->now_ms + 1000 ? (due > ctx->now_ms ? due : ctx->now_ms) : ctx->now_ms + 1000;
+    }
+    return ctx->now_ms + 1000;
+}
+
 const app_desc_t app_files = {
 #if DPREADER_BOARD_METALIO47
     .binary_ui = true,
@@ -1272,6 +1285,6 @@ const app_desc_t app_files = {
     .back_swipe_area=files_back_swipe_area,
     .persistent_navigation=true,
     .on_enter = on_enter, .on_media_lost = on_media_lost, .on_media_ready = on_media_ready,
-    .on_exit = files_exit, .on_before_lock=files_before_lock, .render = render, .on_tick = on_tick,
+    .on_exit = files_exit, .on_before_lock=files_before_lock, .render = render, .on_tick = on_tick, .next_tick_ms = files_next_tick_ms,
     .on_gesture = on_gesture, .on_key = on_key, .present = files_present,
 };

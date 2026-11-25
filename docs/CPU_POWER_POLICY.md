@@ -1,7 +1,10 @@
-# Chính sách xung CPU S31: 320 MHz hoạt động, cho phép 160 MHz khi rảnh
+# Chính sách xung CPU S31: 320 MHz hoạt động, cho phép 80 MHz khi rảnh
 
 Từ bản thử `1.2.9RC22-vn`, S31 bật `CONFIG_PM_ENABLE` và cấu hình SDK PM với
-`max_freq_mhz=320`, `min_freq_mhz=160`, `light_sleep_enable=false`.
+`max_freq_mhz=320`, `light_sleep_enable=false`. Mức tối thiểu ban đầu là 160 MHz;
+từ bản `1.5.1` (sổ bàn giao 2026-11-15) mã dùng `min_freq_mhz=80`
+([metalio_cpu.c](../components/metalio_hw/metalio_cpu.c)). Các phần dưới đây nói
+"160 MHz" là mô tả lần thử đầu; mức hiện hành là 80 MHz.
 `CONFIG_PM_DFS_INIT_AUTO` tắt để SDK không tự xuống XTAL trước khi app lấy
 khóa UI; build driver cũng loại cấu hình auto-DFS cũ khỏi cache.
 Đây là chính sách thử cục bộ đã build và kiểm tra host, chưa nghiệm thu phần
@@ -12,6 +15,11 @@ cứng và chưa có số đo pin/độ trễ để kết luận 160 MHz là m�
 CPU giữ yêu cầu mức tối đa trong toàn bộ xử lý UI, mở sách, layout, raster,
 quét màn hình và các ngữ cảnh không đủ điều kiện đọc tĩnh. Chỉ gỡ yêu cầu này
 ngay trước một lượt chờ của trang đọc đã sẵn sàng theo
+[UI_EVENT_DEADLINE.md](UI_EVENT_DEADLINE.md).
+
+Từ `1.5.18`, cửa sổ chờ dài không chỉ dành cho trang đọc: Trang chủ (gốc), Tệp,
+Cài đặt (gốc) và màn chọn sách của Love Book cũng được mở cửa sổ khi chúng khai báo
+`next_tick_ms` và đã yên 1,5 giây. Mỗi lượt chờ dài tối đa 1 giây; xem
 [UI_EVENT_DEADLINE.md](UI_EVENT_DEADLINE.md).
 
 Điều kiện đọc tĩnh vẫn gồm: WiFi dừng, Bluetooth tắt, KoSync tự động tắt,

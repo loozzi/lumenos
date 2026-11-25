@@ -7,6 +7,7 @@
  * User revision: erase incrementally and serialize flash with display output; require memory headroom and fail safely on shortage.
  */
 #include "kosync_client.h"
+#include "battery_guard.h"
 #include "ota_online.h"
 #include "firmware_edition.h"
 #include "settings.h"
@@ -446,6 +447,12 @@ static esp_err_t start(bool downloading) {
         (firmware_love_edition(s_status->release.version, sizeof(s_status->release.version)) == (edition == 1));
     xSemaphoreGive(s_mutex);
     if (busy || (downloading && !available)) return ESP_ERR_INVALID_STATE;
+    // 写固件期间断电风险高：未充电且电量不足时拒绝开始下载，检查更新不受限。
+    // Power loss while writing firmware is risky: refuse to start a download on low battery without charging; checks stay allowed.
+    if (downloading && !battery_guard_update_ok()) {
+        state(PICO_UPDATE_FAILED, "Pin dưới 30%, hãy cắm sạc rồi cập nhật lại");
+        return ESP_ERR_INVALID_STATE;
+    }
     if (s_joinable) { xSemaphoreTake(s_done, portMAX_DELAY); s_joinable = false; }
     if (!memory_available(49152, 16384, 524288)) {
         state(PICO_UPDATE_FAILED, "Không đủ bộ nhớ, hãy thoát truyền sách rồi thử lại");

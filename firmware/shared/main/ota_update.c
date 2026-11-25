@@ -9,6 +9,7 @@
  * Frozen: never overwrite the running partition or switch boot slots before validation completes.
  */
 #include "ota_update.h"
+#include "battery_guard.h"
 #include "firmware_edition.h"
 #include "dpreader_board_config.h"
 
@@ -36,7 +37,7 @@
 const __attribute__((section(".rodata_desc"))) esp_app_desc_t esp_app_desc = {
     .magic_word = ESP_APP_DESC_MAGIC_WORD,
 #ifndef DPREADER_FIRMWARE_VERSION
-#define DPREADER_FIRMWARE_VERSION "1.5.17"
+#define DPREADER_FIRMWARE_VERSION "1.5.18"
 #endif
     .version = DPREADER_FIRMWARE_VERSION,
     .project_name = "Kiikoread_Metalio_S31",
@@ -174,6 +175,13 @@ esp_err_t pico_ota_inspect(const char *path, pico_ota_info_t *info) {
 }
 
 esp_err_t pico_ota_install(const char *path, char *message, size_t message_size) {
+#if DPREADER_BOARD_METALIO47
+    // 与联网升级相同的低电量门槛。/ Same low-battery gate as the online update.
+    if (!battery_guard_update_ok()) {
+        set_message(message, message_size, "Pin dưới 30%, hãy cắm sạc rồi cập nhật lại");
+        return ESP_ERR_INVALID_STATE;
+    }
+#endif
     path = resolve_ota_path(path);
     pico_ota_info_t info = {0};
     esp_err_t err = pico_ota_inspect(path, &info);

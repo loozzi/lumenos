@@ -69,6 +69,8 @@ bool metalio_frontlight_enabled(void);
 unsigned metalio_frontlight_position(bool warmth);
 void metalio_frontlight_preview_position(unsigned brightness, unsigned warmth);
 void metalio_frontlight_restore(void);
+/// 低电量输出亮度上限（百分比，100=不限）；不改保存值。/ Low-battery output cap in percent (100 = none); saved values unchanged.
+void metalio_frontlight_set_cap(unsigned percent);
 void metalio_frontlight_schedule_poll(void);
 void metalio_frontlight_save(unsigned brightness, unsigned warmth);
 void metalio_frontlight_preview(unsigned brightness, unsigned warmth);
