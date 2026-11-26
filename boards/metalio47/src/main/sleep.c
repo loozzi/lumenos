@@ -18,6 +18,7 @@
 
 #include "kosync_client.h"
 #include "sleep.h"
+#include <sys/time.h>
 #include "metalio_cpu.h"
 
 // S31专用保留缓冲的LCD停机。/ S31 LCD parking retains buffers.
@@ -369,6 +370,7 @@ static void lock_hint_end(void) {
     s_lock_hint_hl=NULL;
 }
 
+static void system_clock_from_rtc(void);
 // 锁屏先浅睡，用户设定小时后同步外挂RTC并硬关机；USB/输入和交接失败保持锁定。
 // Light-sleep locks, then sync the external RTC and power off after the selected hours; failed handoffs retain the gate.
 app_wake_source_t app_light_sleep_wait_timed(sc7a20h_handle_t acc,uint32_t timeout_ms) {
@@ -673,17 +675,39 @@ static esp_err_t lock_light_sleep_once(sc7a20h_handle_t acc,cst836u_handle_t tou
     // 恢复失败仍保持锁屏；仅真正的电源键可交给PIN/解锁逻辑。
     // Restore failure retains the lock; only a real power wake reaches PIN/unlock handling.
     metalio_sleep_trace_phase(METALIO_SLEEP_TRACE_RESTORED);
+    system_clock_from_rtc();
     ESP_LOGI(TAG,"S31 light restore: result=%s power_wake=%u",esp_err_to_name(err),*key_wake);
     return err;
 }
 
+
+// 用户2026-11-26：关机重开后时间变慢。锁屏浅睡时 ESP 系统时钟靠内部 RC 走时，误差远大于 PCF8563；
+// 电源动作前若仍按 ESP 时间回写，就会把漂移写进准确的 RTC。现在 RTC 有效时不回写，只在 RTC 失效时补写；
+// 网络/手动/网页设时各自立即写 RTC。浅睡醒来后再从 RTC 校正系统时钟。
+// User 2026-11-26: time lagged after power cycles. During lock light sleep the ESP clock runs on the internal RC,
+// far less accurate than the PCF8563; writing it back before power actions copied that drift into the RTC. Now a
+// valid RTC is never overwritten here (only an invalid one is filled); network, manual and web clock sets write the
+// RTC immediately. After light sleep the system clock is corrected from the RTC.
+static bool rtc_time_valid(void) {
+    if (read_pico_pmu_cmd(PMU_CMD_TIME_GET, NULL, 0) != ESP_OK) return false;
+    const pmu_snapshot_t *pmu = read_pico_pmu_get();
+    return pmu && pmu->time_ok && pmu->time_synced && pmu->unix_sec >= 1704067200 && pmu->unix_sec <= 4102444799U;
+}
+static esp_err_t sync_time_before_power(void) {
+    return rtc_time_valid() ? ESP_OK : app_sync_time_to_pmu();
+}
+static void system_clock_from_rtc(void) {
+    if (!rtc_time_valid()) return;
+    struct timeval tv = {.tv_sec = (time_t)read_pico_pmu_get()->unix_sec, .tv_usec = 0};
+    (void)settimeofday(&tv, NULL);
+}
 // 关机只关闭文件，不切换/重载字体；硬件交接失败时仍恢复同一字体与锁屏。
 // Power-off closes handles without selecting/loading fonts; a failed handoff restores the same face and lock.
 static esp_err_t lock_power_off(void) {
-    esp_err_t rtc=app_sync_time_to_pmu();
+    esp_err_t rtc=sync_time_before_power();
     if(rtc!=ESP_OK && rtc!=ESP_ERR_INVALID_STATE) {
         vTaskDelay(pdMS_TO_TICKS(20));
-        rtc=app_sync_time_to_pmu();
+        rtc=sync_time_before_power();
     }
     if(rtc!=ESP_OK) ESP_LOGW(TAG,"S31 power-off RTC sync: %s; retain existing RTC time",esp_err_to_name(rtc));
     read_pico_sd_info_t info={0};
@@ -739,7 +763,7 @@ esp_err_t app_enter_host_sleep(app_sleep_mode_t mode) {
 #if CONFIG_DPREADER_AUTO_BACKUP
     if (mode == APP_SLEEP_DEEP) sleep_backup_checkpoint();
 #endif
-    (void)app_sync_time_to_pmu();
+    (void)sync_time_before_power();
     app_lock_font_t saved_font = {0};
     app_font_begin_lock(&saved_font);
     (void)ttf_font_open_builtin();
@@ -813,7 +837,7 @@ esp_err_t app_sync_time_to_pmu(void) {
 }
 
 void app_restart_host(void) {
-    (void)app_sync_time_to_pmu();
+    (void)sync_time_before_power();
     ttf_font_open_builtin(); (void)read_pico_sd_sync();
     metalio_haptic_stop(); metalio_frontlight(0,50); epd_poweroff(); esp_restart();
 }
@@ -860,7 +884,7 @@ esp_err_t app_enter_download(void) {
     if (err!=ESP_OK) {
         ble_pt_resume_after_sleep(); read_pico_transfer_resume_after_sleep(); return err;
     }
-    (void)app_sync_time_to_pmu();
+    (void)sync_time_before_power();
     // 保持TF/字体/LCD和调度器，由电脑使用官方USJ控制线进入ROM；等待时仍可返回退出。
     // Retain TF/fonts/LCD and scheduling; the host enters ROM via official USJ control lines. Cancel stays usable.
     err=metalio_request_download();

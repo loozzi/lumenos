@@ -1,3 +1,8 @@
+## LumenOS 1.6.1 · Phát hành chính thức · 2026-11-26 (chỉ Full)
+
+- **Sửa đồng hồ chạy chậm sau khi tắt/mở máy:** trước mỗi lần tắt máy, khởi động lại hay vào chế độ nạp, firmware từng ghi giờ của chip ESP vào đồng hồ RTC. Khi khóa ngủ nhiều giờ, giờ của ESP trôi theo dao động nội nên RTC bị ghi đè bằng giờ sai. Nay RTC còn giờ hợp lệ thì không ghi đè; chỉ ghi khi đồng bộ mạng, đặt giờ tay hoặc đặt giờ qua Web Portal (ghi ngay). Sau khi thức dậy từ khóa, máy lấy lại giờ từ RTC. Giờ đã lệch cần đồng bộ lại một lần (Wi-Fi hoặc Cài đặt).
+- **Lối vào Từ vựng:** dòng **Học từ vựng ›** luôn hiện ở góc dưới trái thẻ Cú Lém; tiện ích **Từ vựng** mới cho các ô tiện ích Trang chủ.
+
 ## LumenOS 1.6.0 · Phát hành chính thức · 2026-11-25 (chỉ Full)
 
 - **Tra từ nhanh:** lần tra đầu tiên với một bộ StarDict lập mốc chỉ mục trong PSRAM (tối đa 256 KiB mỗi bộ, 2 bộ); các lần sau chỉ đọc đoạn chỉ mục giữa hai mốc. `.idx.gz` đến 4 MiB được giữ bản giải nén trong PSRAM. Chỉ mục sai thứ tự hoặc quá lớn thì quét tuần tự như cũ. Không tìm thấy thì gợi ý tối đa 5 từ liền kề, chạm để tra lại.

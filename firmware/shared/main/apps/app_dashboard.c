@@ -624,6 +624,7 @@ static unsigned s_pet_tap;
 // pet.inc 在后面定义。/ Defined later in pet.inc.
 static bool pet_vocab_showing(void);
 static EpdRect pet_bubble_rect(void);
+static EpdRect pet_vocab_link_rect(void);
 #endif
 #endif
 #if !DPREADER_LOVE_BOOK
@@ -868,11 +869,11 @@ static int title_lines(uint8_t *fb,const char *text,uint8_t background) {
 }
 static const char *const utility_names[APP_HOME_UTIL_COUNT]={
     "Để trống","Đọc tiếp","Thư viện","Duyệt OPDS","Đồng bộ KoSync","Cài đặt",
-    "Bật/tắt Wi-Fi","Bật/tắt Bluetooth","Cập nhật OTA","Tệp tin","Chuyển tệp","Làm mới màn hình"
+    "Bật/tắt Wi-Fi","Bật/tắt Bluetooth","Cập nhật OTA","Tệp tin","Chuyển tệp","Làm mới màn hình","Từ vựng"
 };
 static const ui_icon_t utility_icons[APP_HOME_UTIL_COUNT]={
     UI_ICON_PENCIL,UI_ICON_BOOK_OPEN,UI_ICON_LIBRARY_BIG,UI_ICON_RADIO_TOWER,UI_ICON_REFRESH_CW,
-    UI_ICON_SLIDERS_HORIZONTAL,UI_ICON_WIFI,UI_ICON_BLUETOOTH,UI_ICON_DOWNLOAD,UI_ICON_FOLDER_OPEN,UI_ICON_COPY,UI_ICON_ROTATE_CW
+    UI_ICON_SLIDERS_HORIZONTAL,UI_ICON_WIFI,UI_ICON_BLUETOOTH,UI_ICON_DOWNLOAD,UI_ICON_FOLDER_OPEN,UI_ICON_COPY,UI_ICON_ROTATE_CW,UI_ICON_SPARKLES
 };
 static EpdRect utility_notice_rect(void){return app_settings_simple_ui()?(EpdRect){100,668,484,64}:(EpdRect){100,812,484,100};}
 static bool utility_notice_expire(int64_t now_ms) {
@@ -933,6 +934,9 @@ static app_redraw_t utility_run(app_ctx_t *ctx,unsigned action) {
         snprintf(s_utility_notice,sizeof(s_utility_notice),"%s",err==ESP_OK?(bt?(app_settings_ble_turner()?"Đã bật Bluetooth":"Đã tắt Bluetooth"):"Đã gửi yêu cầu bật/tắt Wi-Fi"):(err==ESP_ERR_NOT_FOUND?"Chưa lưu mạng Wi-Fi":"Không thể thay đổi kết nối lúc này"));break;
     }
     case APP_HOME_UTIL_REFRESH:return APP_REDRAW_FULL;
+#if !DPREADER_LOVE_BOOK
+    case APP_HOME_UTIL_VOCAB: {extern const app_desc_t app_vocab;ctx->request_app=&app_vocab;return APP_REDRAW_NONE;}
+#endif
     default:break;
     }
     if(s_utility_notice[0])s_utility_notice_until=esp_timer_get_time()/1000+2000;
@@ -1528,7 +1532,7 @@ static app_redraw_t on_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
 #if !DPREADER_LOVE_BOOK
         // 点按宠物卡换一句话，只局刷该卡。/ Tapping the pet card swaps its line and refreshes only that card.
         // 气泡正显示今日单词时，点气泡进入词汇页。/ While the bubble shows today's word, tapping it opens the vocabulary page.
-        if(pet_vocab_showing()&&hit(pet_bubble_rect(),x,y)){extern const app_desc_t app_vocab;ctx->request_app=&app_vocab;return APP_REDRAW_NONE;}
+        if((pet_vocab_showing()&&hit(pet_bubble_rect(),x,y))||hit(pet_vocab_link_rect(),x,y)){extern const app_desc_t app_vocab;ctx->request_app=&app_vocab;return APP_REDRAW_NONE;}
         if(hit(home_pet_card_rect(),x,y)){++s_pet_tap;s_area=home_pet_card_rect();return APP_REDRAW_AREA;}
 #endif
         if(hit((EpdRect){510,88,60,60},x,y)||(!DPREADER_LOVE_BOOK&&hit(home_calendar_rect(),x,y))){refresh_days();s_goal_draft=app_settings_home_goal_minutes();s_view=HOME_GOAL;s_save_error=false;return APP_REDRAW_PAGE;}

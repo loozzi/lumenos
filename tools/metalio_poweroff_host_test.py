@@ -25,6 +25,7 @@ static int rtc_error,failure;
 static unsigned rtc,book,font,closes,key_pauses,pulses,remounts,resumes,haptics,clock_ms;
 static jmp_buf poweroff;
 static int app_sync_time_to_pmu(void){assert(!closes&&!pulses);++rtc;return rtc_error;}
+static int sync_time_before_power(void){return app_sync_time_to_pmu();}
 static void vTaskDelay(unsigned ms){clock_ms+=ms;}
 static int read_pico_sd_get_info(read_pico_sd_info_t *i){i->mounted=card;return card?ESP_OK:ESP_ERR_INVALID_STATE;}
 static int book_suspend_io(void){assert(rtc&&!pulses&&!closes);++book;return failure==1?-4:ESP_OK;}

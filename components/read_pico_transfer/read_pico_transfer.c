@@ -26,6 +26,8 @@
 #include <sys/time.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <stdbool.h>
+static volatile bool s_clock_set_pending;
 #if DPREADER_BOARD_METALIO47
 #include "../../main/font/font_filename.h"
 // 字体上传单独规范化名称；书籍/图片与目录上传仍使用原来的路径边界。
@@ -1081,6 +1083,12 @@ esp_err_t read_pico_transfer_sync_time_online(uint32_t *utc_seconds) {
 esp_err_t read_pico_transfer_sync_time_auto(uint32_t *utc_seconds) {
     return sync_time_run(utc_seconds, true, true);
 }
+// 网页设置了系统时间：取走一次，供主循环写回 RTC。/ The web page set the system clock: taken once so the loop writes the RTC.
+bool read_pico_transfer_take_clock_set(void) {
+    bool pending = s_clock_set_pending;
+    s_clock_set_pending = false;
+    return pending;
+}
 bool read_pico_transfer_take_time_sync(uint32_t *utc_seconds) {
     if (!utc_seconds) return false;
     portENTER_CRITICAL(&s_lock);
@@ -1767,6 +1775,7 @@ static esp_err_t clock_handler(httpd_req_t *req) {
     struct timeval tv = {.tv_sec = (time_t)epoch->valuedouble};
     cJSON_Delete(json);
     if (settimeofday(&tv, NULL)) return respond_error(req, 500);
+    s_clock_set_pending = true; // 主循环随后写入 RTC。/ The main loop writes the RTC next.
     return wifi_response(req, "200 OK", "{\"ok\":true}");
 }
 static esp_err_t titles_handler(httpd_req_t *req) {
@@ -2933,6 +2942,12 @@ esp_err_t read_pico_transfer_sync_time_online(uint32_t *utc_seconds) {
 esp_err_t read_pico_transfer_sync_time_auto(uint32_t *utc_seconds) {
     return sync_time_run(utc_seconds, false, true);
 }
+// 网页设置了系统时间：取走一次，供主循环写回 RTC。/ The web page set the system clock: taken once so the loop writes the RTC.
+bool read_pico_transfer_take_clock_set(void) {
+    bool pending = s_clock_set_pending;
+    s_clock_set_pending = false;
+    return pending;
+}
 bool read_pico_transfer_take_time_sync(uint32_t *utc_seconds) {
     if (!utc_seconds) return false;
     portENTER_CRITICAL(&s_lock);
@@ -3517,6 +3532,7 @@ static esp_err_t clock_handler(httpd_req_t *req) {
     struct timeval tv = {.tv_sec = (time_t)epoch->valuedouble};
     cJSON_Delete(json);
     if (settimeofday(&tv, NULL)) return respond_error(req, 500);
+    s_clock_set_pending = true; // 主循环随后写入 RTC。/ The main loop writes the RTC next.
     return wifi_response(req, "200 OK", "{\"ok\":true}");
 }
 static esp_err_t titles_handler(httpd_req_t *req) {

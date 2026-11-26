@@ -80,6 +80,7 @@ static int nvs_set_u64(int h,const char *k,uint64_t v){(void)h;(void)k;if(!strcm
 static int nvs_commit(int h){(void)h;return ESP_OK;}
 static void nvs_close(int h){(void)h;}
 static bool read_pico_transfer_take_time_sync(uint32_t *v){*v=pending;pending=0;return *v!=0;}
+static bool clock_set_pending;static bool read_pico_transfer_take_clock_set(void){bool v=clock_set_pending;clock_set_pending=false;return v;}
 static void read_pico_transfer_get_status(read_pico_transfer_status_t *s){*s=network;}
 static int read_pico_transfer_get_saved_wifi(char *s,bool *b){*s=0;++credential_reads;*b=creds;return ESP_OK;}
 static int read_pico_transfer_sync_time_auto(uint32_t *v){*v=wall;if(!worker_result)pending=wall;return worker_result;}

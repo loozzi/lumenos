@@ -8,6 +8,8 @@ Trang **Từ vựng** giúp học từ bằng thẻ, có ôn lặp lại theo h�
 2. Chép một hoặc nhiều tệp `.csv` vào đó (tối đa 16 tệp, mỗi tệp không quá 2 MiB và 4000 từ). Có thể chép qua USB hoặc Web Portal.
 3. Mở trang **Tệp**, vào thẻ nhớ, chạm một tệp `.csv` trong `/vocab`. Trang Từ vựng mở với bộ đó và nhớ nó làm bộ đang học.
 
+Lối vào nhanh (từ 1.6.1): dòng **Học từ vựng ›** ở góc dưới trái thẻ Cú Lém trên Trang chủ (luôn hiện), hoặc gán tiện ích **Từ vựng** vào một ô tiện ích của Trang chủ.
+
 Trước khi chép, có thể kiểm tệp trên máy tính:
 
 ```

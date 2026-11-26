@@ -153,3 +153,5 @@ esp_err_t read_pico_transfer_sync_time_online(uint32_t *utc_seconds);
 esp_err_t read_pico_transfer_sync_time_auto(uint32_t *utc_seconds);
 /// 主循环消费成功校准事件，用于 PMU/NVS 交接。/ Consume successful sync events on the main loop for PMU/NVS handoff.
 bool read_pico_transfer_take_time_sync(uint32_t *utc_seconds);
+/// 网页管理页设置过系统时间（只取一次）。/ The web management page set the system clock (taken once).
+bool read_pico_transfer_take_clock_set(void);

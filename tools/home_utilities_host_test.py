@@ -41,6 +41,7 @@ static int64_t fake_ms=1000;static int64_t esp_timer_get_time(void){return fake_
 static bool app_settings_home_utility_labels(void){return labels;}
 static bool bt_enabled;static esp_err_t network_error;
 const app_desc_t app_transfer={1};
+const app_desc_t app_vocab={2};
 static home_book_t *featured(void){return &s_current;}
 static uint8_t app_settings_home_utility(unsigned i){return saved[i];}
 static bool app_settings_ble_turner(void){return bt_enabled;}
@@ -78,6 +79,7 @@ int main(void){
  case APP_HOME_UTIL_FILES:assert(tab==2);break;
  case APP_HOME_UTIL_TRANSFER:assert(ctx.request_app==&app_transfer&&transfer);break;
  case APP_HOME_UTIL_REFRESH:assert(result==APP_REDRAW_FULL);break;
+ case APP_HOME_UTIL_VOCAB:assert(ctx.request_app==&app_vocab&&result==APP_REDRAW_NONE);break;
  default:assert(false);
  }}
  utility_run(&ctx,APP_HOME_UTIL_WIFI);assert(s_utility_notice_until==fake_ms+2000);assert(!utility_notice_expire(fake_ms+1999)&&s_utility_notice[0]);assert(utility_notice_expire(fake_ms+2000)&&!s_utility_notice[0]&&!s_utility_notice_until);assert(!utility_notice_expire(fake_ms+3000)&&s_area.width==484&&s_area.height==100);

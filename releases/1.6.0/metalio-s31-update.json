@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.6.0",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.5.19",
+  "notes": "LumenOS 1.6.0: Tra từ nhanh hơn, có gợi ý và quản lý thứ tự từ điển. Ghi chú cả cuốn, xuất Markdown. Trang Từ vựng mới học bằng thẻ từ tệp CSV bạn chép vào /vocab.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5",
+      "md5": "a865d71c2d6db481384bdd719fbfc2d9"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "39eda903409df4d53b067ebbcf66be0b22ffb4cbc62d5fbd64caa76627d5736a",
+      "md5": "54a767030c13de639d791da0e286c3e2"
+    }
+  },
+  "clean_image": {
+    "sha256": "8d906d495f2639409ec4e16f7c39210983c78ce598f6f724f97e112cbca8c794",
+    "md5": "bbb36b2945ec34ad7d5356303039426e"
+  },
+  "size": 5033296,
+  "sha256": "678f4cdb7e9c7578f2a174668366547d09b6618c666fdbda47f345a99b2c59fd",
+  "md5": "bd8ce6c1a1f70811a6ece6026f97ba2d"
+}

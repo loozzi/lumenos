@@ -60,6 +60,8 @@ void app_time_service_poll(bool idle) {
         if (s_last_sync < CLOCK_VALID_MIN || s_last_sync > CLOCK_VALID_MAX) s_last_sync = 0;
         s_loaded = true;
     }
+    // 网页手动设时：立即写 RTC（不算网络校准）。/ Web-page clock set: write the RTC now (not a network calibration).
+    if (read_pico_transfer_take_clock_set()) (void)app_sync_time_to_pmu();
     uint32_t received;
     if (read_pico_transfer_take_time_sync(&received)) {
         // 只有真实网络成功才持久化；普通重启/手动设时间不能伪装成网络校准。
