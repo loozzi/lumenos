@@ -53,7 +53,7 @@ int main(void) {
 }
 '''
     (p/'test.c').write_text(c)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds','-I'+str(ROOT/'main'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds','-I'+str(ROOT/'main'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)
     # Actual settings getters are inline constants in Love Book; saved Full state is ignored.
     stub=p/'esp_err.h';stub.write_text('typedef int esp_err_t;\n')
@@ -62,7 +62,7 @@ int main(void) {
         settings_unit+=function(name,ROOT/'main/settings.c')+'\n'
     settings_unit+='int main(void){assert(app_settings_simple_ui());assert(app_settings_simple_full_ui());assert(app_settings_set_ui_mode(0)==ESP_ERR_NOT_SUPPORTED);assert(app_settings_set_ui_mode(2)==ESP_OK);assert(app_settings_set_simple_ui(false)==ESP_ERR_NOT_SUPPORTED);s_lock_style=2;assert(app_settings_lock_style()==0&&s_lock_style==2);s_simple_utilities[0]=APP_HOME_UTIL_LIBRARY;assert(app_settings_simple_utility(2)==APP_HOME_UTIL_FILES);}'
     (p/'settings.c').write_text(settings_unit)
-    subprocess.run(['cc','-std=c11','-DDPREADER_LOVE_BOOK=1','-DDPREADER_BOARD_METALIO47=1','-I'+str(p),'-I'+str(ROOT/'main'),str(p/'settings.c'),'-o',str(p/'settings')],check=True)
+    subprocess.run(['cc','-std=gnu11','-DDPREADER_LOVE_BOOK=1','-DDPREADER_BOARD_METALIO47=1','-I'+str(p),'-I'+str(ROOT/'main'),str(p/'settings.c'),'-o',str(p/'settings')],check=True)
     subprocess.run([str(p/'settings')],check=True)
     wake_unit = r'''
 #include <assert.h>
@@ -102,7 +102,7 @@ int main(void){
 }
 '''
     (p/'wake.c').write_text(wake_unit)
-    subprocess.run(['cc','-std=c11','-DDPREADER_LOVE_BOOK=1','-I'+str(p),'-I'+str(ROOT/'main'),str(p/'wake.c'),'-o',str(p/'wake')],check=True)
+    subprocess.run(['cc','-std=gnu11','-DDPREADER_LOVE_BOOK=1','-I'+str(p),'-I'+str(ROOT/'main'),str(p/'wake.c'),'-o',str(p/'wake')],check=True)
     subprocess.run([str(p/'wake')],check=True)
 # Exercise production version parsing and its stable/RC order for both suffixes.
 with tempfile.TemporaryDirectory() as folder:
@@ -111,7 +111,7 @@ with tempfile.TemporaryDirectory() as folder:
     unit+=function('version_parts',ROOT/'main/ota_release.c')+'\n'+function('pico_version_compare',ROOT/'main/ota_release.c')
     unit+='\nint main(void){unsigned n[4];assert(version_parts("1.5.0-love",n));assert(version_parts("1.5.0",n));assert(pico_version_compare("1.5.0-love","1.4.5-love-vn")>0);assert(version_parts("1.3.3-love-vn",n));assert(version_parts("1.3.3RC4-love-vn",n));assert(!version_parts("1.3.3-other",n));assert(pico_version_compare("1.3.3-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.3RC10-love-vn","1.3.3RC4-love-vn")>0);assert(pico_version_compare("1.3.4RC1-love-vn","1.3.3-love-vn")>0);assert(pico_version_compare("1.3.3-vn","1.3.3RC4-vn")>0);}'
     (p/'versions.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds',str(p/'versions.c'),'-o',str(p/'versions')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds',str(p/'versions.c'),'-o',str(p/'versions')],check=True)
     subprocess.run([str(p/'versions')],check=True)
 # Verify the actual local OTA validator and online release admission call bounded identity checks.
 assert 'firmware_same_edition' in function('pico_ota_inspect',ROOT/'main/ota_update.c')

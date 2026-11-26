@@ -30,7 +30,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  d=Path(d);(d/'esp_log.h').write_text('#define ESP_LOGD(...) ((void)0)\n#define ESP_LOGI(...) ((void)0)\n')
- flags=['cc','-std=c11','-g','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined',
+ flags=['cc','-std=gnu11','-g','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined',
   '-I'+str(d),'-I'+str(v),'-I'+str(r/'tools/waveform_host_stubs'),'-I'+str(r/'components/epdiy/include'),'-I'+str(r/'components/epdiy/src'),
   '-I'+str(r/'components/e0470_epaper_waveform/include'),'-I'+str(r/'components/e0470_epaper_waveform/metalio')]
  objects=[]

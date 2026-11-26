@@ -50,7 +50,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 
 # Execute the actual production crop planner, including both ripple and Fast BW turns.
@@ -79,6 +79,6 @@ int main(void){
 """
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'crop.c').write_text(program)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p/'crop.c'),'-o',str(p/'crop')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(p/'crop.c'),'-o',str(p/'crop')],check=True)
  subprocess.run([str(p/'crop')],check=True)
 print('PASS actual reader crop:ordinary/Fast BW/ripple include ink above the first text line')

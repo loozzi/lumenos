@@ -86,6 +86,6 @@ int main(void){
 with tempfile.TemporaryDirectory() as d:
     w=Path(d);(w/'test.c').write_text(code)
     (w/'esp_err.h').write_text('#pragma once\ntypedef int esp_err_t;\n#define ESP_OK 0\n')
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined',
                     '-I'+str(w),'-I'+str(ROOT/'main/font'),str(w/'test.c'),'-o',str(w/'test')],check=True)
     subprocess.run([str(w/'test')],check=True)

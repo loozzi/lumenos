@@ -237,5 +237,5 @@ with tempfile.TemporaryDirectory() as temp:
  p=Path(temp)
  for name,unit in [('menu',menu),('persist',persist),('dispatch',dispatch),('bindings',bindings),('settings-screen',screen)]:
   c=p/(name+'.c');exe=p/name;c.write_text(unit)
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
   subprocess.run([str(exe)],check=True)

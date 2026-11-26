@@ -189,6 +189,6 @@ int main(void){
 with tempfile.TemporaryDirectory() as tmp:
     for name,code in [('lcd-tail',lcd),('time-network',network),('rtc',rtc)]:
         src=Path(tmp)/(name+'.c');src.write_text(code);exe=Path(tmp)/name
-        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unknown-attributes',
+        subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unknown-attributes',
             '-fsanitize=address,undefined','-g','-I'+str(root/'components/epdiy/src'),str(src),'-o',str(exe)],check=True)
         subprocess.run([str(exe)],check=True)

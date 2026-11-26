@@ -50,5 +50,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
     tmp=Path(directory);(tmp/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(tmp/'test.c'),'-lm','-o',str(tmp/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(tmp/'test.c'),'-lm','-o',str(tmp/'test')],check=True)
     subprocess.run([str(tmp/'test')],check=True)

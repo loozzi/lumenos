@@ -38,7 +38,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 loop=(root/'main/app/app_loop.c').read_text()
 assert 'display_system_binary_set' not in loop, 'Run in the board-selected Pico host view'

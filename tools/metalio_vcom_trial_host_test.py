@@ -30,5 +30,5 @@ int main(void){int values[]={900,1200,1700,2000,2200};for(unsigned i=0;i<5;++i){
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
  for enabled in (False,True):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',*([f'-DDPREADER_BOARD_VCOM_TRIAL_MV={trial}'] if enabled else []),str(p/'test.c'),'-o',str(p/'test')],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',*([f'-DDPREADER_BOARD_VCOM_TRIAL_MV={trial}'] if enabled else []),str(p/'test.c'),'-o',str(p/'test')],check=True)
   subprocess.run([str(p/'test')],check=True)

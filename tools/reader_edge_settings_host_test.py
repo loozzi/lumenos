@@ -9,6 +9,12 @@ u=r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#define backup_nvs_open(ns,mode,h) nvs_open(ns,mode,h)
+#define backup_nvs_set_u8(h,k,v) nvs_set_u8(h,k,v)
+#define backup_nvs_set_u16(h,k,v) nvs_set_u16(h,k,v)
+#define settings_backup_commit(h) nvs_commit(h)
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 typedef int nvs_handle_t;typedef int esp_err_t;
@@ -32,4 +38,4 @@ int main(void){assert(app_settings_reader_edge_brightness()&&app_settings_reader
  puts("PASS actual edge settings: independent NVS keys, defaults, persisted selection, open/write/commit failure rollback");}
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

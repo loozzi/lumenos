@@ -88,5 +88,5 @@ int main(void){
 }
 '''
     (out/'test.c').write_text(code)
-    subprocess.run(['cc','-std=c11','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(out),'-I'+str(ROOT/'components/ble_page_turner/include'),'-I'+str(ROOT/'components/ble_page_turner/src'),str(out/'test.c'),'-o',str(out/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(out),'-I'+str(ROOT/'components/ble_page_turner/include'),'-I'+str(ROOT/'components/ble_page_turner/src'),str(out/'test.c'),'-o',str(out/'test')],check=True)
     subprocess.run([str(out/'test')],cwd=out,check=True)

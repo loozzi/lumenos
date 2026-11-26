@@ -78,5 +78,5 @@ with tempfile.TemporaryDirectory(prefix='reader-panel-entry-') as temporary:
     folder=Path(temporary)
     test=folder/'test.c';exe=folder/'test'
     test.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(test),'-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(test),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

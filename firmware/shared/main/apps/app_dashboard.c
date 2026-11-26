@@ -79,6 +79,8 @@
 #include "e0470_epaper_waveform.h"
 #include "esp_heap_caps.h"
 #include "esp_attr.h"
+#include "vocab_today.h"
+#define HOME_VOCAB_ROOT "/sdcard/vocab/.lumen"
 #include "read_pico_sd.h"
 #include "settings.h"
 #include "ttf_font.h"
@@ -618,6 +620,11 @@ static EpdRect home_calendar_rect(void){return(EpdRect){36,910,612,170};}
 #if !DPREADER_LOVE_BOOK
 static EpdRect home_pet_card_rect(void){return(EpdRect){36,590,612,300};}
 static unsigned s_pet_tap;
+#if !DPREADER_LOVE_BOOK
+// pet.inc 在后面定义。/ Defined later in pet.inc.
+static bool pet_vocab_showing(void);
+static EpdRect pet_bubble_rect(void);
+#endif
 #endif
 #if !DPREADER_LOVE_BOOK
 // 首页日历卡：连续达标天数取最近30天，可跨月。/ Home calendar card: the streak spans the last 30 days across months.
@@ -1204,6 +1211,10 @@ static void refresh_excerpt(void) {
 }
 static void on_enter(app_ctx_t *ctx) {
     const int64_t home_started=esp_timer_get_time();
+#if !DPREADER_LOVE_BOOK
+    // 每次挂卡最多读一次“今日单词”摘要；绘制只用 RAM 副本。/ Load the word-of-the-day summary at most once per mount; drawing uses RAM.
+    (void)vocab_today_get(HOME_VOCAB_ROOT);
+#endif
     s_component_dirty=(EpdRect){0};
     bool simple=app_settings_simple_ui();
     if(simple)app_book_release_shelf_cache();
@@ -1242,6 +1253,7 @@ static void on_enter(app_ctx_t *ctx) {
     ESP_LOGI("home","home enter local elapsed_ms=%lld",(long long)((esp_timer_get_time()-home_started)/1000));
 }
 static void on_media_lost(app_ctx_t *ctx) {
+    vocab_today_invalidate();
 #if DPREADER_BOARD_METALIO47
     metalio_cover_cache_clear();
 #else
@@ -1255,6 +1267,9 @@ static void on_media_lost(app_ctx_t *ctx) {
 }
 static void on_media_ready(app_ctx_t *ctx) {
     (void)ctx;
+#if !DPREADER_LOVE_BOOK
+    vocab_today_invalidate();(void)vocab_today_get(HOME_VOCAB_ROOT);
+#endif
     read_pico_sd_info_t info={0};
     if(read_pico_sd_get_info(&info)==ESP_OK && s_books_cache_valid &&
        s_cached_store_revision==book_store_revision() && s_cached_sd_present==info.present &&
@@ -1512,6 +1527,8 @@ static app_redraw_t on_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev) {
         // 日历卡与目标环进入同一月记录页。/ The calendar card and goal ring open the same monthly record.
 #if !DPREADER_LOVE_BOOK
         // 点按宠物卡换一句话，只局刷该卡。/ Tapping the pet card swaps its line and refreshes only that card.
+        // 气泡正显示今日单词时，点气泡进入词汇页。/ While the bubble shows today's word, tapping it opens the vocabulary page.
+        if(pet_vocab_showing()&&hit(pet_bubble_rect(),x,y)){extern const app_desc_t app_vocab;ctx->request_app=&app_vocab;return APP_REDRAW_NONE;}
         if(hit(home_pet_card_rect(),x,y)){++s_pet_tap;s_area=home_pet_card_rect();return APP_REDRAW_AREA;}
 #endif
         if(hit((EpdRect){510,88,60,60},x,y)||(!DPREADER_LOVE_BOOK&&hit(home_calendar_rect(),x,y))){refresh_days();s_goal_draft=app_settings_home_goal_minutes();s_view=HOME_GOAL;s_save_error=false;return APP_REDRAW_PAGE;}

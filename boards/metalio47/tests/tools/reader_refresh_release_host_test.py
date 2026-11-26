@@ -221,5 +221,5 @@ with tempfile.TemporaryDirectory(prefix='kiikoread-reader-release-') as folder:
  c=Path(folder)/'test.c';c.write_text(unit)
  for enabled in (0,1):
   binary=Path(folder)/f'test-{enabled}'
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g',*sanitizers,f'-DDPREADER_S31_TEXT_RIPPLE={enabled}',str(c),'-o',str(binary)],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g',*sanitizers,f'-DDPREADER_S31_TEXT_RIPPLE={enabled}',str(c),'-o',str(binary)],check=True)
   subprocess.run([str(binary)],check=True)

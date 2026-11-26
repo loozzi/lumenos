@@ -12,6 +12,7 @@ from pathlib import Path
 import argparse
 import concurrent.futures
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -20,10 +21,26 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOT_TESTS = ('firmware_layout_host_test.py', 'release_full_only_host_test.py', 'firmware_editions_host_test.py')
 
 
+def cjson_dir():
+    """中文：在 ESP-IDF 组件缓存中找 cJSON 源码。/ English: find cJSON sources in the ESP-IDF component cache."""
+    for env in ('CJSON_DIR', 'DPREADER_CJSON_DIR'):
+        if os.environ.get(env):
+            return os.environ[env]
+    cache = Path.home() / '.cache/Espressif/ComponentManager'
+    found = sorted(cache.glob('**/espressif__cjson*/cJSON/cJSON.c')) if cache.exists() else []
+    return str(found[-1].parent) if found else None
+
+
+ENV = dict(os.environ)
+if cjson_dir():
+    ENV.setdefault('CJSON_DIR', cjson_dir())
+    ENV.setdefault('DPREADER_CJSON_DIR', cjson_dir())
+
+
 def run(cmd, cwd, log, timeout):
     try:
         with open(log, 'w') as out:
-            return subprocess.run(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, timeout=timeout).returncode == 0
+            return subprocess.run(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, timeout=timeout, env=ENV).returncode == 0
     except subprocess.TimeoutExpired:
         return False
 

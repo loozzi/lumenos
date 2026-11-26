@@ -33,5 +33,5 @@ int main(int argc,char**argv){
 assert 'if (!resp) resp = malloc' not in s and 'if (!buf) buf = malloc' not in s
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit);(p/'book.txt').write_text('abc')
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test'),str(p/'book.txt')],check=True)

@@ -114,7 +114,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(prefix+source+tests)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],cwd=p,check=True)
 
 note_source = (root / 'main/app/crash_note.c').read_text()
@@ -172,6 +172,6 @@ int main(void) {
 with tempfile.TemporaryDirectory() as d:
     p = Path(d)
     (p / 'test.c').write_text(note_prefix + note_source + note_test)
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
                     str(p / 'test.c'), '-o', str(p / 'test')], check=True)
     subprocess.run([str(p / 'test')], check=True)

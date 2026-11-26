@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as tmp:
     harness = directory / "test.c"
     harness.write_text(HARNESS)
     output = directory / "test"
-    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+    subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror",
                     "-fsanitize=address,undefined", "-I", str(directory),
                     "-I", str(SOURCE.parent), str(harness), "-o", str(output)], check=True)
     subprocess.run([str(output)], check=True)

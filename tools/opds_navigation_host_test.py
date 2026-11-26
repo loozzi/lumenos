@@ -71,4 +71,4 @@ int main(void){app_ctx_t ctx={0};feed.count=1;strcpy(feed.entries[0].title,"Rece
 '''
 assert 'if(s_view==OPDS)return opds_gesture(ctx,ev);' in function('gesture_event',src)
 with tempfile.TemporaryDirectory() as t:
- p=Path(t);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(t);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

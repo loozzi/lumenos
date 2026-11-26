@@ -59,6 +59,6 @@ with tempfile.TemporaryDirectory(prefix='metalio-root-entry-') as directory:
     directory = Path(directory)
     source, binary = directory / 'test.c', directory / 'test'
     source.write_text(unit)
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
                     '-fsanitize=address,undefined', str(source), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

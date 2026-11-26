@@ -27,3 +27,6 @@ void book_ticket_draw_shadow(uint8_t *fb);
 
 /// Paint the configured signature on image locks; empty signatures preserve the image.
 void book_lock_signature_draw(uint8_t *fb);
+/// 锁屏底部画“今日单词”（RAM 摘要，关闭或无词时不画）；有签名时画在签名上方。
+/// Draw the word of the day at the bottom of the lock screen from the RAM summary; above the signature when one is shown.
+void book_lock_vocab_draw(uint8_t *fb, bool above_signature);

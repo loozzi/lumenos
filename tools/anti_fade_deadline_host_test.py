@@ -21,4 +21,4 @@ int main(void){
  puts("PASS actual anti-fade deadline: exact due boundary, blocked deferral, disabled and monotonic regression agree with existing refresh policy");}
 '''
 with tempfile.TemporaryDirectory() as t:
- p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

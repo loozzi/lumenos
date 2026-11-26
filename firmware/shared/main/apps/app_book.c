@@ -151,6 +151,7 @@
 #include "metalio_ui_wake.h"
 #include "metalio_cpu.h"
 #include "book_notes_ui.h"
+#include "book_dictionary.h"
 #include "metalio_task.h"
 #include "esp_attr.h"
 // 仅普通任务访问的CPU数据；锁和ISR数据保留内部RAM。/ Task-only CPU data; locks and ISR data stay internal.
@@ -5652,6 +5653,7 @@ static bool load_chapter_at(app_ctx_t* ctx, size_t chapter, size_t offset,
     unlock_draw();
     book_notes_bind(s_path,(uint32_t)s_chapter,s_text,s_text_len);
     book_notes_bind_links(s_links,s_link_count,reader_footnote_load);
+    book_notes_set_book(s_book_title,book_chapter_title);
     prepare_inline_image();
     // 开书这条链上有解析、解压和字体装载，栈曾经在这里溢出过；留一个可观测的水位。
     // 顺带量一下章节排完后的 PSRAM 余量：书内字体的装载预算要靠这个数来定，不能靠估。
@@ -8417,6 +8419,8 @@ static void book_on_exit(app_ctx_t* ctx) {
 static void book_on_media_lost(app_ctx_t* ctx) {
     s_reader_choice.open=false;
     book_notes_cancel();
+    // 词典稀疏索引属于已拔出的卡。/ Dictionary sparse indexes belong to the removed card.
+    book_dictionary_cache_clear();
 #if DPREADER_BOARD_METALIO47
     if(s_reader_panel==READER_PANEL_ONLINE_FONTS)ui_online_fonts_close(&s_online_fonts);
 #endif
@@ -8932,6 +8936,11 @@ static bool reader_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,app
     if(handled){s_reader_tap.pending=false;s_page=book_notes_page(s_page);if(notes!=APP_REDRAW_NONE)invalidate_prep();}
     unlock_draw();
     if(!handled)return false;
+    // 整本书笔记列表选了其他章：像书签一样载入该章并保存进度。
+    // A whole-book note in another chapter: load it like a bookmark and save progress.
+    uint32_t jump_chapter;size_t jump_offset;
+    if(book_notes_take_jump(&jump_chapter,&jump_offset)&&jump_chapter<book_chapter_count()&&
+       load_chapter(ctx,jump_chapter,jump_offset,false)){save_progress();invalidate_prep();notes=APP_REDRAW_PAGE;}
     /* PAGE cancels the active gesture in app_loop. Preserve a selection hold
      * and its drags with an already-painted AREA, including the initial menu. */
     if(notes==APP_REDRAW_PAGE&&(ev->type==UI_GESTURE_LONG_PRESS||ev->type==UI_GESTURE_MOVE)) {
@@ -10002,6 +10011,8 @@ static void before_lock(app_ctx_t* ctx) {
 #endif
     s_reader_choice.open=false;
     book_notes_cancel();
+    // PSRAM 剩余不足 1 MiB 时，锁屏前放下词典索引。/ Drop dictionary indexes before lock when under 1 MiB of PSRAM is free.
+    if(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)<1024u*1024u)book_dictionary_cache_clear();
 #if DPREADER_BOARD_METALIO47
     if(s_reader_panel==READER_PANEL_ONLINE_FONTS){ui_online_fonts_close(&s_online_fonts);ttf_font_scan();s_font_page=0;s_reader_panel=READER_PANEL_FONT_PICKER;}
     s_chapter_warm_done=false;

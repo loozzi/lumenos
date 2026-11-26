@@ -41,4 +41,4 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'esp_err.h').write_text('#pragma once\ntypedef int esp_err_t;\n');(p/'test.c').write_text(u)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'components/ble_page_turner/include'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'components/ble_page_turner/include'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

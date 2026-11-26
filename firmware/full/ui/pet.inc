@@ -124,7 +124,22 @@ static pet_mood_t pet_mood(void) {
     if (s_recent_days_valid && !pet_recent_seconds(-1) && !pet_recent_seconds(-2) && !pet_recent_seconds(-3)) return PET_MISS;
     return PET_WAIT;
 }
+// 用户2026-11-25：有词汇包时，偶数次点按让 Cú Lém 说今日单词。/ With a vocabulary pack, even taps make Cú Lém say today's word.
+static bool pet_vocab_showing(void) {
+    const vocab_today_t *t = vocab_today_cached();
+    return t->valid && t->show_home && s_pet_tap % 2 == 0;
+}
+static EpdRect pet_bubble_rect(void) { return (EpdRect){236, 656, 388, 136}; }
 static void pet_message(char *out, size_t cap, pet_mood_t mood) {
+    if (pet_vocab_showing()) {
+        char line[240];
+        vocab_today_line(vocab_today_cached(), line, sizeof(line));
+        snprintf(out, cap, "Từ hôm nay: %s", line);
+        // 截断时退回到完整的 UTF-8 字符。/ When cut, back off to a whole UTF-8 character.
+        size_t n = strlen(out);
+        if (n + 1 >= cap) { while (n && ((unsigned char)out[n - 1] & 0xc0) == 0x80) n--; if (n && (unsigned char)out[n - 1] >= 0xc0) n--; out[n] = 0; }
+        return;
+    }
     const unsigned goal = app_settings_home_goal_minutes(), today = today_seconds() / 60;
     const unsigned left = goal > today ? goal - today : 1, streak = home_streak_days(goal * 60);
     const unsigned pick = s_pet_tap % 3;
@@ -253,9 +268,9 @@ static void pet_draw_card(uint8_t *fb, uint8_t card_gray) {
     snprintf(value, sizeof(value), "Cấp %u · %s", level + 1, s_pet_level_names[level]);
     label_on(fb, 622, 626, 19, value, EPD_DRAW_ALIGN_RIGHT, 0x40, card_gray);
     pet_owl_draw(fb, 58, 686, 150, mood, (s_pet_tap % 3) == 1, fast);
-    const EpdRect bubble = {236, 656, 388, 136};
+    const EpdRect bubble = pet_bubble_rect();
     pet_bubble(fb, bubble, 728, false);
-    char message[160], lines[3][128];
+    char message[256], lines[3][128];
     pet_message(message, sizeof(message), mood);
     unsigned rows = pet_wrap(message, 22, bubble.width - 36, lines, 3);
     int first = bubble.y + bubble.height / 2 - (int)(rows - 1) * 17;

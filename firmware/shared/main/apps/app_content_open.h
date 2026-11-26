@@ -22,6 +22,8 @@ bool app_book_resume_context(char *path, size_t capacity, bool *fullscreen);
 /// Do not snapshot stale progress when the pre-sleep persistence step failed.
 bool app_book_progress_saved(void);
 bool app_image_request_open(const char *path);
+/// 打开 /vocab 下的词汇包；其他位置返回 false。/ Open a vocabulary pack in /vocab; false elsewhere.
+bool app_vocab_request_open(const char *path);
 void app_files_request_folder(int folder);
 void app_book_request_manage(void);
 void app_book_request_opds(void);

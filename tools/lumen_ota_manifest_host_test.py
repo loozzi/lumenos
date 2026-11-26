@@ -33,5 +33,5 @@ int main(int argc,char **argv){
             data=json.loads(src.read_text())
             if candidate:data['version']=version
             dest=work/f'{edition}-{candidate}.json';dest.write_text(json.dumps(data));files.append(str(dest))
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1','-I'+str(ROOT/'tools/ota_stubs'),'-I'+str(ROOT/'main'),'-I/usr/include/cjson',str(work/'test.c'),str(ROOT/'main/ota_release.c'),'-lcjson','-o',str(work/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1','-I'+str(ROOT/'tools/ota_stubs'),'-I'+str(ROOT/'main'),'-I/usr/include/cjson',str(work/'test.c'),str(ROOT/'main/ota_release.c'),'-lcjson','-o',str(work/'test')],check=True)
     subprocess.run([str(work/'test'),*files],check=True)

@@ -141,7 +141,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  c=Path(tmp)/'cards.c';exe=Path(tmp)/'cards';c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
  result=subprocess.run([str(exe)],text=True,capture_output=True,check=True)
 print(result.stdout.splitlines()[-1])
 # Source contracts prevent an OPDS entry from falling back to a shelf scan in simple mode.

@@ -9,13 +9,15 @@
 #include "book_annotations.h"
 #include "book_annotation_exchange.h"
 #include "book_dictionary.h"
+#include "book_dict_order.h"
+#include "book_notes_book.h"
+#include <time.h>
 #include "ui_keyboard.h"
 #include "ui_kit.h"
 #include "ttf_font.h"
 #include "esp_heap_caps.h"
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
 #ifndef NOTES_ROOT
@@ -24,8 +26,14 @@
 #ifndef DICT_ROOT
 #define DICT_ROOT "/sdcard/dict"
 #endif
-enum { CLOSED, SELECT, EDIT_NOTE, LOOKUP, LIST, FOOTNOTE };
+enum { CLOSED, SELECT, EDIT_NOTE, LOOKUP, LIST, FOOTNOTE, DICTS };
 enum { DEFINITION_PX=32, DEFINITION_LINE_H=44, DEFINITION_LINES=10, NOTES_LIST_ROWS=7, NOTES_LIST_ROW_H=80 };
+// 词典管理与未命中建议的行。/ Rows of the dictionary manager and miss suggestions.
+enum { DICT_ROWS=7, DICT_ROW_H=72, DICT_ROW_Y=256, SUGGEST_ROW_Y=400, SUGGEST_ROW_H=62 };
+// 整本书列表：标题行后 6 行。/ Whole-book list: a header row, then 6 rows.
+enum { BOOK_ROWS=6, BOOK_ROW_Y=316 };
+static char s_book_title[128];
+static book_notes_title_fn s_chapter_title;
 // 脚注引用的触控外扩，编号字很小。/ Touch slop around tiny footnote markers.
 enum { FOOTNOTE_SLOP=8, FOOTNOTE_BUTTON_H=58 };
 typedef struct {
@@ -38,8 +46,19 @@ typedef struct {
     bool valid,dragging,searching,unsupported;
     char draft[BOOK_NOTE_CAP],query[256],message[160];
     ui_text_edit_t edit;
-    DIR *root,*child;
-    char child_path[512],book_path[512],storage_root[512];
+    book_dict_list_t dicts;     // 已排序的词典清单 / Ordered dictionary list
+    unsigned dict_at;           // 下一个要打开的词典 / Next dictionary to open
+    int dict_list_at;           // 管理页首行 / First row of the manager page
+    bool dicts_dirty;
+    unsigned suggestion_count;
+    char suggestions[BOOK_DICT_SUGGESTIONS][BOOK_DICT_SUGGESTION_CAP];
+    char book_path[512],storage_root[512];
+    uint32_t chapter;            // 绑定的章 / Bound chapter
+    bool list_book;              // 列表显示整本书 / The list shows the whole book
+    book_notes_book_t *book;     // 整本书列表（PSRAM）/ Whole-book list (PSRAM)
+    bool jump_pending;           // 待跳到其他章 / Pending jump to another chapter
+    uint32_t jump_chapter;
+    size_t jump_offset;
     const html_link_t *links;
     size_t link_count;
     book_notes_footnote_fn footnote_load;
@@ -50,10 +69,10 @@ typedef struct {
 static notes_t *s;
 static const EpdRect dictionary_panel={36,240,612,650};
 static const EpdRect notes_list_panel={24,240,636,700};
-static void close_dirs(void) {
-    if(s->child)closedir(s->child);
-    if(s->root)closedir(s->root);
-    s->root=s->child=NULL;s->searching=false;
+static void close_dirs(void) { s->searching=false; }
+static void book_list_free(void) {
+    if(s->book){book_notes_book_end(s->book);free(s->book);s->book=NULL;}
+    s->list_book=false;
 }
 void book_notes_cancel(void) {
     if(!s)return;
@@ -61,6 +80,14 @@ void book_notes_cancel(void) {
     if(s->mode==EDIT_NOTE)ui_keyboard_end();
     book_dictionary_close(&s->dictionary);close_dirs();s->mode=CLOSED;s->dragging=false;
     free(s->footnote);s->footnote=NULL;
+    book_list_free();
+}
+void book_notes_set_book(const char *title,book_notes_title_fn chapter_title) {
+    snprintf(s_book_title,sizeof(s_book_title),"%s",title?title:"");s_chapter_title=chapter_title;
+}
+bool book_notes_take_jump(uint32_t *chapter,size_t *offset) {
+    if(!s||!s->jump_pending)return false;
+    s->jump_pending=false;*chapter=s->jump_chapter;*offset=s->jump_offset;return true;
 }
 void book_notes_reset(void) { if(!s)return;book_notes_cancel();free(s);s=NULL; }
 bool book_notes_active(void) {return s&&s->mode!=CLOSED;}
@@ -75,7 +102,7 @@ void book_notes_bind(const char *path,uint32_t chapter,const char *text,size_t l
     book_notes_reset();
     s=heap_caps_calloc(1,sizeof(*s),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!s)return;
-    s->text=text;s->length=length;
+    s->text=text;s->length=length;s->chapter=chapter;
     if(strlen(path)>=sizeof(s->book_path))return;
     strcpy(s->book_path,path);
     char directory[512];
@@ -115,13 +142,18 @@ static ui_icon_t action_icon(const char *label) {
     if(!strcmp(label,"Các ghi chú"))return UI_ICON_LIST;
     if(!strcmp(label,"Trước")||!strcmp(label,"Trang trước"))return UI_ICON_CHEVRON_LEFT;
     if(!strcmp(label,"Sau")||!strcmp(label,"Trang sau")||!strcmp(label,"Từ điển kế"))return UI_ICON_CHEVRON_RIGHT;
+    if(!strcmp(label,"Quản lý"))return UI_ICON_SLIDERS_HORIZONTAL;
+    if(!strcmp(label,"Lên"))return UI_ICON_CHEVRON_UP;
+    if(!strcmp(label,"Xuống"))return UI_ICON_CHEVRON_DOWN;
+    if(!strcmp(label,"Xong"))return UI_ICON_SAVE;
     return UI_ICON_X;
 }
-static void button(uint8_t *fb,EpdRect r,const char *label) {
+static void button_icon(uint8_t *fb,EpdRect r,const char *label,ui_icon_t icon) {
     ui_fill_round_rect(fb,r,12,0xe0);
-    ui_draw_icon(fb,r.x+20,r.y+r.height/2,22,action_icon(label),0);
+    ui_draw_icon(fb,r.x+20,r.y+r.height/2,22,icon,0);
     r.x+=36;r.width-=40;ui_text_box(fb,r,25,label,EPD_DRAW_ALIGN_CENTER,false);
 }
+static void button(uint8_t *fb,EpdRect r,const char *label) { button_icon(fb,r,label,action_icon(label)); }
 static EpdRect menu_action_rect(int action) {
     int y=s->mode==SELECT?s->menu_y:0;
     return (EpdRect){26+action*126,y+4,122,64};
@@ -313,7 +345,13 @@ bool book_notes_volume_key(int direction,app_redraw_t *redraw) {
     if(!book_notes_active())return false;
     *redraw=APP_REDRAW_NONE;
     if(direction!=-1&&direction!=1)return true;
-    if(s->mode==LIST) {
+    if(s->mode==DICTS) {
+        int next=s->dict_list_at+direction*DICT_ROWS;
+        if(next>=0&&next<(int)s->dicts.count){s->dict_list_at=next;*redraw=APP_REDRAW_PAGE;}
+    } else if(s->mode==LIST&&s->list_book) {
+        int next=s->list_at+direction*BOOK_ROWS;
+        if(s->book&&s->book->state==BOOK_NOTES_BOOK_DONE&&next>=0&&next<(int)s->book->count){s->list_at=next;*redraw=APP_REDRAW_PAGE;}
+    } else if(s->mode==LIST) {
         int next=s->list_at+direction*NOTES_LIST_ROWS;
         if(next>=0&&next<(int)s->annotations.count){s->list_at=next;*redraw=APP_REDRAW_PAGE;}
     } else if(s->mode==FOOTNOTE) {
@@ -341,6 +379,34 @@ static void note_preview(const char *text,char out[128]) {
 done:
     if(text[at]){memcpy(out+used,"…",3);used+=3;}
     out[used]=0;
+}
+static const EpdRect dict_manage_rect={470,722,166,56};
+static const EpdRect list_tab_rect={232,844,216,58};
+static const EpdRect book_export_rect={414,256,224,52};
+static EpdRect book_row_rect(int row) {return (EpdRect){42,BOOK_ROW_Y+row*NOTES_LIST_ROW_H,596,72};}
+static void book_list_draw(uint8_t *fb) {
+    book_notes_book_t *b=s->book;char header[96];
+    bool done=b&&b->state==BOOK_NOTES_BOOK_DONE;
+    if(!b||b->state==BOOK_NOTES_BOOK_ERROR)snprintf(header,sizeof(header),"Không đọc được ghi chú cả cuốn");
+    else if(!done)snprintf(header,sizeof(header),"Đang đọc ghi chú cả cuốn…");
+    else snprintf(header,sizeof(header),"Cả cuốn · %u ghi chú%s",b->count,b->errors?" (có chương lỗi)":"");
+    ui_text_box(fb,(EpdRect){42,256,364,52},25,header,EPD_DRAW_ALIGN_LEFT,false);
+    if(done&&b->count)button(fb,book_export_rect,"Xuất ra thẻ");
+    if(!done)return;
+    for(int row=0;row<BOOK_ROWS;row++) {
+        int i=s->list_at+row;if(i>=(int)b->count)break;
+        const book_note_ref_t *r=&b->items[i];
+        char quote[128],note[128],line[160];note_preview(r->quote,quote);note_preview(r->note,note);
+        snprintf(line,sizeof(line),"Ch.%u · %s",(unsigned)r->chapter+1,quote);
+        EpdRect at=book_row_rect(row);
+        ui_text_box(fb,(EpdRect){at.x,at.y,at.width,36},27,line,EPD_DRAW_ALIGN_LEFT,false);
+        ui_text_box(fb,(EpdRect){at.x,at.y+36,at.width,36},25,note,EPD_DRAW_ALIGN_LEFT,false);
+    }
+}
+static EpdRect suggestion_rect(unsigned i) {return (EpdRect){62,SUGGEST_ROW_Y+(int)i*SUGGEST_ROW_H,560,54};}
+static void dict_toggle(uint8_t *fb,EpdRect r,bool on) {
+    ui_fill_round_rect(fb,r,12,on?0x00:0xe0);
+    ui_text_box(fb,r,23,on?"Bật":"Tắt",EPD_DRAW_ALIGN_CENTER,on);
 }
 void book_notes_draw(uint8_t *fb,size_t page,EpdRect body,int px) {
     if(!s)return;
@@ -372,9 +438,32 @@ void book_notes_draw(uint8_t *fb,size_t page,EpdRect body,int px) {
         ui_fill_round_rect(fb,dictionary_panel,16,0xff);
         ui_draw_control_frame(fb,dictionary_panel,16,0x00);
         if(s->dictionary.state==4)definition_draw(fb,s->dictionary.text,62,260);
-        else ui_text_box(fb,(EpdRect){62,260,560,130},23,s->message,EPD_DRAW_ALIGN_LEFT,false);
-        ui_text_box(fb,(EpdRect){62,720,560,60},19,s->dictionary.name,EPD_DRAW_ALIGN_LEFT,false);
+        else {
+            ui_text_box(fb,(EpdRect){62,260,560,130},23,s->message,EPD_DRAW_ALIGN_LEFT,false);
+            if(!s->searching)for(unsigned i=0;i<s->suggestion_count;i++)
+                button_icon(fb,suggestion_rect(i),s->suggestions[i],UI_ICON_SEARCH);
+        }
+        ui_text_box(fb,(EpdRect){62,720,400,60},19,s->dictionary.name,EPD_DRAW_ALIGN_LEFT,false);
+        button(fb,dict_manage_rect,"Quản lý");
         button(fb,(EpdRect){48,810,170,58},"Trang trước");button(fb,(EpdRect){230,810,170,58},"Trang sau");button(fb,(EpdRect){412,810,224,58},"Từ điển kế");
+    } else if(s->mode==DICTS) {
+        ui_fill_round_rect(fb,dictionary_panel,16,0xff);
+        ui_draw_control_frame(fb,dictionary_panel,16,0x00);
+        if(!s->dicts.count)ui_text_box(fb,(EpdRect){62,260,560,130},23,"Chưa có bộ StarDict nào trong /dict",EPD_DRAW_ALIGN_LEFT,false);
+        for(int row=0;row<DICT_ROWS;row++) {
+            int i=s->dict_list_at+row;if(i>=(int)s->dicts.count)break;
+            const book_dict_entry_t *e=&s->dicts.items[i];
+            int y=DICT_ROW_Y+row*DICT_ROW_H;
+            ui_text_box(fb,(EpdRect){56,y,270,56},21,e->rel,EPD_DRAW_ALIGN_LEFT,false);
+            dict_toggle(fb,(EpdRect){334,y,96,56},e->enabled);
+            button(fb,(EpdRect){436,y,96,56},"Lên");button(fb,(EpdRect){538,y,98,56},"Xuống");
+        }
+        button(fb,(EpdRect){48,810,170,58},"Trước");button(fb,(EpdRect){230,810,170,58},"Sau");button(fb,(EpdRect){412,810,224,58},"Xong");
+    } else if(s->mode==LIST&&s->list_book) {
+        ui_fill_round_rect(fb,notes_list_panel,16,0xff);
+        ui_draw_control_frame(fb,notes_list_panel,16,0x00);
+        book_list_draw(fb);
+        button(fb,(EpdRect){42,844,180,58},"Trước");button(fb,list_tab_rect,"Chương này");button(fb,(EpdRect){458,844,180,58},"Sau");
     } else if(s->mode==LIST) {
         ui_fill_round_rect(fb,notes_list_panel,16,0xff);
         ui_draw_control_frame(fb,notes_list_panel,16,0x00);
@@ -386,7 +475,7 @@ void book_notes_draw(uint8_t *fb,size_t page,EpdRect body,int px) {
             ui_text_box(fb,(EpdRect){42,288+row*NOTES_LIST_ROW_H,500,36},27,note,EPD_DRAW_ALIGN_LEFT,false);
             button(fb,(EpdRect){560,260+row*NOTES_LIST_ROW_H,78,52},"Xóa");
         }
-        button(fb,(EpdRect){42,844,180,58},"Trước");button(fb,(EpdRect){458,844,180,58},"Sau");
+        button(fb,(EpdRect){42,844,180,58},"Trước");button(fb,list_tab_rect,"Cả cuốn");button(fb,(EpdRect){458,844,180,58},"Sau");
     }
 }
 static bool persist(void) {
@@ -407,38 +496,89 @@ static bool save_note(const char *note) {
     }
     return persist();
 }
+// 从清单中打开下一个启用的词典；没有了返回 false。/ Open the next enabled dictionary; false when none remain.
+static bool open_next_dictionary(void) {
+    while(s->dict_at<s->dicts.count) {
+        unsigned i=s->dict_at++;
+        if(!s->dicts.items[i].enabled)continue;
+        char path[512];
+        if(!book_dict_list_path(&s->dicts,DICT_ROOT,i,path,sizeof(path)))continue;
+        if(book_dictionary_open(&s->dictionary,path,s->query))return true;
+        s->unsupported=true;
+    }
+    return false;
+}
+static bool any_enabled(void) {
+    for(unsigned i=0;i<s->dicts.count;i++)if(s->dicts.items[i].enabled)return true;
+    return false;
+}
+static void begin_lookup(void) {
+    book_dictionary_close(&s->dictionary);memset(&s->dictionary,0,sizeof(s->dictionary));close_dirs();
+    s->unsupported=false;s->definition_page=0;s->suggestion_count=0;s->dict_at=0;
+    s->mode=LOOKUP;
+    bool root=book_dict_list_load(&s->dicts,DICT_ROOT);
+    s->searching=root&&any_enabled();
+    snprintf(s->message,sizeof(s->message),s->searching?"Đang tra từ trên thẻ nhớ…":
+             root&&s->dicts.count?"Tất cả từ điển đang tắt; mở Quản lý để bật":"Chép bộ StarDict vào /dict trên thẻ nhớ");
+}
 static void start_lookup(void) {
-    book_dictionary_close(&s->dictionary);memset(&s->dictionary,0,sizeof(s->dictionary));close_dirs();s->unsupported=false;s->definition_page=0;
     size_t n=s->end-s->start;
     if(!n||n>=sizeof(s->query)){snprintf(s->message,sizeof(s->message),"Chọn từ hoặc cụm từ dưới 256 byte");return;}
     memcpy(s->query,s->text+s->start,n);s->query[n]=0;
-    s->mode=LOOKUP;s->root=opendir(DICT_ROOT);s->searching=s->root!=NULL;
-    snprintf(s->message,sizeof(s->message),s->searching?"Đang tra từ trên thẻ nhớ…":"Chép bộ StarDict vào /dict trên thẻ nhớ");
+    begin_lookup();
 }
+static bool dictionary_running(int state) {return (state>=1&&state<=3)||state>=5;}
 app_redraw_t book_notes_tick(void) {
     if(s&&s->mode&&s->generation!=book_layout_generation()){book_notes_cancel();return APP_REDRAW_PAGE;}
+    if(s&&s->mode==LIST&&s->list_book&&s->book&&
+       (s->book->state==BOOK_NOTES_BOOK_LISTING||s->book->state==BOOK_NOTES_BOOK_LOADING)) {
+        int state=book_notes_book_step(s->book);
+        return state==BOOK_NOTES_BOOK_DONE||state==BOOK_NOTES_BOOK_ERROR?APP_REDRAW_PAGE:APP_REDRAW_NONE;
+    }
     if(!s||s->mode!=LOOKUP||!s->searching)return APP_REDRAW_NONE;
-    if((s->dictionary.state>=1&&s->dictionary.state<=3)||s->dictionary.state==5) {
+    if(dictionary_running(s->dictionary.state)) {
         int result=book_dictionary_step(&s->dictionary);
         if(result==4){s->searching=false;snprintf(s->message,sizeof(s->message),s->dictionary.truncated?"Đã rút gọn định nghĩa dài":"Tra offline: %s",s->query);return APP_REDRAW_PAGE;}
         if(result==-1)s->unsupported=true;
+        // 第一个给出相邻词的词典提供建议。/ The first dictionary with neighbours supplies suggestions.
+        if(result==-2&&!s->suggestion_count) {
+            s->suggestion_count=s->dictionary.suggestion_count;
+            memcpy(s->suggestions,s->dictionary.suggestions,sizeof(s->suggestions));
+        }
         return APP_REDRAW_NONE;
     }
-    /* Enumerate at most one directory entry per UI tick, one subdirectory deep. */
-    DIR *dir=s->child?s->child:s->root;struct dirent *entry=readdir(dir);
-    if(!entry) {
-        if(s->child){closedir(s->child);s->child=NULL;return APP_REDRAW_NONE;}
-        close_dirs();snprintf(s->message,sizeof(s->message),s->unsupported?"Không tìm thấy; kiểm tra đủ bộ .ifo, .idx/.idx.gz, .dict/.dict.dz (mhgxt, 32-bit)":"Không tìm thấy từ trong /dict");return APP_REDRAW_PAGE;
+    if(open_next_dictionary())return APP_REDRAW_NONE;
+    close_dirs();
+    if(s->suggestion_count)snprintf(s->message,sizeof(s->message),"Không tìm thấy \"%.60s\". Có thể bạn muốn:",s->query);
+    else snprintf(s->message,sizeof(s->message),s->unsupported?"Không tìm thấy; kiểm tra đủ bộ .ifo, .idx/.idx.gz, .dict/.dict.dz (mhgxt, 32-bit)":"Không tìm thấy từ trong /dict");
+    return APP_REDRAW_PAGE;
+}
+// 保存顺序后用新顺序重新查询。/ Save the order, then search again in the new order.
+static void dicts_done(void) {
+    bool failed=s->dicts_dirty&&!book_dict_list_save(&s->dicts,DICT_ROOT);
+    s->dicts_dirty=false;
+    begin_lookup();
+    if(failed)snprintf(s->message,sizeof(s->message),"Không ghi được thứ tự từ điển lên thẻ nhớ");
+}
+static void book_list_open(void) {
+    s->list_book=true;
+    s->book=heap_caps_calloc(1,sizeof(*s->book),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    if(!s->book)return;
+    book_notes_book_begin(s->book,s->storage_root,s->valid,s->chapter,book_annotations_text_hash(s->text,s->length));
+}
+static void book_list_export(void) {
+    char path[600];size_t n=strlen(s->storage_root);
+    // storage_root 以 /snapshots 结尾，导出写在它的上一级。/ storage_root ends in /snapshots; export one level up.
+    if(n<10||strcmp(s->storage_root+n-10,"/snapshots")||
+       snprintf(path,sizeof(path),"%.*s/ghi-chu.md",(int)(n-10),s->storage_root)>=(int)sizeof(path)) {
+        snprintf(s->message,sizeof(s->message),"Đường dẫn ghi chú quá dài");return;
     }
-    if(entry->d_name[0]=='.')return APP_REDRAW_NONE;
-    char path[512];if(snprintf(path,sizeof(path),"%s/%s",s->child?s->child_path:DICT_ROOT,entry->d_name)>=(int)sizeof(path))return APP_REDRAW_NONE;
-    struct stat st;if(stat(path,&st))return APP_REDRAW_NONE;
-    if(S_ISDIR(st.st_mode)&&!s->child){snprintf(s->child_path,sizeof(s->child_path),"%s",path);s->child=opendir(path);return APP_REDRAW_NONE;}
-    size_t n=strlen(path);
-    if(S_ISREG(st.st_mode)&&n>4&&!strcmp(path+n-4,".ifo")) {
-        if(!book_dictionary_open(&s->dictionary,path,s->query))s->unsupported=true;
-    }
-    return APP_REDRAW_NONE;
+    char date[16]={0};time_t now=time(NULL);struct tm tm;
+    if(now>1700000000&&localtime_r(&now,&tm))strftime(date,sizeof(date),"%d/%m/%Y",&tm);
+    const char *title=s_book_title[0]?s_book_title:s->book_path;
+    if(book_notes_book_export(s->book,path,title,date,s_chapter_title))
+        snprintf(s->message,sizeof(s->message),"Đã xuất %u ghi chú ra ghi-chu.md",s->book->count);
+    else snprintf(s->message,sizeof(s->message),"Không ghi được ghi-chu.md lên thẻ nhớ (lỗi %d)",errno);
 }
 bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,EpdRect body,int px,app_redraw_t *redraw) {
     *redraw=APP_REDRAW_NONE;if(!s)return false;
@@ -465,8 +605,8 @@ bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,
     }
     if(ev->type!=UI_GESTURE_TAP&&ev->type!=UI_GESTURE_LONG_PRESS)return true;
     int x=ev->x,y=ev->y;s->dragging=false;
-    if((s->mode==LIST||s->mode==LOOKUP)&&ev->type==UI_GESTURE_TAP&&
-       !hit(s->mode==LOOKUP?dictionary_panel:notes_list_panel,x,y)&&
+    if((s->mode==LIST||s->mode==LOOKUP||s->mode==DICTS)&&ev->type==UI_GESTURE_TAP&&
+       !hit(s->mode==LIST?notes_list_panel:dictionary_panel,x,y)&&
        !hit((EpdRect){24,0,636,72},x,y)) {
         book_notes_cancel();*redraw=APP_REDRAW_PAGE;return true;
     }
@@ -477,6 +617,20 @@ bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,
             ui_text_input_tap(&s->edit,(EpdRect){36,260,612,68},24,false,NULL,x,y);
             if(ui_keyboard_tap(x,y,560,ctx->now_ms)==UI_KEYBOARD_DONE&&
                !ui_keyboard_pending()&&save_note(s->draft))book_notes_cancel();
+        }
+        *redraw=APP_REDRAW_PAGE;return true;
+    }
+    if(s->mode==DICTS) {
+        if(ev->type!=UI_GESTURE_TAP){*redraw=APP_REDRAW_NONE;return true;}
+        if(hit((EpdRect){48,810,170,58},x,y)&&s->dict_list_at>=DICT_ROWS)s->dict_list_at-=DICT_ROWS;
+        else if(hit((EpdRect){230,810,170,58},x,y)&&s->dict_list_at+DICT_ROWS<(int)s->dicts.count)s->dict_list_at+=DICT_ROWS;
+        else if(hit((EpdRect){412,810,224,58},x,y))dicts_done();
+        else for(int row=0;row<DICT_ROWS;row++) {
+            int i=s->dict_list_at+row;if(i>=(int)s->dicts.count)break;
+            int y0=DICT_ROW_Y+row*DICT_ROW_H;
+            if(hit((EpdRect){334,y0,96,56},x,y)){s->dicts.items[i].enabled=!s->dicts.items[i].enabled;s->dicts_dirty=true;break;}
+            if(hit((EpdRect){436,y0,96,56},x,y)){if(book_dict_list_move(&s->dicts,(unsigned)i,-1)){s->dicts_dirty=true;if(i==s->dict_list_at&&s->dict_list_at)s->dict_list_at-=DICT_ROWS;}break;}
+            if(hit((EpdRect){538,y0,98,56},x,y)){if(book_dict_list_move(&s->dicts,(unsigned)i,1)){s->dicts_dirty=true;if(row==DICT_ROWS-1)s->dict_list_at+=DICT_ROWS;}break;}
         }
         *redraw=APP_REDRAW_PAGE;return true;
     }
@@ -495,7 +649,44 @@ bool book_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,size_t page,
     else if(s->mode==LOOKUP) {
         if(hit((EpdRect){48,810,170,58},x,y)&&s->definition_page)s->definition_page--;
         else if(hit((EpdRect){230,810,170,58},x,y)&&s->definition_page<50)s->definition_page++;
-        else if(hit((EpdRect){412,810,224,58},x,y)){s->searching=s->root!=NULL;s->dictionary.state=0;s->definition_page=0;snprintf(s->message,sizeof(s->message),s->searching?"Đang tra từ điển kế…":"Đã hết các từ điển trong /dict");}
+        else if(hit((EpdRect){412,810,224,58},x,y)) {
+            book_dictionary_close(&s->dictionary);s->dictionary.state=0;s->definition_page=0;
+            bool more=false;for(unsigned i=s->dict_at;i<s->dicts.count;i++)if(s->dicts.items[i].enabled)more=true;
+            s->searching=more;snprintf(s->message,sizeof(s->message),more?"Đang tra từ điển kế…":"Đã hết các từ điển trong /dict");
+        } else if(hit(dict_manage_rect,x,y)) {
+            book_dictionary_close(&s->dictionary);close_dirs();
+            book_dict_list_load(&s->dicts,DICT_ROOT);s->dict_list_at=0;s->dicts_dirty=false;s->mode=DICTS;
+        } else if(s->dictionary.state!=4&&!s->searching) {
+            for(unsigned i=0;i<s->suggestion_count;i++)if(hit(suggestion_rect(i),x,y)) {
+                // 用建议词重新查询全部词典。/ Search every dictionary again with the suggestion.
+                snprintf(s->query,sizeof(s->query),"%s",s->suggestions[i]);begin_lookup();break;
+            }
+        }
+    } else if(s->mode==LIST&&hit(list_tab_rect,x,y)) {
+        if(s->list_book)book_list_free();
+        else book_list_open();
+        s->list_at=0;
+    } else if(s->mode==LIST&&s->list_book) {
+        book_notes_book_t *b=s->book;bool done=b&&b->state==BOOK_NOTES_BOOK_DONE;
+        if(hit((EpdRect){42,844,180,58},x,y)&&s->list_at>=BOOK_ROWS)s->list_at-=BOOK_ROWS;
+        else if(done&&hit((EpdRect){458,844,180,58},x,y)&&s->list_at+BOOK_ROWS<(int)b->count)s->list_at+=BOOK_ROWS;
+        else if(done&&b->count&&hit(book_export_rect,x,y))book_list_export();
+        else if(done)for(int row=0;row<BOOK_ROWS;row++) {
+            int i=s->list_at+row;if(i>=(int)b->count)break;
+            if(!hit(book_row_rect(row),x,y))continue;
+            const book_note_ref_t *r=&b->items[i];
+            if(r->chapter==s->chapter&&r->end<=s->length) {
+                // 本章：与章内列表相同，选中该段。/ This chapter: select the passage as the chapter list does.
+                s->start=r->start;s->end=r->end;snprintf(s->message,sizeof(s->message),"%s",r->note);
+                book_list_free();s->mode=SELECT; // r 随列表释放 / r is freed with the list
+                s->page=book_layout_page_for_offset(s->start);place_menu(s->page,body,px);
+            } else {
+                // 其他章：交给阅读页加载该章。/ Another chapter: the reader loads it.
+                s->jump_pending=true;s->jump_chapter=r->chapter;s->jump_offset=r->start;
+                book_list_free();s->mode=CLOSED;
+            }
+            break;
+        }
     } else if(s->mode==LIST) {
         if(hit((EpdRect){42,844,180,58},x,y)&&s->list_at>=NOTES_LIST_ROWS)s->list_at-=NOTES_LIST_ROWS;
         else if(hit((EpdRect){458,844,180,58},x,y)&&s->list_at+NOTES_LIST_ROWS<(int)s->annotations.count)s->list_at+=NOTES_LIST_ROWS;

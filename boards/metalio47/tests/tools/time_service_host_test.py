@@ -148,5 +148,5 @@ int main(void){uint32_t utc;
 with tempfile.TemporaryDirectory(prefix='dpreader-clock-test-') as folder:
  for name,unit in [('restore',restore),('scheduler',scheduler),('lease',lease)]:
   c=Path(folder)/(name+'.c');binary=Path(folder)/name;c.write_text(unit)
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
   subprocess.run([str(binary)],check=True)

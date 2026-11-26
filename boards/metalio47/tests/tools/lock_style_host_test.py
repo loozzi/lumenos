@@ -64,6 +64,8 @@ static void metalio_power_note_lock(bool locking,int soc,unsigned mv){(void)lock
 static void metalio_power_mark_unlock(int64_t now){(void)now;++unlock_marks;}
 static bool app_lock_prepare_resources(void){++prepares;return !prepare_fail&&!ota_busy;}
 static void book_lock_signature_draw(uint8_t*f){(void)f;++signatures;}
+static unsigned vocab_lines;static void book_lock_vocab_draw(uint8_t*f,bool above){(void)f;(void)above;++vocab_lines;}
+static const char *app_settings_status_signature(void){return "";}
 static void ui_wallpaper_cache_commit(const uint8_t*f){assert(style==1&&presents==1&&!memcmp(f,panel,FRAME_BYTES));}
 static void book_lock_collage_cache_commit(const uint8_t*f){assert(style==2&&presents==1&&!memcmp(f,panel,FRAME_BYTES));}
 static void epd_hl_set_all_white(EpdiyHighlevelState*h){(void)h;memset(pixels,255,FRAME_BYTES);}
@@ -117,4 +119,4 @@ int main(void){EpdiyHighlevelState hl={panel};
  puts("PASS: S31 transparent PNG composes before optical clear and full-gray output;opaque-lock preclear retained;PIN/failure/current-frame/success-only-cache/transfer/BLE/retained-wait boundaries");}
 '''
 with tempfile.TemporaryDirectory() as d:
- d=Path(d);(d/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-fsanitize=address,undefined',str(d/'test.c'),'-o',str(d/'test')],check=True);subprocess.run([str(d/'test')],check=True)
+ d=Path(d);(d/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-fsanitize=address,undefined',str(d/'test.c'),'-o',str(d/'test')],check=True);subprocess.run([str(d/'test')],check=True)

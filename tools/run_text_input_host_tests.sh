@@ -3,7 +3,7 @@
 # 中文：测试编辑、光标及各输入页面的真实回调。/ English: Test editing, carets and actual page callbacks.
 set -euo pipefail
 mkdir -p build/book-tests
-cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+cc -std=gnu11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
     -Itools/ui_gesture_stubs -Imain/ui -Imain/font \
     tools/text_input_host_test.c main/ui/ui_text_edit.c main/ui/ui_text_input.c \
     -o build/book-tests/text-input

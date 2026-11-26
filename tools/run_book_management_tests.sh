@@ -11,7 +11,7 @@ cc -std=gnu11 -Wall -Wextra -Werror -Itools/settings_backup_stubs \
     -Icomponents/read_pico_transfer/include \
     tools/settings_backup_host_test.c -o build/book-tests/settings-backup
 build/book-tests/settings-backup
-cc -std=c11 -Wall -Wextra -Werror -Imain tools/auto_lock_host_test.c -o build/book-tests/auto-lock
+cc -std=gnu11 -Wall -Wextra -Werror -Imain tools/auto_lock_host_test.c -o build/book-tests/auto-lock
 build/book-tests/auto-lock
 cc -std=gnu11 -Wall -Wextra -Werror -Itools/settings_backup_stubs \
     tools/book_history_backup_host_test.c -o build/book-tests/book-history-backup
@@ -34,7 +34,7 @@ python3 tools/shelf_fast_cache_host_test.py
 python3 tools/bookshelf_list_host_test.py
 python3 tools/list_cover_cache_host_test.py
 python3 tools/home_cover_cache_host_test.py
-cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -fsanitize=address,undefined -Itools/settings_backup_stubs -Imain \
+cc -std=gnu11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -fsanitize=address,undefined -Itools/settings_backup_stubs -Imain \
     tools/boot_state_host_test.c -o build/book-tests/boot-state
 python3 tools/boot_recovery_host_test.py
 build/book-tests/boot-state
@@ -47,11 +47,11 @@ python3 tools/composite_glyph_host_test.py
 python3 tools/title_font_host_test.py
 python3 tools/test_home_recent.py
 python3 tools/test_book_toc.py
-cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+cc -std=gnu11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
     -Itools/book_cover_auto_stubs -Imain/book -Imain/font \
     tools/book_cover_auto_host_test.c main/book/book_cover_auto.c -o build/book-tests/auto-cover
 build/book-tests/auto-cover
-cc -std=c11 -Wall -Wextra -Werror -Imain/ui \
+cc -std=gnu11 -Wall -Wextra -Werror -Imain/ui \
     tools/wallpaper_crop_host_test.c -o build/book-tests/wallpaper-crop
 build/book-tests/wallpaper-crop
 python3 tools/test_search.py
@@ -80,7 +80,7 @@ python3 tools/test_transfer_netif.py
 python3 tools/test_pmu_battery.py
 python3 tools/ble_turner_host_test.py
 for test in ota_release ota_online; do
-    cc -std=c11 -Wall -Wextra -Werror -Wno-deprecated-declarations -fsanitize=address,undefined \
+    cc -std=gnu11 -Wall -Wextra -Werror -Wno-deprecated-declarations -fsanitize=address,undefined \
         -Itools/ota_stubs -Imain -Imanaged_components/espressif__cjson/cJSON \
         "tools/${test}_host_test.c" main/ota_release.c managed_components/espressif__cjson/cJSON/cJSON.c \
         -lm -pthread -o "build/book-tests/${test}"

@@ -8,6 +8,13 @@ functions=source[source.index('app_home_component_t app_settings_home_component'
 backup=source[source.index('typedef struct { uint8_t component, minutes, checksum[4];'):source.index('static unsigned backup_version')]
 unit=r'''
 #include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#define backup_nvs_open(ns,mode,h) nvs_open(ns,mode,h)
+#define backup_nvs_set_u8(h,k,v) nvs_set_u8(h,k,v)
+#define backup_nvs_set_u16(h,k,v) nvs_set_u16(h,k,v)
+#define settings_backup_commit(h) nvs_commit(h)
+static bool s_simple_ui;
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -52,5 +59,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  c=Path(d)/'preferences.c';exe=c.with_suffix('');c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)

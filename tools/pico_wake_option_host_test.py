@@ -109,5 +109,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
     p=Path(folder);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(ROOT/'main/ui'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(ROOT/'main/ui'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

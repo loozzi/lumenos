@@ -14,7 +14,7 @@ import tempfile
 from home_cover_cache_host_test import function
 
 ROOT = Path(__file__).resolve().parents[1]
-CFLAGS = ['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined,address',
+CFLAGS = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined,address',
           '-fno-sanitize-recover=all']
 
 

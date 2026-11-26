@@ -31,6 +31,6 @@ int main(void){for(int i=0;i<2;++i){app_ctx_t c={0};s_setting_choice.kind=7;s_se
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(u)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds',str(p),'-o',str(p.with_suffix(''))],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds',str(p),'-o',str(p.with_suffix(''))],check=True)
  subprocess.run([str(p.with_suffix(''))],check=True)
 print('PASS both modes route Home with one clean after save; failed save retains picker and screen')

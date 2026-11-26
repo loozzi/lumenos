@@ -8,6 +8,9 @@ R=Path(__file__).resolve().parents[1]
 unit=r'''
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
+static uint8_t turn_effect_stub;static void app_settings_set_reader_turn_effect(uint8_t e){turn_effect_stub=e;}
+#include <stdbool.h>
 #include <stdio.h>
 static bool saved,active,fail,s_reader_cleanup;static unsigned locks,invalidations;static int s_turns;
 static void lock_draw(void){assert(!locks++);}
@@ -44,5 +47,5 @@ source=(R/'main/apps/app_book.c').read_text();part=source[source.index('bool ok 
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
  for board in (0,1):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',f'-DDPREADER_BOARD_METALIO47={board}',str(p/'test.c'),'-o',str(p/'test')],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',f'-DDPREADER_BOARD_METALIO47={board}',str(p/'test.c'),'-o',str(p/'test')],check=True)
   subprocess.run([str(p/'test')],check=True)

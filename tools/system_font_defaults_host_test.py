@@ -69,7 +69,7 @@ int main(void){
 }
 '''
  (p/'test.c').write_text(u)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 # The size-grid paint and touch maps must offer identical choices within the viewport.
 choices=re.findall(r'const uint8_t sizes\[\]=\{([^}]+)\}',settings)

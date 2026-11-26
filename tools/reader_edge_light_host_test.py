@@ -14,6 +14,7 @@ u=r'''
 #define DPREADER_BOARD_METALIO47 1
 #define UI_CONTENT_TOP 180
 #define READER_FOOTER_TOP 1140
+static int reader_footer_top(void){return READER_FOOTER_TOP;}
 #define UI_LOCK_WIDTH 684
 #define METALIO_FRONTLIGHT_RANGE 240
 #define READING 1
@@ -58,5 +59,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(u)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

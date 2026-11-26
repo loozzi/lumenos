@@ -1,3 +1,12 @@
+## LumenOS 1.6.0 · Phát hành chính thức · 2026-11-25 (chỉ Full)
+
+- **Tra từ nhanh:** lần tra đầu tiên với một bộ StarDict lập mốc chỉ mục trong PSRAM (tối đa 256 KiB mỗi bộ, 2 bộ); các lần sau chỉ đọc đoạn chỉ mục giữa hai mốc. `.idx.gz` đến 4 MiB được giữ bản giải nén trong PSRAM. Chỉ mục sai thứ tự hoặc quá lớn thì quét tuần tự như cũ. Không tìm thấy thì gợi ý tối đa 5 từ liền kề, chạm để tra lại.
+- **Quản lý từ điển:** nút **Quản lý** trong màn tra bật/tắt và sắp thứ tự các bộ trong `/dict`; lưu ở `/dict/.lumen_order` trên thẻ. **Từ điển kế** đi theo thứ tự này.
+- **Ghi chú cả cuốn:** tab **Cả cuốn** trong **Các ghi chú** liệt kê mọi ghi chú của sách theo chương (tối đa 512); chạm để tới đúng đoạn, kể cả ở chương khác. **Xuất ra thẻ** ghi `ghi-chu.md` (Markdown) cạnh dữ liệu ghi chú.
+- **Từ vựng (mới):** trang học từ bằng thẻ với 5 hộp Leitner (1/2/4/8/16 ngày), 5/10/20 từ mới mỗi ngày. Bộ từ là tệp CSV bạn tự chép vào `/vocab` (cùng tên cột với bộ TOEIC 600 phổ biến); firmware không kèm dữ liệu. Mở từ trang **Tệp** hoặc từ bong bóng của Cú Lém. Tiến độ lưu trên thẻ. Cú Lém nhắc "Từ hôm nay" trên Trang chủ và màn khóa có thể hiện từ đang học; tắt được trong trang Từ vựng. Công cụ `tools/vocab_pack_check.py` kiểm tệp trên máy tính.
+- **Kiểm thử:** sửa thêm các test cũ (cờ biên dịch POSIX trên Linux, stub FreeRTOS, tìm kiếm tiếng Việt thay pinyin, đường OPDS tải nền, cJSON tự tìm trong bộ đệm ESP-IDF). Test mới cho chỉ mục từ điển, thứ tự từ điển, ghi chú cả cuốn, Markdown và từ vựng.
+- Chưa thử trên thiết bị thật. Love Book giữ nguyên 1.5.18-love.
+
 ## LumenOS 1.5.19 · Phát hành chính thức · 2026-11-25 (chỉ Full)
 
 - Trang đọc: khi chân trang không hiện pin, nhắc pin yếu một lần ở mốc 15% và 8% bằng thẻ thông báo khoảng 3 giây. Sạc pin thì lần xả sau nhắc lại. Không hiện khi đang mở thanh công cụ, bảng cài đặt, ghi chú hay đang chạm.

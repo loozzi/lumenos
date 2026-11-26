@@ -75,5 +75,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(unit);binary=p.with_suffix('')
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

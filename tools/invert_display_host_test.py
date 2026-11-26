@@ -149,7 +149,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 # All local public presenters retain the requested crop, including full-area GL.
 s=src.read_text()
@@ -185,7 +185,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'lut.c').write_text(luts)
- cmd=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1']
+ cmd=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1']
  for inc in ('main','tools/waveform_host_stubs','tools/shelf_waveform_host_stubs','components/epdiy/include','components/epdiy/src','components/e0470_epaper_waveform/include','components/e0470_epaper_waveform/waveforms','components/e0470_epaper_waveform/metalio'):cmd+=['-I'+str(root/inc)]
  cmd += [str(p/'lut.c'),str(root/'boards/metalio47/src/main/display_main_waveform.c'),str(root/'boards/metalio47/src/components/e0470_epaper_waveform/e0470_epaper_waveform.c'),str(root/'components/e0470_epaper_waveform/e0470_waveform_trim.c'),'-o',str(p/'lut')]
  subprocess.run(cmd,check=True);subprocess.run([str(p/'lut')],check=True)

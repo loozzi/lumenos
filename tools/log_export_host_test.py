@@ -157,5 +157,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(unit);binary=p.with_suffix('')
- subprocess.run(['cc','-DDPREADER_BOARD_METALIO47=1','-std=c11','-Wall','-Wextra','-Werror','-I'+str(root/'components/metalio_hw/include'),str(p),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-DDPREADER_BOARD_METALIO47=1','-std=gnu11','-Wall','-Wextra','-Werror','-I'+str(root/'components/metalio_hw/include'),str(p),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],cwd=tmp,check=True)

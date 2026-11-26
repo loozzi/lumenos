@@ -79,7 +79,7 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory(prefix='s31-shelf37-') as folder:
     t=Path(folder);c=t/'test.c';c.write_text(unit)
-    flags=['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
+    flags=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
       '-DDPREADER_BOARD_METALIO47=1','-Imain','-Itools/shelf_waveform_host_stubs','-Itools/waveform_host_stubs',
       '-Icomponents/epdiy/include','-Icomponents/epdiy/src','-Icomponents/e0470_epaper_waveform/include',
       '-Icomponents/e0470_epaper_waveform/metalio']

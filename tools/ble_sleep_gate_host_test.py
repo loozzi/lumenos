@@ -30,4 +30,4 @@ assert 's_sleep_suspended' in function('metalio_radio_reserved',ble)
 for name in ['ble_pt_connect','ble_pt_scan_start']:assert 'metalio_radio_reserved()' in function(name,ble)
 assert 'if(atomic_load(&s_sleep_suspended))return;' in function('poll_locked',ble)
 with tempfile.TemporaryDirectory() as t:
- p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

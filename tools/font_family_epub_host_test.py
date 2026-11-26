@@ -55,7 +55,7 @@ int main(int argc,char **argv){
 }
 ''')
     source=root/'firmware/shared/main/book'
-    subprocess.run(['cc','-std=c11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined',
+    subprocess.run(['cc','-std=gnu11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined',
                     '-I'+str(work),'-I'+str(root/'tools/book_epub_stubs'),'-I'+str(root/'tools/zip_host_stubs'),'-I'+str(source),
                     str(work/'test.c'),*[str(source/name) for name in ('book_epub.c','zip_reader.c','html_text.c','book_index_cache.c','book_image_header.c')],'-lz','-o',str(work/'test')],check=True)
     subprocess.run([str(work/'test'),str(book)],check=True)

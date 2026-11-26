@@ -156,6 +156,6 @@ with tempfile.TemporaryDirectory() as directory:
     source = Path(directory) / 'test.c'
     source.write_text(unit)
     binary = source.with_suffix('')
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
                     '-fsanitize=address,undefined', '-I' + str(root / 'main'), str(source), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

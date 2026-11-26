@@ -48,5 +48,5 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory() as directory:
  p=Path(directory);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-O2',str(p/'test.c'),'-lm','-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-O2',str(p/'test.c'),'-lm','-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test'),*sys.argv[1:]],check=True)

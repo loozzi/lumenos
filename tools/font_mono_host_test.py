@@ -10,7 +10,7 @@ import importlib.util
 _spec=importlib.util.spec_from_file_location('prepare_autofit',COMP/'prepare_autofit.py')
 _prepare=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(_prepare)
 _autofit=_prepare.generate(ROOT/'build/font-autofit-host')
-FLAGS=['-std=c11','-O2','-DFT2_BUILD_LIBRARY','-DFT_CONFIG_MODULES_H="dpreader_ftmodule.h"','-DFT_CONFIG_OPTIONS_H="dpreader_ftoption.h"','-I'+str(_autofit),'-I'+str(COMP/'vendor/src/autofit'),'-I'+str(COMP/'vendor/include'),'-I'+str(COMP),'-I'+str(ROOT/'main/font')]
+FLAGS=['-std=gnu11','-O2','-DFT2_BUILD_LIBRARY','-DFT_CONFIG_MODULES_H="dpreader_ftmodule.h"','-DFT_CONFIG_OPTIONS_H="dpreader_ftoption.h"','-I'+str(_autofit),'-I'+str(COMP/'vendor/src/autofit'),'-I'+str(COMP/'vendor/include'),'-I'+str(COMP),'-I'+str(ROOT/'main/font')]
 UNIT=r'''
 #include "ttf_mono.h"
 #include <assert.h>

@@ -53,4 +53,4 @@ int main(void){
  assert(shorts==1&&wake_posts==14);puts("PASS actual AI sampler+IRQ wait:12 holds alternate light off/on, release debounce continues after GPIO high, no duplicate/short after hold, clear-held suppression and rearm");}
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

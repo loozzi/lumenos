@@ -28,5 +28,5 @@ int main(void){
  __wrap_esp_panic_handler(NULL);assert(forwarded==3&&crash_note_valid());
  puts("PASS panic RTC capture:PC/RA/SP/cause/trap, bounded abort details, forwarding and non-destructive export");}
 ''')
- subprocess.run(['cc','-std=c11','-D__riscv=1','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'main/app'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-D__riscv=1','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'main/app'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

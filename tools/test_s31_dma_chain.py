@@ -32,5 +32,5 @@ int main(void){unsigned cases=0;for(size_t bytes=1;bytes<=64*1025;bytes+=17){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(prefix+body+main)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

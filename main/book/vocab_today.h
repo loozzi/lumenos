@@ -1,0 +1,1 @@
+../../firmware/shared/main/book/vocab_today.h

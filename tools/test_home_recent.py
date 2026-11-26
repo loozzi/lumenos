@@ -56,6 +56,9 @@ static void app_home_release_clock_cache(void){}
 static void ui_home_clock_preview_invalidate(void){}
 static void refresh_days(void){}
 static void avatar_prepare_state(void){}
+#define HOME_VOCAB_ROOT "vocab"
+static int vocab_today_get(const char *root){(void)root;return 0;}
+__attribute__((unused)) static void vocab_today_invalidate(void){}
 static void refresh_excerpt(void){}
 static void rp_boot_mark(const char *s){(void)s;}
 static int app_settings_home_component(void){return HOME_ROOT;}
@@ -94,5 +97,5 @@ with tempfile.TemporaryDirectory(prefix="home-recent-") as temp:
     source = Path(temp) / "test.c"
     binary = Path(temp) / "test"
     source.write_text(UNIT, encoding="utf-8")
-    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", str(source), "-o", str(binary)], check=True)
+    subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", str(source), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

@@ -33,4 +33,4 @@ int main(void){
  assert(takes==gives+1);puts("PASS: actual shared IO mask, one-write TPS rise, preserved motor/P05/P14 bits, lock timeout, failed write/cache and invalid pins");}
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-g',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(d);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-g',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

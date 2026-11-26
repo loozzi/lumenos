@@ -25,6 +25,7 @@ unit = r'''
 #include <stdlib.h>
 #define UI_LOCK_HEIGHT 1216
 #define READER_FOOTER_TOP 1120
+static int reader_footer_top(void){return READER_FOOTER_TOP;}
 #define UI_SWIPE_MIN_PX 60
 enum {READING, SHELF, READER_PANEL_NONE=0, READER_PANEL_TOOLS,
       UI_GESTURE_MOVE, UI_GESTURE_SWIPE_U, UI_GESTURE_SWIPE_R, UI_GESTURE_TAP};
@@ -61,6 +62,6 @@ with tempfile.TemporaryDirectory() as folder:
     c = Path(folder) / "footer.c"
     exe = Path(folder) / "footer"
     c.write_text(unit)
-    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", str(c), "-o", str(exe)], check=True)
+    subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", str(c), "-o", str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 print("PASS: footer swipe admission, book close notice before save and release-only navigation")

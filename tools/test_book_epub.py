@@ -64,7 +64,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='book-epub-') as temp:
         work = Path(temp)
         exe = work / 'test'
-        subprocess.run(['cc', '-std=c11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
+        subprocess.run(['cc', '-std=gnu11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
                         '-I' + str(ROOT / 'tools/book_epub_stubs'), '-I' + str(ROOT / 'tools/zip_host_stubs'),
                         '-I' + str(ROOT / 'main/book'), str(ROOT / 'tools/book_epub_host_test.c'),
                         str(ROOT / 'main/book/book_epub.c'), str(ROOT / 'main/book/zip_reader.c'),
@@ -277,7 +277,7 @@ def main():
         large = work / 'long_5000.epub'
         make_large_book(large)
         large_exe = work / 'large-test'
-        subprocess.run(['cc', '-std=c11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
+        subprocess.run(['cc', '-std=gnu11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
                         '-I' + str(ROOT / 'tools/book_epub_stubs'), '-I' + str(ROOT / 'tools/zip_host_stubs'),
                         '-I' + str(ROOT / 'main/book'), str(ROOT / 'tools/book_epub_large_host_test.c'),
                         str(ROOT / 'main/book/book_epub.c'), str(ROOT / 'main/book/zip_reader.c'),

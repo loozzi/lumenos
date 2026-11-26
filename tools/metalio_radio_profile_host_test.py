@@ -60,5 +60,5 @@ int main(void){
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'esp_wifi.h').write_text('');(p/'test.c').write_text(u)
  for flags in ([],['-DCONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=1']):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',*flags,'-I'+str(p),'-I'+str(R/'components/read_pico_transfer'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',*flags,'-I'+str(p),'-I'+str(R/'components/read_pico_transfer'),str(p/'test.c'),'-o',str(p/'test')],check=True)
   subprocess.run([str(p/'test')],check=True)

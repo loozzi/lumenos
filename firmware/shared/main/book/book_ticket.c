@@ -30,6 +30,7 @@
 #include "read_pico_pmu.h"
 #include "ttf_font.h"
 #include "ui_kit.h"
+#include "vocab_today.h"
 
 #define TICKET_MAGIC UINT32_C(0x52505431)
 typedef struct {
@@ -428,4 +429,14 @@ void book_lock_signature_draw(uint8_t *fb) {
     EpdRect box={54,1104,576,64};
     ui_fill_rect_fast(box,UI_GRAY_WHITE,fb);
     ui_text_caption(fb,box,24,signature,EPD_DRAW_ALIGN_CENTER,false);
+}
+
+void book_lock_vocab_draw(uint8_t *fb, bool above_signature) {
+    const vocab_today_t *today = vocab_today_cached();
+    if (!fb || !today->valid || !today->show_lock) return;
+    char line[240];
+    vocab_today_line(today, line, sizeof(line));
+    EpdRect box = {54, above_signature ? 1036 : 1140, 576, 56};
+    ui_fill_round_rect(fb, box, 16, UI_GRAY_WHITE);
+    ui_text_caption(fb, box, 22, line, EPD_DRAW_ALIGN_CENTER, false);
 }

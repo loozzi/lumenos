@@ -104,5 +104,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory(prefix='s31-settings-preview-') as d:
     c=Path(d)/'test.c';c.write_text(unit);exe=Path(d)/'test'
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

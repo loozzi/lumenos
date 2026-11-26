@@ -89,5 +89,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
     p=Path(folder);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-DTEST_ROOT="'+str(p/'card')+'"','-I'+str(ROOT/'main/book'),'-I'+str(ROOT/'tools/html_text_stubs'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-DTEST_ROOT="'+str(p/'card')+'"','-I'+str(ROOT/'main/book'),'-I'+str(ROOT/'tools/html_text_stubs'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

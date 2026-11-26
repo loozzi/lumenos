@@ -56,7 +56,7 @@ int main(void){
 with tempfile.TemporaryDirectory() as directory:
     work = Path(directory)
     (work/'test.c').write_text(unit)
-    cmd = ['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
+    cmd = ['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
            '-DDPREADER_BOARD_METALIO47=1']
     for include in ['main','tools/waveform_host_stubs','tools/shelf_waveform_host_stubs',
                     'components/epdiy/include','components/epdiy/src',

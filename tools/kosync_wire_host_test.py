@@ -96,5 +96,5 @@ with tempfile.TemporaryDirectory() as d:
   out.writestr('style.css','.unused {white-space: pre-wrap;}')
  (p/'wire.c').write_text(prefix+functions+wrappers+ns['function']('kosync_sync_book_impl')+main)
  sources=['main/book/book_sync_position.c','main/book/book_xpointer.c','main/book/book_epub.c','main/book/book_index_cache.c','main/book/book_image_header.c','main/book/zip_reader.c','main/book/html_text.c']
- subprocess.run(['cc','-std=c11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined','-Itools/book_epub_stubs','-Itools/zip_host_stubs','-Imain/book',*json_flags,str(p/'wire.c'),*sources,*json_sources,*json_libs,'-lz','-lm','-o',str(p/'test')],cwd=root,check=True)
+ subprocess.run(['cc','-std=gnu11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined','-Itools/book_epub_stubs','-Itools/zip_host_stubs','-Imain/book',*json_flags,str(p/'wire.c'),*sources,*json_sources,*json_libs,'-lz','-lm','-o',str(p/'test')],cwd=root,check=True)
  subprocess.run([str(p/'test'),str(book),str(fallback)],cwd=root,check=True)

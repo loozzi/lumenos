@@ -39,5 +39,5 @@ int main(void) {
 }
 '''
     (p/'test.c').write_text(code)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+tmp,'-I'+str(root/'components/read_pico_pmu/include'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+tmp,'-I'+str(root/'components/read_pico_pmu/include'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

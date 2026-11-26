@@ -38,7 +38,7 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory() as d:
  d=Path(d);(d/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-g','-fsanitize=address,undefined',
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-g','-fsanitize=address,undefined',
   '-I'+str(r/'tools/zip_host_stubs'),'-I'+str(r/'main/book'),str(d/'test.c'),'-lz','-o',str(d/'test')],check=True)
  cases=0
  for mode in [zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED]:

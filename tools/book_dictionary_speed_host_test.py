@@ -45,6 +45,7 @@ with tempfile.TemporaryDirectory() as tmp:
             print(f'100000 records {"gzip" if packed else "plain"} {query}: {ticks} calls, host {elapsed:.3f}s')
     # Exercise the ESP time gate itself with a deterministic 2ms clock sample.
     (root/'esp_timer.h').write_text('#include <stdint.h>\nint64_t esp_timer_get_time(void);\n')
+    (root/'esp_heap_caps.h').write_text('#include <stdlib.h>\n#define MALLOC_CAP_SPIRAM 1\n#define MALLOC_CAP_8BIT 2\n#define heap_caps_malloc(n,c) malloc(n)\n#define heap_caps_realloc(p,n,c) realloc(p,n)\n')
     (root/'budget.c').write_text("""
 #include "book_dictionary.h"
 #include <assert.h>
@@ -55,8 +56,8 @@ int main(int argc,char **argv){assert(argc==2);book_dictionary_t d={0};
  book_dictionary_close(&d);assert(!d.index&&!d.data&&!d.syn);return 0;}
 """)
     obj=root/'timed.o';exe=root/'budget'
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-DESP_PLATFORM=1','-I'+str(root),'-I'+str(ROOT/'main/book'),'-c',str(ROOT/'main/book/book_dictionary.c'),'-o',str(obj)],check=True)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-I'+str(ROOT/'main/book'),str(root/'budget.c'),str(obj),str(ROOT/'main/book/book_dict_file.c'),'-lz','-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-DESP_PLATFORM=1','-I'+str(root),'-I'+str(ROOT/'main/book'),'-c',str(ROOT/'main/book/book_dictionary.c'),'-o',str(obj)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-I'+str(ROOT/'main/book'),str(root/'budget.c'),str(obj),str(ROOT/'main/book/book_dict_file.c'),'-lz','-o',str(exe)],check=True)
     subprocess.run([str(exe),str(ifo)],check=True)
     # Buffered plain reads must discard lookahead after each random seek.
     path=root/'ranges.dict';data=bytes(range(256))*300;path.write_bytes(data)

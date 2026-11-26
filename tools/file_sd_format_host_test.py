@@ -53,7 +53,7 @@ int main(void){
  puts("PASS: absent/contact/timeout cards cannot format; confirmation/cancel/hold guards, error and success rescan");
 }
 '''
-assert '将清空卡内全部数据，再点确认' in s
+assert 'Sẽ xóa sạch dữ liệu trên thẻ nhớ, chạm lần nữa để xác nhận' in s
 with tempfile.TemporaryDirectory(dir=ROOT/'build') as folder:
  c=Path(folder)/'test.c';exe=Path(folder)/'test';c.write_text(unit)
  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)

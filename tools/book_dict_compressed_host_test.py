@@ -27,7 +27,7 @@ const char *probe_text(book_dictionary_t *d){return d->text;}
 int probe_state(book_dictionary_t *d){return d->state;}
 int probe_handles(book_dictionary_t *d){return !!d->index+!!d->data+!!d->syn;}
 ''')
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-dynamiclib' if sys.platform=='darwin' else '-shared','-fPIC','-I'+str(ROOT/'main/book'),str(OUT/'api.c'),str(ROOT/'main/book/book_dictionary.c'),str(ROOT/'main/book/book_dict_file.c'),'-lz','-o',str(LIB)],check=True)
+subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-dynamiclib' if sys.platform=='darwin' else '-shared','-fPIC','-I'+str(ROOT/'main/book'),str(OUT/'api.c'),str(ROOT/'main/book/book_dictionary.c'),str(ROOT/'main/book/book_dict_file.c'),'-lz','-o',str(LIB)],check=True)
 lib=C.CDLL(str(LIB));P=C.c_void_p
 lib.probe_new.restype=P;lib.probe_delete.argtypes=[P];lib.probe_text.argtypes=[P];lib.probe_text.restype=C.c_char_p
 lib.probe_state.argtypes=[P];lib.probe_handles.argtypes=[P]
@@ -153,9 +153,9 @@ with tempfile.TemporaryDirectory() as temp:
 print('plain/gzip/dictzip RA, cross-chunk/random/boundary/cancel/corruption/no SD writes: PASS')
 # Compile the actual stream with failure-injected allocation hooks, UBSan enabled.
 obj=OUT/'stream-faults.o'
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(ROOT/'main/book'),'-include',str(ROOT/'tools/book_dict_allocation_stubs.h'),'-Dcalloc=dict_test_calloc','-Dfree=dict_test_free','-c',str(ROOT/'main/book/book_dict_file.c'),'-o',str(obj)],check=True)
+subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(ROOT/'main/book'),'-include',str(ROOT/'tools/book_dict_allocation_stubs.h'),'-Dcalloc=dict_test_calloc','-Dfree=dict_test_free','-c',str(ROOT/'main/book/book_dict_file.c'),'-o',str(obj)],check=True)
 exe=OUT/'allocation-test'
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(ROOT/'main/book'),str(ROOT/'tools/book_dict_allocation_host_test.c'),str(ROOT/'main/book/book_dictionary.c'),str(obj),'-lz','-o',str(exe)],check=True)
+subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(ROOT/'main/book'),str(ROOT/'tools/book_dict_allocation_host_test.c'),str(ROOT/'main/book/book_dictionary.c'),str(obj),'-lz','-o',str(exe)],check=True)
 ra_path=OUT/'allocation.dict.dz';idx_path=OUT/'allocation.idx.gz'
 ra_path.write_bytes(dictzip(b'abcdefghij'*1000,chunk=257));idx_path.write_bytes(gzip.compress(b'abcdefghij'*1000))
 allocation_dict=OUT/'allocation-dictionary'

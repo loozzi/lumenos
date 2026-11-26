@@ -204,5 +204,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory(prefix='kiikoread-reader-release-') as folder:
  c=Path(folder)/'test.c';binary=Path(folder)/'test';c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

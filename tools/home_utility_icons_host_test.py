@@ -34,5 +34,5 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-O2','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(root/'boards/metalio47/src/main/assets'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-O2','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(root/'boards/metalio47/src/main/assets'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test'),*sys.argv[1:]],check=True)

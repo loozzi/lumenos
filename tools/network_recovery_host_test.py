@@ -52,7 +52,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p),'-o',str(p.with_suffix(''))],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p),'-o',str(p.with_suffix(''))],check=True)
  subprocess.run([str(p.with_suffix(''))],check=True)
 for client in ['kosync','opds']:
  f=function(client+'_acquire_network',root/'main/book'/f'{client}_client.c')

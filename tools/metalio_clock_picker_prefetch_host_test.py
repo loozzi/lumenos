@@ -71,6 +71,6 @@ with tempfile.TemporaryDirectory(prefix='s31-clock-picker-prefetch-') as folder:
     path = Path(folder) / 'test.c'
     binary = path.with_suffix('')
     path.write_text(unit)
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
                     '-I'+str(root/'tools/ui_gesture_stubs'), str(path), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

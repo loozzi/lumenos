@@ -58,7 +58,7 @@ if __name__ == '__main__':
     with tempfile.TemporaryDirectory() as d:
         p = Path(d)
         (p / 'test.c').write_text(UNIT)
-        cmd = ['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
+        cmd = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
                '-I' + str(ROOT / 'components/metalio_hw/include'), str(p / 'test.c'),
                str(ROOT / 'components/metalio_hw/metalio_power_stats.c'), '-o', str(p / 'test')]
         subprocess.run(cmd, check=True)

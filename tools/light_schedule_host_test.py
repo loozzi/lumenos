@@ -119,5 +119,5 @@ with tempfile.TemporaryDirectory() as t:
     (p/'esp_err.h').write_text('#pragma once\ntypedef int esp_err_t;\n#define ESP_OK 0\n#define ESP_FAIL -1\n#define ESP_ERR_INVALID_ARG 2\n#define ESP_ERR_INVALID_STATE 3\n#define ESP_ERR_NVS_NOT_FOUND 4\n')
     (p/'nvs.h').write_text('#pragma once\n#include <stddef.h>\ntypedef int nvs_handle_t;\n#define NVS_READONLY 0\n#define NVS_READWRITE 1\nint nvs_open(const char*,int,int*);int nvs_get_blob(int,const char*,void*,size_t*);int nvs_set_blob(int,const char*,const void*,size_t);int nvs_commit(int);void nvs_close(int);\n')
     (p/'test.c').write_text(u)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(root/'components/metalio_hw/include'),'-I'+str(root/'components/metalio_hw'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(root/'components/metalio_hw/include'),'-I'+str(root/'components/metalio_hw'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

@@ -118,5 +118,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory(prefix='pico-fast-bw-') as tmp:
     c=Path(tmp)/'test.c';exe=Path(tmp)/'test';c.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-g','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

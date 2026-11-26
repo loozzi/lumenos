@@ -31,5 +31,5 @@ int main(int argc,char **argv){assert(argc==2);root=argv[1];char path[1024];stru
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);c=p/'test.c';exe=p/'test';card=p/'card';card.mkdir();c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(c),'-o',str(exe)],check=True)
  subprocess.run([str(exe),str(card)],check=True)

@@ -11,6 +11,9 @@ from home_cover_cache_host_test import function
 root = Path(__file__).resolve().parents[1]
 unit = r'''
 #include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+static bool screen_inverted_stub;static bool app_settings_screen_inverted(void){return screen_inverted_stub;}
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -130,7 +133,7 @@ with tempfile.TemporaryDirectory(prefix='s31-gray-transition-') as folder:
     c = Path(folder)/'test.c'
     exe = Path(folder)/'test'
     c.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
         '-Imain','-Itools/shelf_waveform_host_stubs','-Itools/waveform_host_stubs',
         '-Icomponents/epdiy/include','-Icomponents/epdiy/src','-Icomponents/e0470_epaper_waveform/include',
         '-Icomponents/e0470_epaper_waveform/metalio',str(c),'main/display_main_waveform.c',
