@@ -70,6 +70,8 @@ static bool shelf_reserve(void){++reserves;return s_count<8;}
 static void shelf_category_restore(app_ctx_t *ctx){(void)ctx;}
 static void shelf_categories_recount(void){}
 static void sort_shelf(app_ctx_t *ctx){(void)ctx;++sorts;s_visible_count=s_count;}
+static bool reading_finished(const char *path,uint32_t size,unsigned pct){(void)path;(void)size;return pct>=100;}
+static bool app_settings_simple_ui(void){return false;}
 '''
 for name in ('app_book_request_open','app_book_request_open_from_home','app_book_request_resume',
              'shelf_backfill_visit','shelf_backfill_read_books','refresh_cached_progress'):
@@ -125,7 +127,7 @@ with tempfile.TemporaryDirectory(prefix='normal-book-compat-') as directory:
         p.write_bytes(b'x')
     c, exe = tmp/'test.c', tmp/'test'
     c.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-Wno-unused-variable','-Wno-unused-function','-Wno-sign-compare',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-Wno-unused-variable','-Wno-unused-function','-Wno-sign-compare',
                     '-fsanitize=address,undefined','-I'+str(ROOT/'main/book'),str(c),'-o',str(exe)],check=True)
     for case in ['shelf','home','request']:
         result = subprocess.run([str(exe),str(tmp),case],capture_output=True,text=True)

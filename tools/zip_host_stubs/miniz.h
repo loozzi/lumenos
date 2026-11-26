@@ -35,16 +35,18 @@ typedef enum { TINFL_STATUS_FAILED = -1, TINFL_STATUS_DONE = 0,
                TINFL_STATUS_NEEDS_MORE_INPUT = 1, TINFL_STATUS_HAS_MORE_OUTPUT = 2 } tinfl_status;
 #define TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF 4
 #define TINFL_FLAG_HAS_MORE_INPUT 2
+#define TINFL_FLAG_PARSE_ZLIB_HEADER 1
 #define tinfl_init(r) memset((r), 0, sizeof(*(r)))
 static inline tinfl_status tinfl_decompress(tinfl_decompressor* state, const mz_uint8* input,
     size_t* in_size, mz_uint8* start, mz_uint8* output, size_t* out_size, mz_uint32 flags) {
-    (void)start; (void)flags;
+    (void)start;
     if (!state->initialized) {
         state->used = 0;
         state->stream.zalloc = host_inflate_alloc;
         state->stream.zfree = host_inflate_free;
         state->stream.opaque = state;
-        if (inflateInit2(&state->stream, -MAX_WBITS) != Z_OK) return TINFL_STATUS_FAILED;
+        // 带 zlib 头时按 zlib 流解，否则按 raw deflate。/ With a zlib header inflate a zlib stream, else raw deflate.
+        if (inflateInit2(&state->stream, (flags & TINFL_FLAG_PARSE_ZLIB_HEADER) ? MAX_WBITS : -MAX_WBITS) != Z_OK) return TINFL_STATUS_FAILED;
         state->initialized = 1;
     }
     z_stream* stream = &state->stream;

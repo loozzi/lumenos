@@ -42,7 +42,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
  p=Path(folder);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 for name in ['app_dashboard.c','app_files.c','app_device_settings.c','app_transfer.c']:
  assert '.persistent_navigation=true' in (root/'main/apps'/name).read_text(),name

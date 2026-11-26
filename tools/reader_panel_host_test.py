@@ -222,6 +222,6 @@ with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'test';p.with_suffix('.c').write_text(unit)
  sanitizers = [] if os.environ.get('HOST_TEST_SANITIZERS') == '0' else ['-fsanitize=address,undefined']
  for love in (0,1):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',
                   *sanitizers,f'-DDPREADER_LOVE_BOOK={love}',str(p.with_suffix('.c')),'-o',str(p)],check=True)
   subprocess.run([str(p)],check=True)

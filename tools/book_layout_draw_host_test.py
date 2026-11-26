@@ -63,7 +63,7 @@ sanitizers=[] if os.environ.get('HOST_TEST_SANITIZERS')=='0' else ['-fsanitize=a
 with tempfile.TemporaryDirectory(prefix='book-image-record-') as directory:
     work=Path(directory)
     (work/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',*sanitizers,
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',*sanitizers,
                     '-I'+str(root/'tools/book_layout_stubs'),'-I'+str(root/'tools/book_source_host_stubs'),'-I'+str(root/'main/book'),
                     str(work/'test.c'),'-o',str(work/'test')],check=True)
     subprocess.run([str(work/'test')],check=True)

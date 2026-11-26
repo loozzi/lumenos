@@ -64,5 +64,5 @@ int main(void){
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'driver').mkdir();(p/'driver/i2c_master.h').write_text('#pragma once\ntypedef void *i2c_master_bus_handle_t;\n')
  (p/'esp_err.h').write_text('#pragma once\ntypedef int esp_err_t;\n');(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+d,'-I'+str(root/'components/read_pico_pmu/include'),str(p/'test.c'),str(root/'components/read_pico_pmu/pico_soc_filter.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+d,'-I'+str(root/'components/read_pico_pmu/include'),str(p/'test.c'),str(root/'components/read_pico_pmu/pico_soc_filter.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

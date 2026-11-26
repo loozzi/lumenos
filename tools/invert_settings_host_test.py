@@ -44,5 +44,5 @@ assert 'app_settings_set_screen_inverted(!app_settings_screen_inverted())' in ui
 assert 's_screen_inverted=nvs_get_u8(h,NVS_KEY_INVERT,&inverted)==ESP_OK && inverted==1;' in src.read_text()
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

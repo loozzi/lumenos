@@ -241,7 +241,7 @@ def run(tmp, name, source, more=()):
     c.write_text(source)
     exe = tmp/name
     link_gc = '-Wl,-dead_strip' if sys.platform == 'darwin' else '-Wl,--gc-sections'
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-g', '-fsanitize=address,undefined', '-ffunction-sections', '-fdata-sections', link_gc, '-I'+str(ROOT/'tools/display_host_stubs'), '-I'+str(ROOT/'components/continuous_du/include'), '-I'+str(ROOT/'components/e0470_page_turn/include'), '-I'+str(ROOT/'main'), '-I'+str(ROOT/'main/app'), str(c), *map(str, more), '-o', str(exe)], check=True)
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-g', '-fsanitize=address,undefined', '-ffunction-sections', '-fdata-sections', link_gc, '-I'+str(ROOT/'tools/display_host_stubs'), '-I'+str(ROOT/'components/continuous_du/include'), '-I'+str(ROOT/'components/e0470_page_turn/include'), '-I'+str(ROOT/'main'), '-I'+str(ROOT/'main/app'), str(c), *map(str, more), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)
 
 

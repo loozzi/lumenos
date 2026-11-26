@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='s31-text-ripple-') as folder:
     (temp/'esp_log.h').write_text('#pragma once\n#include <stdio.h>\n#undef ESP_LOGI\n'
         '#define ESP_LOGI(tag,fmt,...) do { char buf[256]; (void)(tag); '
         '(void)snprintf(buf,sizeof(buf),fmt,__VA_ARGS__); } while(0)\n')
-    command = ['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function',
+    command = ['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function',
                '-Wno-unknown-attributes','-g','-fsanitize=address,undefined',
                '-DDPREADER_BOARD_METALIO47=1','-I'+str(temp),
                '-I'+str(root/'components/epdiy/src'),'-I'+str(root/'components/epdiy/include'),

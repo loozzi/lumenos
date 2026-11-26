@@ -40,6 +40,6 @@ with tempfile.TemporaryDirectory(prefix='ticket-cover-epub-') as folder:
   doc=ET.fromstring(z.read(opf));cover=next(x for x in doc.iter() if x.tag.split('}')[-1]=='item' and 'cover-image' in x.attrib.get('properties','').split())
   data=z.read(posixpath.normpath(posixpath.join(posixpath.dirname(opf),cover.attrib['href'])))
  (tmp/'expected').write_bytes(data);(tmp/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-I'+str(ROOT/'tools/book_epub_stubs'),'-I'+str(ROOT/'tools/zip_host_stubs'),'-I'+str(ROOT/'main/book'),str(tmp/'test.c')]+[str(ROOT/'main/book'/n) for n in ('book_epub.c','zip_reader.c','html_text.c','book_index_cache.c','book_image_header.c')]+['-lz','-o',str(tmp/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-I'+str(ROOT/'tools/book_epub_stubs'),'-I'+str(ROOT/'tools/zip_host_stubs'),'-I'+str(ROOT/'main/book'),str(tmp/'test.c')]+[str(ROOT/'main/book'/n) for n in ('book_epub.c','zip_reader.c','html_text.c','book_index_cache.c','book_image_header.c')]+['-lz','-o',str(tmp/'test')],check=True)
  subprocess.run([str(tmp/'test'),str(epub),str(tmp/'expected'),'png' if cover.attrib['media-type']=='image/png' else 'jpeg'],check=True)
  print('cover_bytes='+str(len(data))+' sha256='+hashlib.sha256(data).hexdigest())

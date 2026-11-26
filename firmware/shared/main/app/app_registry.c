@@ -15,6 +15,10 @@ extern const app_desc_t app_dashboard;
 extern const app_desc_t app_files;
 extern const app_desc_t app_book_picker;
 extern const app_desc_t app_device_settings;
+#include "firmware_edition.h"
+#if !DPREADER_LOVE_BOOK
+extern const app_desc_t app_vocab;
+#endif
 
 // 正式产品页面清单；工厂测试与历史示例不进入用户导航。
 // Production page registry; factory diagnostics and legacy examples are not user-navigable.
@@ -25,6 +29,10 @@ static const app_desc_t* const s_apps[] = {
     &app_device_settings,
     &app_image,
     &app_book_picker,
+#if !DPREADER_LOVE_BOOK
+    // 用户2026-11-25：Full 的词汇学习页，只从首页或文件进入。/ User 2026-11-25: Full vocabulary page, opened from Home or Files.
+    &app_vocab,
+#endif
 };
 
 #define APP_COUNT ((int)(sizeof(s_apps) / sizeof(s_apps[0])))

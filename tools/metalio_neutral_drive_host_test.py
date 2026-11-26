@@ -16,5 +16,5 @@ static int gpio_set_level(unsigned pin,unsigned level){assert(!level);assert(pin
 int main(void){for(fail=0;fail<=2;fail++){calls=0;state.ep_output_enable=state.ep_mode=true;assert(read_pico_epd_release_drive()==!fail);assert(calls==2&&!state.ep_output_enable&&!state.ep_mode);}return 0;}
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(d);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
 print('PASS: S31 direct XOE18/MOD19 neutral drive, both writes attempted after every GPIO fault; no I2C/VCOM operations')

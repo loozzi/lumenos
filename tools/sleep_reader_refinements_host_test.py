@@ -48,6 +48,9 @@ static void pico_online_request_cancel(void){++cancels;}
 static bool online_font_request_cancel(void){++font_cancels;return !font_busy;}
 static bool pico_online_busy(void){return busy;}
 static bool usb_storage_active(void){return usb;}
+#define HOME_VOCAB_ROOT "vocab"
+static int vocab_today_get(const char *root){(void)root;return 0;}
+__attribute__((unused)) static void vocab_today_invalidate(void){}
 static bool read_pico_transfer_pause_for_sleep(void){++wifi_calls;return wifi_ok;}
 static int ble_pt_suspend_for_sleep(void){++ble_calls;return ble_ok?0:-1;}
 static bool book_cover_jobs_quiesce(unsigned ms){assert(ms==2000);return jobs_ok;}
@@ -138,5 +141,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
     p=Path(tmp);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

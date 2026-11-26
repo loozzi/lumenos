@@ -17,3 +17,7 @@ bool book_dict_file_end(book_dict_file_t *file);
  * 32KiB streamed output per step. Output is borrowed until completed/closed. */
 bool book_dict_file_begin(book_dict_file_t *file,uint32_t offset,void *out,size_t n);
 int book_dict_file_step(book_dict_file_t *file); /* -1 error,0 pending,1 complete */
+/* 中文：顺序读取的当前位置；跳到 pos（普通文件直接 seek，gzip 每步最多解压 budget 字节）。
+ * English: current sequential position; skip to pos (plain files seek, gzip inflates at most budget bytes per call). */
+uint32_t book_dict_file_position(const book_dict_file_t *file);
+int book_dict_file_skip(book_dict_file_t *file,uint32_t pos,size_t budget); /* -1 error,0 pending,1 reached */

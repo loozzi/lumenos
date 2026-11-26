@@ -57,5 +57,5 @@ int main(void){
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(prefix+h+s+tests)
  for board in (0,1):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function',f'-DDPREADER_BOARD_METALIO47={board}','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function',f'-DDPREADER_BOARD_METALIO47={board}','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
   subprocess.run([str(p/'test')],check=True)

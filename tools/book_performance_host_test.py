@@ -8,7 +8,7 @@ import zipfile
 from home_cover_cache_host_test import function
 
 ROOT = Path(__file__).resolve().parents[1]
-FLAGS = ['cc', '-std=c11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror',
+FLAGS = ['cc', '-std=gnu11', '-D_DEFAULT_SOURCE', '-Wall', '-Wextra', '-Werror',
          '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer']
 
 

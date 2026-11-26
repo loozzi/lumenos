@@ -72,7 +72,7 @@ for path, name, buffer, lifecycle in scenes:
     }}'''
     with tempfile.TemporaryDirectory() as tmp:
         c,exe=Path(tmp)/'test.c',Path(tmp)/'test';c.write_text(unit)
-        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable',
+        subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable',
                         '-fsanitize=address,undefined','-I',str(root/'main/ui'),str(c),
                         str(root/'main/ui/ui_text_edit.c'),'-o',str(exe)],check=True)
         subprocess.run([str(exe)],check=True)

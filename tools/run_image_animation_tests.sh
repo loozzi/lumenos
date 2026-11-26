@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-cc -std=c11 -Wall -Wextra -Werror \
+cc -std=gnu11 -Wall -Wextra -Werror \
   -I"$root/main/ui" -I"$root/main/book" \
   "$root/tools/image_animation_host_test.c" \
   "$root/main/ui/ui_image_dither.c" \

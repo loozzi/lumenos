@@ -39,5 +39,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  d=Path(tmp);(d/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(d/'test.c'),'-o',str(d/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(d/'test.c'),'-o',str(d/'test')],check=True)
  subprocess.run([str(d/'test')],check=True)

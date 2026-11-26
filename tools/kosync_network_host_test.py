@@ -132,5 +132,5 @@ assert 'app_book_request_kosync(ctx);' in function('reader_key_action',book)
 with tempfile.TemporaryDirectory() as tmp:
  for name,src in [('kosync',unit),('radio',radio)]:
   p=Path(tmp)/(name+'.c');p.write_text(src);binary=p.with_suffix('')
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(p),'-o',str(binary)],check=True)
   subprocess.run([str(binary)],check=True)

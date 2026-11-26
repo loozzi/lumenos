@@ -159,5 +159,5 @@ unit=unit.replace('@PICKER_CROP_TEST@', r"""
 if 'component_prepare_neighbor(ctx)' not in tick:unit=unit.replace('__attribute__((unused)) static void component_prepare_neighbor(app_ctx_t *ctx){(void)ctx;}', '')
 with tempfile.TemporaryDirectory() as directory:
  c=Path(directory)/'clock.c';binary=c.with_suffix('');c.write_text(unit)
- subprocess.run(['cc','-std=c11','-DDPREADER_BOARD_METALIO47=1','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),str(c),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-DDPREADER_BOARD_METALIO47=1','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'tools/ui_gesture_stubs'),str(c),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

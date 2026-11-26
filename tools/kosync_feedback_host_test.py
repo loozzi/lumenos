@@ -77,5 +77,5 @@ with tempfile.TemporaryDirectory() as d:
  p=Path(d)
  for name,unit in [('notice',notice),('http',request)]:
   (p/(name+'.c')).write_text(unit)
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-parameter',str(p/(name+'.c')),'-o',str(p/name)],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-parameter',str(p/(name+'.c')),'-o',str(p/name)],check=True)
   subprocess.run([str(p/name)],check=True)

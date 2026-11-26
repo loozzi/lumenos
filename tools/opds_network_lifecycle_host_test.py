@@ -36,6 +36,14 @@ static void read_pico_transfer_service_poll(void){if(ready_at>=0&&now>=ready_at)
 static int read_pico_transfer_sync_time_online(uint32_t *t){(void)t;return ESP_OK;}
 static void read_pico_transfer_stop(void){++stops;status.network_ready=false;status.state=READ_PICO_TRANSFER_STOPPED;}
 static void read_pico_transfer_network_request_stop(void){read_pico_transfer_stop();}
+#define portENTER_CRITICAL(x) ((void)(x))
+#define portEXIT_CRITICAL(x) ((void)(x))
+static int s_session_lock;
+typedef void *TaskHandle_t;
+static TaskHandle_t s_async_task;
+static volatile bool s_async_network_changed;
+static TaskHandle_t xTaskGetCurrentTaskHandle(void){return NULL;}
+'''+function('opds_notify_network',source)+r'''
 '''+function('opds_session_begin',source)+'\n'+function('opds_session_end',source)+'\n'+function('opds_session_active',source)+'\n'+function('opds_acquire_network',source)+'\n'+function('opds_release_network',source)+r'''
 static void reset(void){status=(read_pico_transfer_status_t){.mode=READ_PICO_TRANSFER_MODE_STA};saved=shareable=true;s_session_active=s_session_owns_wifi=false;starts=stops=error=observed=0;now=0;ready_at=0;}
 int main(void){bool owned;char message[128];
@@ -55,11 +63,11 @@ int main(void){bool owned;char message[128];
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
 
 ui=ROOT/'main/apps/app_book.c'
 assert 'opds_session_begin();' in function('opds_open_catalog',ui)
 assert 'opds_session_end();' in function('book_on_exit',ui)
-assert 'if(s_view!=OPDS && opds_session_active())opds_session_end();' in function('on_tick',ui)
+assert 'if(s_view!=OPDS && opds_session_active()){opds_stop_load();opds_session_end();}' in function('on_tick',ui)
 print('PASS OPDS UI session begin, page-exit cleanup and same-page view transition cleanup')

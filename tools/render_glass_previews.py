@@ -316,7 +316,7 @@ def main():
         body = re.sub(r'^#include[^\n]*\n', '', (ROOT/'main/ui/ui_glass.c').read_text(), flags=re.M)
         (path/'glass.c').write_text(HOST+body+MAIN)
         exe = path/'glass'
-        subprocess.run(['cc', '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-I'+str(ROOT/'main'), str(path/'glass.c'), str(ROOT/'main/ui/ui_image_dither.c'), '-lm', '-o', str(exe)], check=True)
+        subprocess.run(['cc', '-std=gnu11', '-O2', '-Wall', '-Wextra', '-Werror', '-I'+str(ROOT/'main'), str(path/'glass.c'), str(ROOT/'main/ui/ui_image_dither.c'), '-lm', '-o', str(exe)], check=True)
         for filename, label, white, refract in variants:
             img = glass(exe, base(), (18, 88, 648, 280), white, refract)
             controls(img)

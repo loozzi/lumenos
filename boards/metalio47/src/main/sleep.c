@@ -955,6 +955,10 @@ void enter_lock_and_sleep(
     }
     const int64_t draw_at = esp_timer_get_time();
     if(lock_drawn && lock_style==3)book_lock_signature_draw(framebuffer);
+#if !DPREADER_LOVE_BOOK
+    // 用户2026-11-25：Full 锁屏可显示今日单词；只读 RAM 摘要，不读卡。/ Full lock may show today's word from RAM only.
+    if(lock_drawn)book_lock_vocab_draw(framebuffer,lock_style==3&&app_settings_status_signature()[0]);
+#endif
     enum EpdDrawError result = lock_present_art(hl,lock_style);
     if (result != EPD_DRAW_SUCCESS) {
         guard_draw_result(hl, result);
@@ -1065,6 +1069,9 @@ void app_lock_boot_gate(EpdiyHighlevelState *hl, cst836u_handle_t touch, sc7a20h
             app_settings_lock_style() == 2 ? book_lock_collage_prepare(fb) :
             app_settings_lock_style() == 3 ? book_lock_bookmark_draw(fb,app_settings_bookmark_path()) : draw_wallpaper(fb);
         if(drawn && app_settings_lock_style()==3)book_lock_signature_draw(fb);
+#if !DPREADER_LOVE_BOOK
+        if(drawn)book_lock_vocab_draw(fb,app_settings_lock_style()==3&&app_settings_status_signature()[0]);
+#endif
         if (!drawn) ui_lock_fallback_draw(fb);
         enum EpdDrawError result=lock_present_art(hl,app_settings_lock_style());
         guard_draw_result(hl,result);epd_poweroff();

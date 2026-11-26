@@ -45,7 +45,7 @@ int main(void){
 }
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-void-pointer-to-int-cast','-pthread',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(d);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-void-pointer-to-int-cast','-pthread',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
 objdump=next((Path.home()/'.espressif/tools/riscv32-esp-elf').glob('*/riscv32-esp-elf/bin/riscv32-esp-elf-objdump'))
 for name in ('spi_flash_op_block_func','esp_ipc_isr_waiting_for_finish_cmd'):
  out=subprocess.check_output([str(objdump),'-d','--disassemble='+name,str(build/'dpReader.elf')],text=True)

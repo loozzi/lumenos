@@ -17,7 +17,7 @@ int main(void){
  begin(true);assert(ui_keyboard_press(26,742,UI_SYSTEM_KEYBOARD_TOP,0));repaint(false);
  assert(ui_keyboard_release());key(26,742);assert(!strcmp(value,"q"));
  begin(false);key(120,742);key(270,820);key(420,898);
- ui_keyboard_end();ui_ime_release();free(fb);free(reference);free(previous);
+ ui_keyboard_end();{extern void ui_ime_release(void);ui_ime_release();}free(fb);free(reference);free(previous);
  puts("PASS: system560..1070 keyboard all layouts, actual press/release/character routing and incremental/full pixel equality above persistent navigation");
 }
 '''

@@ -51,6 +51,7 @@ static void setting_toggle(uint8_t*fb,int y,const char*title,const char*detail,b
 #define settings_card(...) ((void)0)
 #define settings_line(...) ((void)0)
 #define ui_draw_button(...) ((void)0)
+#define settings_button(...) ((void)0)
 #define ui_text_caption(...) ((void)0)
 #define settings_navigation(...) ((void)0)
 #define ttf_font_scan() ((void)0)
@@ -78,5 +79,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
     work=Path(folder);(work/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(work/'test.c'),'-o',str(work/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(work/'test.c'),'-o',str(work/'test')],check=True)
     subprocess.run([str(work/'test')],check=True)

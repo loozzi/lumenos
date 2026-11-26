@@ -67,7 +67,7 @@ def epub(path,files,names,method=zipfile.ZIP_DEFLATED):
 with tempfile.TemporaryDirectory(prefix='comic-header-') as folder:
     work=Path(folder);(work/'test.c').write_text(unit)
     (work/'io.h').write_text('#include <stdio.h>\nsize_t measured_fread(void *,size_t,size_t,FILE *);\n')
-    flags=['cc','-std=c11','-O2','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(ROOT/'tools/book_epub_stubs'),'-I'+str(ROOT/'tools/zip_host_stubs'),'-I'+str(ROOT/'main/book')]
+    flags=['cc','-std=gnu11','-O2','-U_FORTIFY_SOURCE','-D_FORTIFY_SOURCE=0','-Wall','-Wextra','-Werror','-Wno-unused-function','-fsanitize=address,undefined','-I'+str(ROOT/'tools/book_epub_stubs'),'-I'+str(ROOT/'tools/zip_host_stubs'),'-I'+str(ROOT/'main/book')]
     subprocess.run(flags+['-include',str(work/'io.h'),'-Dfread=measured_fread','-c',str(ROOT/'main/book/zip_reader.c'),'-o',str(work/'zip.o')],check=True)
     subprocess.run(flags+[str(work/'test.c'),str(work/'zip.o')]+[str(ROOT/'main/book'/n) for n in ('book_epub.c','html_text.c','book_index_cache.c','book_image_header.c')]+['-lz','-o',str(work/'test')],check=True)
     # 可重复的大PNG负载不包含用户漫画内容。/ Reproducible large PNG payloads contain no user comic artwork.

@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory(prefix="kiikoread-wifi-forget-") as directory:
     if not (cjson / "cJSON.c").exists():
         cjson = Path(os.environ["DPREADER_CJSON_DIR"])
     sanitizers = os.environ.get("DPREADER_TEST_SANITIZERS", "address,undefined")
-    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-Wno-misleading-indentation",
+    subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-Wno-misleading-indentation",
                     "-Wno-deprecated-declarations",
                     "-g", f"-fsanitize={sanitizers}", "-fno-omit-frame-pointer",
                     "-I" + str(cjson), str(source), str(cjson / "cJSON.c"), "-lm",

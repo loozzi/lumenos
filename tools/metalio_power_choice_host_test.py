@@ -21,6 +21,9 @@ unit = r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+static uint8_t wake_buttons_stub;static uint8_t app_settings_wake_buttons(void){return wake_buttons_stub;}
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 typedef struct {int x,y,width,height;} EpdRect;
@@ -95,6 +98,6 @@ int main(void){
 with tempfile.TemporaryDirectory() as folder:
     path = Path(folder)
     (path / 'test.c').write_text(unit)
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', *(['-fsanitize=address,undefined'] if os.environ.get('HOST_TEST_SANITIZERS','1')!='0' else []),
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', *(['-fsanitize=address,undefined'] if os.environ.get('HOST_TEST_SANITIZERS','1')!='0' else []),
                     str(path / 'test.c'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)

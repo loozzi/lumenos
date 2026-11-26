@@ -20,6 +20,9 @@ code=r'''
 #include <stdio.h>
 #include "ble_page_turner.h"
 #define BLE_REMOTE_DEBOUNCE_MS 350
+#define portENTER_CRITICAL(x) ((void)(x))
+#define portEXIT_CRITICAL(x) ((void)(x))
+static int s_profiles_lock;
 #define YXT_CODE_PREV 1
 #define YXT_CODE_NEXT 2
 static uint32_t s_last_ble_remote_turn_ms,s_last_ble_learned_ms;
@@ -83,5 +86,5 @@ int main(void){
 with tempfile.TemporaryDirectory() as tmp:
     p=Path(tmp);(p/'test.c').write_text(code)
     (p/'esp_err.h').write_text('typedef int esp_err_t;\n')
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(root/'components/ble_page_turner/include'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(root/'components/ble_page_turner/include'),str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

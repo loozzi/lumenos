@@ -194,5 +194,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory(prefix='s31-clock-cache-') as directory:
  c=Path(directory)/'clock.c';binary=c.with_suffix('');c.write_text(unit)
- subprocess.run(['cc','-std=c11','-O1','-Wall','-Wextra','-Werror','-Wno-sign-compare','-Wno-format-truncation','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(c),str(root/'main/ui/ui_image_dither.c'),'-lm','-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-O1','-Wall','-Wextra','-Werror','-Wno-sign-compare','-Wno-format-truncation','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(c),str(root/'main/ui/ui_image_dither.c'),'-lm','-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

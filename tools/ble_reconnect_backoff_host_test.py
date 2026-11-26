@@ -8,7 +8,7 @@ assert 's_reconnect_failures=0;' in function('reconnect_recent_requested',p)
 assert 'reconnect_delay_ms(s_reconnect_failures)' in function('poll_locked',p)
 with tempfile.TemporaryDirectory() as t:
  d=Path(t);(d/'test.c').write_text(code)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(d/'test.c'),'-o',str(d/'test')],check=True);subprocess.run([str(d/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(d/'test.c'),'-o',str(d/'test')],check=True);subprocess.run([str(d/'test')],check=True)
 print('PASS bounded BLE retry4/8/16/32/64/128/256/300s, success/manual reset and poll wiring')
 
 code = r"""
@@ -36,6 +36,6 @@ int main(void){
 """
 with tempfile.TemporaryDirectory() as d:
  path=Path(d);(path/'stable.c').write_text(code)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(path/'stable.c'),'-o',str(path/'stable')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',str(path/'stable.c'),'-o',str(path/'stable')],check=True)
  subprocess.run([str(path/'stable')],check=True)
 print('PASS BLE idle gate:stable link/backoff eligible; startup,pairing,scan,pending target and shutdown rejected')

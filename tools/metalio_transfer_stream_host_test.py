@@ -93,5 +93,5 @@ with tempfile.TemporaryDirectory(prefix='s31-stream-') as folder:
  for h in ['FreeRTOS.h','task.h','semphr.h']:(p/'freertos'/h).write_text('')
  (p/'metalio_task.h').write_text('#define metalio_task_create xTaskCreate\n#define metalio_task_exit() vTaskDelete(NULL)\n')
  (p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-Wno-unused-function','-fsanitize=address,undefined','-pthread','-I'+str(p),'-I'+str(root/'components/read_pico_transfer'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-variable','-Wno-unused-function','-fsanitize=address,undefined','-pthread','-I'+str(p),'-I'+str(root/'components/read_pico_transfer'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],cwd=p,check=True,timeout=45)

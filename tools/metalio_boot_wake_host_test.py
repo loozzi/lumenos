@@ -142,7 +142,7 @@ with tempfile.TemporaryDirectory(prefix='s31-boot-wake-') as d:
     p=Path(d);(p/'test.c').write_text(unit)
     sanitizers = os.environ.get('DPREADER_TEST_SANITIZERS', 'address,undefined')
     for edition in (0,1):
-        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function',
+        subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function',
                         '-Wno-unused-parameter',f'-DDPREADER_LOVE_BOOK={edition}',f'-fsanitize={sanitizers}',
                         str(p/'test.c'),'-o',str(p/'test')],check=True)
         subprocess.run([str(p/'test')],check=True)

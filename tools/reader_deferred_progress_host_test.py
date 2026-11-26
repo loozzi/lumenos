@@ -73,6 +73,6 @@ with tempfile.TemporaryDirectory() as folder:
     c = Path(folder) / 'reader.c'
     c.write_text(unit)
     exe = c.with_suffix('')
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation', '-fsanitize=undefined',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror','-Wno-misleading-indentation','-Wno-format', '-fsanitize=undefined',
                     str(c), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)

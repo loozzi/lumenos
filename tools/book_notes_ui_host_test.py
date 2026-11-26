@@ -40,7 +40,7 @@ static size_t page_start,page_end=SIZE_MAX;
 static int definition_ys[10];
 static char definition_texts[10][192];
 static int glyph_y=300,glyph_x=40;
-typedef enum {UI_ICON_SEARCH,UI_ICON_HIGHLIGHTER,UI_ICON_PENCIL,UI_ICON_SAVE,UI_ICON_LIST,UI_ICON_CHEVRON_LEFT,UI_ICON_CHEVRON_RIGHT,UI_ICON_X,UI_ICON_REFRESH_CW} ui_icon_t;
+typedef enum {UI_ICON_SEARCH,UI_ICON_HIGHLIGHTER,UI_ICON_PENCIL,UI_ICON_SAVE,UI_ICON_LIST,UI_ICON_CHEVRON_LEFT,UI_ICON_CHEVRON_RIGHT,UI_ICON_X,UI_ICON_REFRESH_CW,UI_ICON_SLIDERS_HORIZONTAL,UI_ICON_CHEVRON_UP,UI_ICON_CHEVRON_DOWN} ui_icon_t;
 static void ui_draw_icon(uint8_t *fb,int x,int y,int size,ui_icon_t icon,uint8_t color){(void)fb;(void)x;(void)y;(void)size;(void)icon;(void)color;++icon_calls;}
 static const char *test_text="apple banana carrot";
 static bool book_layout_vertical(void){return vertical;}
@@ -94,6 +94,10 @@ static EpdRect body_rect(void){return reader_body;}
 static void lock_draw(void){}
 static void unlock_draw(void){}
 static void invalidate_prep(void){}
+static size_t book_chapter_count(void){return 8;}
+static unsigned loads,saves;static size_t loaded_chapter,loaded_offset;
+static bool load_chapter(app_ctx_t *ctx,size_t ch,size_t off,bool last){(void)ctx;(void)last;++loads;loaded_chapter=ch;loaded_offset=off;return true;}
+static void save_progress(void){++saves;}
 static void render(app_ctx_t *ctx,uint8_t *fb){(void)ctx;book_notes_draw(fb,s_page,body_rect(),s_px);}
 '''
 adapter+=function('app_book_landscape_ready',root/'main/apps/app_book.c')+'\n'
@@ -129,6 +133,20 @@ static EpdRect body={20,240,640,800};
 static app_redraw_t redraw;
 static bool event(gesture_type t,int x,int y){ui_gesture_event_t e={.type=t,.x=x,.y=y,.x0=x,.y0=y};(void)body;return reader_notes_gesture(&ctx,&e,&redraw);}
 static bool action(int i){EpdRect r=menu_action_rect(i);return event(UI_GESTURE_TAP,r.x+r.width/2,r.y+r.height/2);}
+static void write_dict(const char *base,const char **pairs,unsigned n){
+ char path[256];snprintf(path,sizeof(path),"%s.idx",base);FILE *idx=fopen(path,"wb");
+ snprintf(path,sizeof(path),"%s.dict",base);FILE *data=fopen(path,"wb");assert(idx&&data);
+ uint32_t off=0,size=0;
+ for(unsigned i=0;i<n;i++){
+  uint32_t len=(uint32_t)strlen(pairs[2*i+1]);unsigned char be[8]={off>>24,off>>16,off>>8,off,len>>24,len>>16,len>>8,len};
+  fwrite(pairs[2*i],1,strlen(pairs[2*i])+1,idx);fwrite(be,1,8,idx);fwrite(pairs[2*i+1],1,len,data);
+  off+=len;size+=(uint32_t)strlen(pairs[2*i])+9;
+ }
+ fclose(idx);fclose(data);
+ snprintf(path,sizeof(path),"%s.ifo",base);FILE *ifo=fopen(path,"w");assert(ifo);
+ fprintf(ifo,"StarDict's dict ifo file\nversion=3.0.0\nbookname=%s\nwordcount=%u\nidxfilesize=%u\nsametypesequence=m\n",base,n,size);fclose(ifo);
+}
+static void finish_lookup(void){for(int i=0;i<200&&s->searching;i++)book_notes_tick();assert(!s->searching);}
 int main(void){
  char preview[128];
  note_preview("một hai ba bốn năm sáu bảy tám",preview);assert(!strcmp(preview,"một hai ba bốn năm sáu…"));
@@ -164,6 +182,26 @@ int main(void){
  assert(action(1));assert(!strcmp(s->annotations.items[0].note,"A note"));
  book_notes_cancel();assert(!held&&!book_notes_active());
  book_notes_bind("book.txt",0,test_text,strlen(test_text));assert(s->annotations.count==1&&!strcmp(s->annotations.items[0].note,"A note"));
+ // 1.6.0：整本书标签、导出与本章跳转。/ Whole-book tab, export and same-chapter jump.
+ book_notes_set_book("Sách thử",NULL);
+ assert(book_notes_open_list(0));assert(event(UI_GESTURE_TAP,300,870)&&s->list_book&&s->book);
+ for(int i=0;i<100&&s->book->state!=BOOK_NOTES_BOOK_DONE;i++)book_notes_tick();
+ assert(s->book->state==BOOK_NOTES_BOOK_DONE&&s->book->count==1&&!strcmp(s->book->items[0].note,"A note"));
+ book_notes_draw(NULL,0,body_rect(),24);
+ assert(event(UI_GESTURE_TAP,500,280)&&strstr(s->message,"Đã xuất 1"));
+ struct stat md;assert(!stat("dpReader_note/book.txt/ghi-chu.md",&md)&&md.st_size>0);
+ assert(event(UI_GESTURE_TAP,100,BOOK_ROW_Y+20)&&s->mode==SELECT&&s->start==s->annotations.items[0].start&&!s->book);
+ uint32_t jc;size_t jo;assert(!book_notes_take_jump(&jc,&jo));
+ // 其他章：发出跳转请求并关闭。/ Another chapter: emit a jump request and close.
+ assert(book_notes_open_list(0));assert(event(UI_GESTURE_TAP,300,870));
+ for(int i=0;i<100&&s->book->state!=BOOK_NOTES_BOOK_DONE;i++)book_notes_tick();
+ s->book->items[0].chapter=4;
+ loads=saves=0;assert(event(UI_GESTURE_TAP,100,BOOK_ROW_Y+20)&&!book_notes_active());
+ assert(loads==1&&loaded_chapter==4&&saves==1&&redraw==APP_REDRAW_PAGE); // 阅读页载入该章 / the reader loaded it
+ assert(!book_notes_take_jump(&jc,&jo));
+ assert(book_notes_open_list(0));assert(event(UI_GESTURE_TAP,300,870)&&s->list_book);
+ assert(event(UI_GESTURE_TAP,300,870)&&!s->list_book&&!s->book); // 回到本章 / back to this chapter
+ assert(!unlink("dpReader_note/book.txt/ghi-chu.md"));book_notes_cancel();
  assert(event(UI_GESTURE_LONG_PRESS,60,310));assert(event(UI_GESTURE_MOVE,240,310));assert(event(UI_GESTURE_CANCEL,240,310));
  assert(action(3));assert(s->mode==LIST);
  {unsigned saved_count=s->annotations.count;s->annotations.count=15;
@@ -192,15 +230,47 @@ int main(void){
  assert(event(UI_GESTURE_TAP,100,400)&&s->mode==LOOKUP);
  assert(event(UI_GESTURE_TAP,240,830)&&s->mode==LOOKUP); // Page control stays usable.
  assert(event(UI_GESTURE_TAP,20,400)&&!book_notes_active());
- assert(!s->dictionary.data&&!s->dictionary.index&&!s->root&&!s->child);
+ assert(!s->dictionary.data&&!s->dictionary.index&&!s->searching);
  // Outside taps cancel even while directory enumeration/lookup is pending.
  assert(!mkdir("dict",0775));
+ FILE *placeholder=fopen("dict/a.ifo","w");assert(placeholder);fclose(placeholder);
  const int outside[][2]={{100,180},{670,400},{100,1000}};
  for(unsigned i=0;i<3;++i){
-  s->mode=SELECT;assert(action(0)&&s->mode==LOOKUP&&s->searching&&s->root);
+  s->mode=SELECT;assert(action(0)&&s->mode==LOOKUP&&s->searching&&s->dicts.count==1);
   assert(event(UI_GESTURE_TAP,outside[i][0],outside[i][1])&&!book_notes_active());
-  assert(redraw==APP_REDRAW_PAGE&&!s->searching&&!s->root&&!s->child&&!s->dictionary.index&&!s->dictionary.data);
+  assert(redraw==APP_REDRAW_PAGE&&!s->searching&&!s->dictionary.index&&!s->dictionary.data);
  }
+ assert(!unlink("dict/a.ifo"));
+ // 1.6.0：顺序文件、启停、管理页与未命中建议。/ Order file, enable/disable, manager page and miss suggestions.
+ assert(!mkdir("dict/a-vi",0775)&&!mkdir("dict/b-en",0775));
+ const char *vi[]={"banana","B2"},*en[]={"apple","A1","banana","B1","cat","C1"};
+ write_dict("dict/a-vi/a",vi,1);write_dict("dict/b-en/b",en,3);
+ s->mode=LOOKUP;snprintf(s->query,sizeof(s->query),"banana");begin_lookup();
+ assert(s->searching&&s->dicts.count==2&&!strcmp(s->dicts.items[0].rel,"a-vi/a.ifo"));
+ finish_lookup();assert(s->dictionary.state==4&&!strcmp(s->dictionary.text,"B2"));
+ assert(event(UI_GESTURE_TAP,500,740)&&s->mode==DICTS&&s->dicts.count==2); // Quản lý
+ assert(event(UI_GESTURE_TAP,480,256+72+20)&&!strcmp(s->dicts.items[0].rel,"b-en/b.ifo")&&s->dicts_dirty); // Lên
+ assert(event(UI_GESTURE_TAP,500,830)&&s->mode==LOOKUP&&s->searching); // Xong
+ char order[128]={0};FILE *of=fopen("dict/.lumen_order","r");assert(of);assert(fread(order,1,sizeof(order)-1,of)>0);fclose(of);
+ assert(!strcmp(order,"b-en/b.ifo\na-vi/a.ifo\n"));
+ finish_lookup();assert(s->dictionary.state==4&&!strcmp(s->dictionary.text,"B1"));
+ assert(event(UI_GESTURE_TAP,500,740)&&s->mode==DICTS&&!strcmp(s->dicts.items[0].rel,"b-en/b.ifo"));
+ assert(event(UI_GESTURE_TAP,380,256+20)&&!s->dicts.items[0].enabled); // Tắt b-en
+ assert(event(UI_GESTURE_TAP,500,830)&&s->mode==LOOKUP);
+ finish_lookup();assert(s->dictionary.state==4&&!strcmp(s->dictionary.text,"B2"));
+ // 未命中：给出建议，点建议重新查询。/ A miss lists suggestions; tapping one searches again.
+ snprintf(s->query,sizeof(s->query),"bananx");begin_lookup();finish_lookup();
+ assert(s->dictionary.state!=4&&s->suggestion_count>=1&&!strcmp(s->suggestions[0],"banana"));
+ assert(strstr(s->message,"Có thể bạn muốn"));
+ assert(event(UI_GESTURE_TAP,300,SUGGEST_ROW_Y+20)&&!strcmp(s->query,"banana")&&s->searching);
+ finish_lookup();assert(s->dictionary.state==4&&!strcmp(s->dictionary.text,"B2"));
+ // 全部停用时说明原因。/ With every dictionary disabled, explain why.
+ for(unsigned i=0;i<s->dicts.count;i++)s->dicts.items[i].enabled=false;
+ assert(book_dict_list_save(&s->dicts,"dict"));begin_lookup();assert(!s->searching&&strstr(s->message,"đang tắt"));
+ book_notes_cancel();book_dictionary_cache_clear();
+ const char *rm[]={"dict/a-vi/a.ifo","dict/a-vi/a.idx","dict/a-vi/a.dict","dict/b-en/b.ifo","dict/b-en/b.idx","dict/b-en/b.dict","dict/.lumen_order"};
+ for(unsigned i=0;i<7;i++)assert(!unlink(rm[i]));
+ assert(!rmdir("dict/a-vi")&&!rmdir("dict/b-en"));
  assert(!rmdir("dict"));
  book_notes_cancel();glyph_y=80;
  assert(event(UI_GESTURE_LONG_PRESS,60,90));assert(s->dragging);
@@ -333,5 +403,5 @@ int main(void){
 }
 '''
 (out/'test.c').write_text(unit)
-subprocess.run(['cc','-std=c11','-D_DEFAULT_SOURCE','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DNOTES_ROOT="notes"','-DDICT_ROOT="dict"','-I'+str(out),'-I'+str(root/'main/book'),'-I'+str(root/'main/ui'),str(out/'test.c'),str(root/'main/book/book_annotations.c'),str(root/'main/book/book_dictionary.c'),str(root/'main/book/book_dict_file.c'),'-lz',str(root/'main/book/book_annotation_exchange.c'),*cjson_flags(),str(root/'main/ui/ui_text_edit.c'),'-o',str(out/'test')],check=True)
+subprocess.run(['cc','-std=gnu11','-D_DEFAULT_SOURCE','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-DNOTES_ROOT="notes"','-DDICT_ROOT="dict"','-I'+str(out),'-I'+str(root/'main/book'),'-I'+str(root/'main/ui'),str(out/'test.c'),str(root/'main/book/book_annotations.c'),str(root/'main/book/book_dictionary.c'),str(root/'main/book/book_dict_file.c'),str(root/'main/book/book_dict_order.c'),str(root/'main/book/book_notes_book.c'),'-lz',str(root/'main/book/book_annotation_exchange.c'),*cjson_flags(),str(root/'main/ui/ui_text_edit.c'),'-o',str(out/'test')],check=True)
 subprocess.run([str(out/'test')],check=True)

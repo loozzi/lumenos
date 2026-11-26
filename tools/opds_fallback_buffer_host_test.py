@@ -53,6 +53,7 @@ static int esp_http_client_perform(void *p){assert(p==&config);opds_xml_buf_t *r
 }
 static int esp_http_client_get_status_code(void *p){(void)p;return 503;}
 static void esp_http_client_cleanup(void *p){(void)p;++cleanups;}
+static void opds_notify_network(void){(void)s_network_observer;(void)s_network_context;}
 static void parse_opds_xml(const char *url,const char *xml,size_t len,opds_feed_t *out){(void)url;(void)xml;(void)len;(void)out;assert(false);}
 #define malloc fallback_malloc
 #define free fallback_free

@@ -52,5 +52,5 @@ int main(void){
 sanitizers=[] if os.environ.get('HOST_TEST_SANITIZERS')=='0' else ['-fsanitize=address,undefined']
 with tempfile.TemporaryDirectory(prefix='s31-radio-lease-') as folder:
  p=Path(folder);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',*sanitizers,str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',*sanitizers,str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

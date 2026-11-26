@@ -224,3 +224,20 @@ int book_dict_file_step(book_dict_file_t *f) {
     }
     return f->remaining?0:1;
 }
+uint32_t book_dict_file_position(const book_dict_file_t *f){return f?f->position:0;}
+int book_dict_file_skip(book_dict_file_t *f,uint32_t pos,size_t budget) {
+    if(!f||f->error||f->ra||pos>f->size)return -1;
+    if(!f->compressed) {
+        if(!seek_to(f->fp,pos))return -1;
+        f->position=pos;f->out_at=f->out_size=0;return 1;
+    }
+    if(f->position>pos&&!book_dict_file_rewind(f))return -1;
+    while(f->position<pos) {
+        if(!budget--)return 0;
+        if(f->out_at==f->out_size&&!fill(f))return -1;
+        // 一次跳过整个已解压块。/ Skip a whole inflated block at once.
+        size_t n=f->out_size-f->out_at;if(n>pos-f->position)n=pos-f->position;
+        f->out_at+=n;f->position+=(uint32_t)n;
+    }
+    return 1;
+}

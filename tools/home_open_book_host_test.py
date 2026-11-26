@@ -59,7 +59,7 @@ int main(int argc,char **argv){
 '''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'test.c';p.write_text(u);exe=p.with_suffix('')
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds','-I'+str(root/'main/assets'),str(p),'-o',str(exe)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds','-I'+str(root/'main/assets'),str(p),'-o',str(exe)],check=True)
  subprocess.run([str(exe),*sys.argv[1:]],check=True)
 s=home.read_text();assert '.fast=app_settings_main_fast_refresh()&&!app_settings_simple_full_ui()' in s
 assert 'app_settings_simple_full_ui()!=s_cached_simple_full_ui' in function('on_enter',home)

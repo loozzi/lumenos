@@ -73,4 +73,4 @@ with tempfile.TemporaryDirectory() as d:
  (p/'freertos/semphr.h').write_text('#pragma once\n#include "FreeRTOS.h"\n#include <stdbool.h>\ntypedef struct{int kind;bool held,token;}StaticSemaphore_t;typedef StaticSemaphore_t*SemaphoreHandle_t;\nSemaphoreHandle_t xSemaphoreCreateMutexStatic(StaticSemaphore_t*);SemaphoreHandle_t xSemaphoreCreateBinaryStatic(StaticSemaphore_t*);int xSemaphoreTake(SemaphoreHandle_t,int);int xSemaphoreGive(SemaphoreHandle_t);\n')
  (p/'freertos/task.h').write_text('#pragma once\n')
  (p/'test.c').write_text(u)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'components/metalio_hw/include'),'-I'+str(r/'components/metalio_hw'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(p),'-I'+str(r/'components/metalio_hw/include'),'-I'+str(r/'components/metalio_hw'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

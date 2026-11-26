@@ -43,7 +43,7 @@ def main():
             # Upstream JPEGDEC intentionally uses unaligned loads and signed shifts;
             # retain ASan there, and full UB checks in the new file/stream wrappers.
             upstream_flags = ["-fno-sanitize=alignment,shift"] if source.endswith("JPEGDEC.cpp") else []
-            subprocess.run(["c++" if cpp else "cc", "-std=c++17" if cpp else "-std=c11", *flags, *upstream_flags,
+            subprocess.run(["c++" if cpp else "cc", "-std=c++17" if cpp else "-std=gnu11", *flags, *upstream_flags,
                             "-c", str(ROOT / source), "-o", str(obj)], check=True)
             objects.append(str(obj))
         gc = "-Wl,-dead_strip" if sys.platform == "darwin" else "-Wl,--gc-sections"

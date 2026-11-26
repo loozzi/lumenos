@@ -21,7 +21,9 @@ static bool filename(char *out,size_t cap,const char *root,const book_annotation
 static bool boundary(const char *text,size_t length,size_t at) {
     return at<=length&&(at==length||((unsigned char)text[at]&0xc0)!=0x80);
 }
-static bool load_slot(book_annotations_t *a,const char *file,const char *text,size_t length) {
+// 解析一个快照槽；text 为空时只校验结构与校验和（整本书列表用）。
+// Parse one snapshot slot; without text only the structure and checksum are checked (whole-book list).
+static bool parse_slot(book_annotations_t *a,const char *file,const char *text,size_t length) {
     FILE *f=fopen(file,"rb");if(!f)return false;
     /* Local schema uses explicit LE integers; no compiler struct padding on disk. */
     unsigned char header[20];bool ok=fread(header,1,20,f)==20&&!memcmp(header,"KANN\2\0\0\0",8);
@@ -33,13 +35,25 @@ static bool load_slot(book_annotations_t *a,const char *file,const char *text,si
         ok=fread(offsets,1,8,f)==8&&fread(item->note,1,BOOK_NOTE_CAP,f)==BOOK_NOTE_CAP&&fread(item->quote,1,BOOK_QUOTE_CAP,f)==BOOK_QUOTE_CAP;
         if(!ok)break;
         for(int j=0;j<4;j++){item->start|=(uint32_t)offsets[j]<<(8*j);item->end|=(uint32_t)offsets[j+4]<<(8*j);}
-        ok=item->start<item->end&&boundary(text,length,item->start)&&boundary(text,length,item->end)&&
-            memchr(item->note,0,sizeof(item->note))&&memchr(item->quote,0,sizeof(item->quote));
-        if(ok){size_t q=strlen(item->quote);ok=q&&q<=item->end-item->start&&!memcmp(text+item->start,item->quote,q);}
+        ok=item->start<item->end&&memchr(item->note,0,sizeof(item->note))&&memchr(item->quote,0,sizeof(item->quote));
+        if(ok&&text)ok=boundary(text,length,item->start)&&boundary(text,length,item->end);
+        if(ok){size_t q=strlen(item->quote);ok=q&&q<=item->end-item->start&&(!text||!memcmp(text+item->start,item->quote,q));}
     }
     if(ok) ok=fgetc(f)==EOF&&!ferror(f)&&(uint32_t)hash(a->items,count*sizeof(a->items[0]))==checksum;
     fclose(f);if(ok)a->count=count;else memset(a->items,0,sizeof(a->items));return ok;
 }
+static bool load_slot(book_annotations_t *a,const char *file,const char *text,size_t length) {
+    return parse_slot(a,file,text,length);
+}
+bool book_annotations_read_file(book_annotations_t *a,const char *file) {
+    memset(a,0,sizeof(*a));return parse_slot(a,file,NULL,0);
+}
+bool book_annotations_parse_name(const char *name,uint64_t *path_hash,uint32_t *chapter,uint64_t *text_hash,unsigned *slot) {
+    unsigned long long p=0,t=0;unsigned c=0,k=0;int used=0;
+    if(sscanf(name,"%16llx-%u-%16llx.%u.ann%n",&p,&c,&t,&k,&used)!=4||name[used]||k>1)return false;
+    *path_hash=p;*chapter=c;*text_hash=t;*slot=k;return true;
+}
+uint64_t book_annotations_text_hash(const char *text,size_t length) { return hash(text,length); }
 bool book_annotations_load(book_annotations_t *a,const char *root,const char *path,uint32_t chapter,const char *text,size_t length) {
     memset(a,0,sizeof(*a));if(length>UINT32_MAX)return false;
     a->text_hash=hash(text,length);a->path_hash=hash(path,strlen(path));a->chapter=chapter;a->length=(uint32_t)length;

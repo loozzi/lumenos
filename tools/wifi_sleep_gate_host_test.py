@@ -141,4 +141,4 @@ ota_start=function('start',r/'boards/metalio47/src/main/ota_online.c');assert ot
 loop=(r/'main/app/app_loop.c').read_text();assert 'if(radio_ready)read_pico_transfer_resume_service();' in loop
 for n in ['read_pico_transfer_start','read_pico_transfer_scan_wifi','sync_time_run','read_pico_transfer_preempt_for_network']:assert 'read_pico_transfer_sleep_blocked()' in function(n,src)
 with tempfile.TemporaryDirectory() as t:
- p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(r/'components/read_pico_transfer/include'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(t);(p/'test.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-I'+str(r/'components/read_pico_transfer/include'),str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

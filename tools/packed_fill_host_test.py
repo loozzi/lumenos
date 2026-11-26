@@ -58,5 +58,5 @@ int main(void){unsigned cases=0;uint8_t a[64*48/2+64],b[sizeof(a)];
 '''
 with tempfile.TemporaryDirectory() as tmp:
     src=Path(tmp)/'fill.c';binary=Path(tmp)/'fill';src.write_text(code)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-O2','-fsanitize=address,undefined',str(src),'-o',str(binary)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-O2','-fsanitize=address,undefined',str(src),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)

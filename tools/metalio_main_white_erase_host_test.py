@@ -128,7 +128,7 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
     d=Path(folder);c=d/'wave.c';c.write_text(unit);exe=d/'wave'
-    command=['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',
+    command=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',
        '-DDPREADER_BOARD_METALIO47=1','-I'+str(ROOT/'main'),'-I'+str(ROOT/'tools/shelf_waveform_host_stubs'),
        '-I'+str(ROOT/'tools/waveform_host_stubs'),'-I'+str(ROOT/'components/epdiy/include'),
        '-I'+str(ROOT/'components/epdiy/src'),'-I'+str(ROOT/'components/e0470_epaper_waveform/include'),
@@ -138,7 +138,7 @@ with tempfile.TemporaryDirectory() as folder:
        str(ROOT/'components/e0470_epaper_waveform/e0470_waveform_trim.c'),'-o',str(exe)]
     subprocess.run(command,check=True);subprocess.run([str(exe)],check=True)
     c=d/'scope.c';c.write_text(scope);exe=d/'scope'
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(c),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
     # Reuse the actual band-engine harness to validate the two additional phases and every failure tick.
     (d/'esp_log.h').write_text('#pragma once\n#include <stdio.h>\n#undef ESP_LOGI\n'
@@ -146,7 +146,7 @@ with tempfile.TemporaryDirectory() as folder:
         '(void)snprintf(b,sizeof(b),fmt,__VA_ARGS__); } while(0)\n')
     (d/'esp_heap_caps.h').write_text((ROOT/'tools/water_turn_stubs/esp_heap_caps.h').read_text()+
         '\nstatic inline void *heap_caps_malloc(size_t n,int caps){(void)caps;return malloc(n);}\n')
-    command=['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unknown-attributes',
+    command=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unknown-attributes',
        '-g','-fsanitize=address,undefined','-DDPREADER_BOARD_METALIO47=1','-DDPREADER_S31_TEXT_RIPPLE=0',
        '-DDPREADER_TEST_MAIN_SWITCH_ERASE=1','-I'+str(d),'-I'+str(ROOT/'components/epdiy/src'),
        '-I'+str(ROOT/'components/epdiy/include'),'-I'+str(ROOT/'components/e0470_epaper_waveform/include'),

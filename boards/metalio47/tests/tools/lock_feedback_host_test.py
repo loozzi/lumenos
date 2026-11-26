@@ -122,7 +122,7 @@ int main(int argc,char **argv){
 with tempfile.TemporaryDirectory(prefix='kiikoread-lock-feedback-') as folder:
     work = Path(folder)
     (work/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
                     '-I'+str(ROOT/'tools/ui_gesture_stubs'),'-I'+str(ROOT/'main/ui'),
                     str(work/'test.c'),str(ROOT/'main/ui/ui_lock_feedback.c'),'-o',str(work/'test')],check=True)
     subprocess.run([str(work/'test')] + sys.argv[1:],check=True)

@@ -37,5 +37,5 @@ assert 'if(!app_settings_ble_turner() || radio_ready)' in run
 assert 's_reader_display_ready=false;' in function('before_lock',book)
 assert 's_reader_display_ready=err==EPD_DRAW_SUCCESS' in function('present',book)
 with tempfile.TemporaryDirectory() as t:
- p=Path(t);(p/'test.c').write_text(code);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(t);(p/'test.c').write_text(code);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
 print('PASS reader radio admission: pending open/layout/media/frame-failure block; completed frame admits; book tick/switch/display precede BLE start; host-ready gates saved-peer request; Sleep invalidates frame')

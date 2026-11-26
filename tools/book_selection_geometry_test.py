@@ -59,5 +59,5 @@ int main(void){
 '''
 out=root/'build/notes-geometry';out.mkdir(parents=True,exist_ok=True)
 (out/'test.c').write_text(unit)
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(out/'test.c'),'-o',str(out/'test')],check=True)
+subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(out/'test.c'),'-o',str(out/'test')],check=True)
 subprocess.run([str(out/'test')],check=True)

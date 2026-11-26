@@ -99,6 +99,6 @@ out.mkdir(parents=True, exist_ok=True)
 cfile = out / 'lcd_frame_lifecycle.c'
 cfile.write_text(harness + production + tests)
 binary = out / 'lcd_frame_lifecycle'
-subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Wno-unused-function', '-Wno-unused-variable',
+subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Wno-unused-function', '-Wno-unused-variable',
                 '-fsanitize=address,undefined', '-g', str(cfile), '-o', str(binary)], check=True)
 subprocess.run([str(binary)], check=True)

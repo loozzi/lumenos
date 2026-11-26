@@ -22,7 +22,7 @@ unit=r'''
 #define BOOK_MARGIN_CHOICES 9
 #define APP_BOOK_TRACK_MIN -15
 #define APP_BOOK_TRACK_COUNT 31
-#define APP_BOOK_PARAGRAPH_COUNT 11
+#define APP_BOOK_PARAGRAPH_COUNT 18
 typedef struct {int x,y,width,height;}EpdRect;
 static int s_px=48,s_margin=24,s_line_spacing=130;
 static int s_reader_slider,s_reader_preview_px,s_reader_preview_margin,s_reader_preview_line,s_reader_preview_para,s_reader_preview_tracking;
@@ -49,11 +49,11 @@ int main(void){
   reader_slider_begin(0,645);assert(s_reader_preview_px==(px==90?90:px+1));
  }
  s_px=48;reader_slider_begin(0,342);assert(s_reader_preview_px==54);
- assert(BOOK_READER_PX_DEFAULT==48);
- puts("PASS: all 73 reader sizes reachable monotonically on the real rail; 1px endpoint steps, clamped 18/90 and unchanged 48px default");
+ assert(BOOK_READER_PX_DEFAULT==74); // 1.3.0 起默认 74px。/ Default 74px since 1.3.0.
+ puts("PASS: all 73 reader sizes reachable monotonically on the real rail; 1px endpoint steps, clamped 18/90 and the 74px default");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='kiiko-size-') as tmp:
  p=Path(tmp);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/book'),str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/book'),str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

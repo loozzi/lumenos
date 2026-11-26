@@ -12,4 +12,4 @@ int main(void){for(int online=0;online<2;++online){EpdRect a=upgrade_confirm_but
  puts("PASS real OTA confirm/cancel and frontlight rows: full-width80px controls, no overlap or footer intrusion");}
 '''
 with tempfile.TemporaryDirectory() as folder:
- p=Path(folder);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)
+ p=Path(folder);(p/'test.c').write_text(unit);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True);subprocess.run([str(p/'test')],check=True)

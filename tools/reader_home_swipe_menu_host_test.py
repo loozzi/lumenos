@@ -21,7 +21,7 @@ typedef struct {int request_app;bool user_activity,request_quick_menu,request_ba
 typedef struct {int type,x0,y0;bool swipe_leftward;} ui_gesture_event_t;
 
 typedef int app_redraw_t;
-enum {APP_REDRAW_NONE,APP_REDRAW_PAGE,APP_REDRAW_AREA,HOME_ROOT,HOME_POP_MENU,HOME_OTHER,UI_GESTURE_PRESS,UI_GESTURE_TAP,UI_GESTURE_SWIPE_U,UI_GESTURE_SWIPE_D,READING,READER_PANEL_TOOLS,READER_PANEL_NONE,APP_HOME_UTIL_TRANSFER,APP_HOME_UTIL_OPDS,APP_HOME_UTIL_SETTINGS};
+enum {APP_REDRAW_NONE,APP_REDRAW_PAGE,APP_REDRAW_AREA,HOME_ROOT,HOME_POP_MENU,HOME_OTHER,UI_GESTURE_PRESS,UI_GESTURE_TAP,UI_GESTURE_SWIPE_U,UI_GESTURE_SWIPE_D,UI_GESTURE_SWIPE_L,UI_GESTURE_SWIPE_R,READING,READER_PANEL_TOOLS,READER_PANEL_NONE,APP_HOME_UTIL_TRANSFER,APP_HOME_UTIL_OPDS,APP_HOME_UTIL_SETTINGS};
 static int s_view,last_action,routes,s_reader_panel,s_pressed_control;
 static bool simple,s_press_pending,s_pop_menu_pending;
 static EpdRect s_area;
@@ -78,6 +78,6 @@ int main(void){
 with tempfile.TemporaryDirectory() as folder:
  p=Path(folder);(p/'test.c').write_text(unit)
  for love in (0,1):
-  subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1',f'-DDPREADER_LOVE_BOOK={love}',str(p/'test.c'),'-o',str(p/'test')],check=True)
+  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1',f'-DDPREADER_LOVE_BOOK={love}',str(p/'test.c'),'-o',str(p/'test')],check=True)
   subprocess.run([str(p/'test')],check=True)
 print('PASS: simple Home swipe ownership/menu routes/dismissal and reader tap closes tools without invoking page actions')

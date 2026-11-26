@@ -46,5 +46,5 @@ int main(void){
 """
 with tempfile.TemporaryDirectory() as folder:
  p=Path(folder)/'test.c';p.write_text(unit);exe=p.with_suffix('')
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(r/'main/font'),str(p),'-o',str(exe)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(r/'main/font'),str(p),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)

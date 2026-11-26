@@ -81,6 +81,8 @@ static void save_progress(void){++saves;}
 static size_t book_chapter_count(void){return 2;}
 static bool load_chapter(app_ctx_t *ctx,size_t chapter,int off,bool last){(void)ctx;(void)off;if(load_failed)return false;s_chapter=chapter;s_page=last?book_layout_page_count()-1:0;return true;}
 static void set_reader_view(int view){s_view=view;}
+// 1.5.13：越过最后一页打开“Hết sách”。/ 1.5.13: turning past the last page opens the finished screen.
+static unsigned finished_opens;static app_redraw_t finished_open(app_ctx_t *ctx){(void)ctx;++finished_opens;return APP_REDRAW_PAGE;}
 static void skip_hidden_image_pages(app_ctx_t *ctx,int dir){(void)ctx;(void)dir;}
 static uint8_t app_settings_reader_full_pages(void){return full_pages;}
 static int effect=1;
@@ -171,7 +173,8 @@ int main(void){
  reset(false,true,0,0);assert(turn_page(&ctx,-1)==APP_REDRAW_PAGE);
  assert(!s_toolbar&&s_page==0&&!paints&&!s_stats_pending_turns);
  reset(false,true,8,1);assert(turn_page(&ctx,1)==APP_REDRAW_PAGE);
- assert(!s_toolbar&&s_page==8&&!s_stats_pending_turns);
+ // 1.5.13：最后一页继续翻打开“Hết sách”而不是停在原页。/ 1.5.13: turning on opens the finished screen.
+ assert(finished_opens==1&&s_page==8&&!s_stats_pending_turns);
  reset(true,true,5,1);assert(turn_page(&ctx,1)==APP_REDRAW_PAGE&&!s_toolbar&&!reflows);
  reset(false,true,8,0);assert(turn_page(&ctx,1)==APP_REDRAW_PAGE&&s_chapter==1&&s_page==0);
  reset(false,true,0,1);assert(turn_page(&ctx,-1)==APP_REDRAW_PAGE&&s_chapter==0&&s_page==8);

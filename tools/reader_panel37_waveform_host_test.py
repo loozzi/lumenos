@@ -99,7 +99,7 @@ with tempfile.TemporaryDirectory(prefix='s31-panel37-') as temporary:
     folder = Path(temporary)
     test = folder / 'test.c'
     test.write_text(unit)
-    flags = ['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
+    flags = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-g', '-fsanitize=address,undefined',
              '-Imain', '-Itools/shelf_waveform_host_stubs', '-Itools/waveform_host_stubs',
              '-Icomponents/epdiy/include', '-Icomponents/epdiy/src',
              '-Icomponents/e0470_epaper_waveform/include', '-Icomponents/e0470_epaper_waveform/metalio']

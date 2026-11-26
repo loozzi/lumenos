@@ -98,6 +98,6 @@ int main(int argc, char **argv) {
 with tempfile.TemporaryDirectory() as directory:
     tmp = Path(directory)
     (tmp / 'test.c').write_text(unit)
-    subprocess.run(['cc', '-std=c11', '-O2', '-I'+str(root/'main/font'),
+    subprocess.run(['cc', '-std=gnu11', '-O2', '-I'+str(root/'main/font'),
                     str(tmp/'test.c'), '-lm', '-o', str(tmp/'test')], check=True)
     subprocess.run([str(tmp/'test'), str(Path(sys.argv[1]) if len(sys.argv) > 1 else root/'main/assets/builtin.ttf')], check=True)

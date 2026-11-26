@@ -11,6 +11,9 @@ unit=r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+static bool app_settings_simple_ui(void){return false;}
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 typedef struct {int x,y,width,height;} EpdRect;
@@ -128,5 +131,5 @@ int main(void){app_ctx_t ctx={0};
 '''
 with tempfile.TemporaryDirectory(prefix='kiiko-reading-origin-') as folder:
  c=Path(folder)/'test.c';binary=Path(folder)/'test';c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-g','-fsanitize=address,undefined',str(c),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

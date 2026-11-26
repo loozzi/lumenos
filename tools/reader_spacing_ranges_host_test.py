@@ -30,7 +30,7 @@ int main(void){
 }
 '''
 with tempfile.TemporaryDirectory() as d:
- p=Path(d);(p/'t.c').write_text(u);subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'t.c'),'-o',str(p/'t')],check=True);subprocess.run([str(p/'t')],check=True)
+ p=Path(d);(p/'t.c').write_text(u);subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'t.c'),'-o',str(p/'t')],check=True);subprocess.run([str(p/'t')],check=True)
 assert 'if(kind==READ_PICK_SIZE)return 26;' in s and '40+2*index' in s
 assert 's_px>=40&&s_px<=90&&!(s_px%2)?(s_px-40)/2:-1' in s
 assert re.search(r's_line_choices\[\]=\{186,196,206,216,226,236,246,0,10,20,30\}',s)

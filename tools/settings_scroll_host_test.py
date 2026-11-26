@@ -148,6 +148,6 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory(prefix='kiikoread-settings-rollback-') as directory:
     path=Path(directory)/'settings.c';binary=path.with_suffix('');path.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',
                     '-I'+str(root/'tools/ui_gesture_stubs'),'-I'+str(root/'main/ui'),str(path),str(root/'main/ui/ui_gesture.c'),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)

@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory() as d:
     assert 'int x,board' in (out/'firmware/shared/main/api.h').read_text()
     unit='#include "main/api.h"\n#include "firmware/shared/main/api.h"\nint main(void){shared_t a={.x=1,.board=2};return a.x+a.board==3?0:1;}\n'
     (out/'unit.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-I'+str(out),str(out/'unit.c'),'-o',str(out/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-I'+str(out),str(out/'unit.c'),'-o',str(out/'test')],check=True)
     subprocess.run([str(out/'test')],check=True)
     materialize(root,test,'metalio47',tests=True)
     assert 'feature(void){return 7;}' in (test/'main/api.c').read_text()
@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory() as d:
     unit='#include <assert.h>\n#include "book_cover_jobs.h"\n#include "book_lock_collage.h"\nint main(void){\n#if DPREADER_LOVE_BOOK\nassert(BOOK_COVER_JOB_SLOTS==1);assert(!book_lock_collage_draw(0));assert(!book_lock_collage_prepare(0));assert(!book_lock_collage_warm_cover(0));book_lock_collage_cache_commit(0);book_lock_collage_invalidate();\n#else\nassert(BOOK_COVER_JOB_SLOTS==9);\n#endif\n}\n'
     (p/'slots.c').write_text(unit)
     for love in (0,1):
-        command=['cc','-std=c11','-Wall','-Wextra','-Werror','-DDPREADER_LOVE_BOOK='+str(love),'-I'+str(ROOT/'firmware/shared/main/book'),str(p/'slots.c')]
+        command=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-DDPREADER_LOVE_BOOK='+str(love),'-I'+str(ROOT/'firmware/shared/main/book'),str(p/'slots.c')]
         if love:command.append(str(ROOT/'firmware/love_book/no_library.c'))
         command+=['-o',str(p/'test')]
         subprocess.run(command,check=True);subprocess.run([str(p/'test')],check=True)

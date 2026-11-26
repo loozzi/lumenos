@@ -103,6 +103,6 @@ int main(void) {
 with tempfile.TemporaryDirectory() as tmp:
     path = Path(tmp) / 'test.c'
     path.write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-DDPREADER_BOARD_METALIO47=1',
                     str(path),'-o',str(path.with_suffix(''))],check=True)
     subprocess.run([str(path.with_suffix(''))],check=True)

@@ -24,6 +24,11 @@ for base in [ROOT/'main',ROOT/'boards/metalio47/src/main']:
     for path in base.rglob('*.c'):
         if path==ROOT/'main/settings.c':continue
         if re.search(r'\bapp_settings_autobackup_checkpoint\s*\(',path.read_text()):actual.add(str(path.relative_to(ROOT)))
+# 板级测试视图把板目录的 sleep.c 展开到 main/sleep.c，同一份源码可出现两次。
+# The board test view materializes the board's sleep.c as main/sleep.c, so the same source may appear twice.
+board_sleep=ROOT/'boards/metalio47/src/main/sleep.c'
+if (ROOT/'main/sleep.c').exists() and board_sleep.exists() and (ROOT/'main/sleep.c').read_bytes()==board_sleep.read_bytes():
+    expected.add('main/sleep.c')
 assert actual==expected,(actual,expected)
 local=function('pico_ota_install',ROOT/'main/ota_update.c')
 assert local.index('pico_ota_inspect(')<local.index('app_settings_autobackup_checkpoint()')<local.index('esp_ota_begin(')
@@ -62,5 +67,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as folder:
     p=Path(folder);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

@@ -67,6 +67,6 @@ int main(void){
 with tempfile.TemporaryDirectory(prefix='system-background-') as directory:
     path = Path(directory)
     (path / 'test.c').write_text(unit)
-    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
+    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
                     str(path / 'test.c'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)

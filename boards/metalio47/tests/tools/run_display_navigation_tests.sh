@@ -22,7 +22,7 @@ python3 tools/reader_font_recovery_host_test.py
 python3 tools/reader_font_switch_host_test.py
 python3 tools/reading_settings_host_test.py
 python3 tools/reader_panel_host_test.py
-cc -std=c11 -Wall -Wextra -Werror -g -fsanitize=address,undefined \
+cc -std=gnu11 -Wall -Wextra -Werror -g -fsanitize=address,undefined \
     -Imain -Imain/app \
     -Itools/waveform_host_stubs -Icomponents/epdiy/include -Icomponents/epdiy/src \
     -Icomponents/e0470_epaper_waveform/include -Icomponents/e0470_epaper_waveform/waveforms -Icomponents/e0470_epaper_waveform/metalio \
@@ -32,7 +32,7 @@ cc -std=c11 -Wall -Wextra -Werror -g -fsanitize=address,undefined \
     main/display_main_waveform.c main/ui/ui_image_dither.c -o build/book-tests/navigation-waveform
 build/book-tests/navigation-waveform
 
-cc -std=c11 -Wall -Wextra -Werror -g -fsanitize=address,undefined \
+cc -std=gnu11 -Wall -Wextra -Werror -g -fsanitize=address,undefined \
     -Imain -Itools/settings_backup_stubs -Itools/waveform_host_stubs -Icomponents/epdiy/include -Icomponents/epdiy/src \
     -Icomponents/e0470_epaper_waveform/include -Icomponents/e0470_epaper_waveform/waveforms -Icomponents/e0470_epaper_waveform/metalio \
     tools/reader_waveform_host_test.c main/display_reader_waveform.c \

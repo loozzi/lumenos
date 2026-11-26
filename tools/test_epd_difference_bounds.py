@@ -103,7 +103,7 @@ def run(board, directory, negative=False):
     unit = directory/f'{board}.c'
     unit.write_text(PREFIX+functions+UNIT)
     binary = directory/board
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unknown-attributes',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unknown-attributes',
                     '-Wno-pointer-to-int-cast','-fsanitize=address,undefined','-I'+str(directory),
                     str(unit),str(ROOT/'components/epdiy/src/riscv_pixels.c'),'-o',str(binary)],check=True)
     result = subprocess.run([str(binary)],capture_output=True,text=True)

@@ -46,7 +46,7 @@ with tempfile.TemporaryDirectory() as d:
  header=(r/'tools/app_loop_stubs/metalio_hw.h').read_text().replace('static inline bool metalio_volume_events_pending(void){return false;}','bool test_volume_pending(void);\nstatic inline bool metalio_volume_events_pending(void){return test_volume_pending();}')
  (p/'metalio_hw.h').write_text(header)
  subprocess.run(['python3',str(r/'tools/power_dialog_host_test.py'),'--input-c',str(p/'power.c')],check=True,cwd=r)
- args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(p)]
+ args=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined','-g','-I'+str(p)]
  for directory in ['tools/app_loop_stubs','main','components/ble_page_turner/include','main/app','main/ui','tools/ui_gesture_stubs','tools/anti_fade_stubs']:args+=['-I'+str(r/directory)]
  args += [str(p/'power.c'),str(p/'test.c'),str(r/'main/anti_fade.c'),str(r/'main/app/app_loop.c'),str(r/'main/ui/ui_gesture.c'),str(r/'main/ui/ui_quick_menu_input.c'),'-o',str(p/'test')]
  subprocess.run(args,check=True);subprocess.run([str(p/'test')],check=True)

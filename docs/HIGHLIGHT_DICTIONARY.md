@@ -2,7 +2,7 @@
 
 Bản thử trên nhánh `codex/Test-highlight-dictionary` hỗ trợ TXT/EPUB có chữ ngang. Nhấn giữ một từ trong phần nội dung để mở menu, tiếp tục giữ và kéo để mở rộng vùng chọn trong trang hiện tại. Dấu gạch chân cho biết đoạn được chọn; **Tô sáng** lưu dấu này. **Ghi chú** mở bàn phím, nhập tối đa 127 byte UTF-8 rồi chạm **Lưu ghi chú**. Chữ Việt có dấu có thể chiếm nhiều byte.
 
-**Các ghi chú** liệt kê tối đa 32 đoạn trong chương hiện tại. Chạm một mục để về trang chứa đoạn đó; chọn **Ghi chú** để sửa, hoặc **Xóa** trong danh sách. **Đóng** trở về đọc. Khi menu đang mở, phím lật trang đóng menu trước; điện thoại/điều khiển từ xa không xuyên qua vùng chọn. Nhấn nguồn vẫn đi đường khóa màn hình. Bản nháp chưa lưu được bỏ khi đóng bàn phím, khóa, rút thẻ hoặc rời sách.
+**Các ghi chú** liệt kê tối đa 32 đoạn trong chương hiện tại. Chạm một mục để về trang chứa đoạn đó; chọn **Ghi chú** để sửa, hoặc **Xóa** trong danh sách. Nút **Cả cuốn** ở giữa hàng dưới chuyển sang danh sách mọi ghi chú của sách (xem mục *Ghi chú cả cuốn* bên dưới); **Chương này** quay lại danh sách chương. **Đóng** trở về đọc. Khi menu đang mở, phím lật trang đóng menu trước; điện thoại/điều khiển từ xa không xuyên qua vùng chọn. Nhấn nguồn vẫn đi đường khóa màn hình. Bản nháp chưa lưu được bỏ khi đóng bàn phím, khóa, rút thẻ hoặc rời sách.
 
 Nhấn giữ chữ ngang thay cho thao tác mở mục lục cũ. Mục lục vẫn có trong công cụ đọc. Chữ dọc và trang chỉ có hình chưa hỗ trợ chọn chữ; thao tác ảnh hiện có được giữ. Chưa hỗ trợ kéo chọn xuyên trang/chương, tay nắm hai đầu, xuất sang KOReader hoặc đồng bộ ghi chú.
 
@@ -40,7 +40,21 @@ Có thể đặt trực tiếp trong `/dict` hoặc trong một lớp thư mục
 
 Hỗ trợ StarDict 2.4.2/3.0.0, offset 32 bit và `sametypesequence` gồm tối đa tám trường `m`, `h`, `g`, `x`, `t`. Trường markup được bỏ thẻ và giải mã một số entity thông dụng để hiển thị văn bản. Có tra `.syn`; giữ dấu tiếng Việt, chỉ bỏ khác biệt hoa/thường ASCII. Chọn cụm nhiều âm tiết bằng kéo. Chưa có fuzzy search, phân từ CJK, biến thể hình thái hoặc chuẩn hóa NFC/NFD.
 
-Mỗi đợt tra quét tối đa 4096 bản ghi, trên thiết bị nhường lại giao diện sau khoảng 8 ms giữa các nhóm 16 bản ghi; giao diện có thể hủy bằng **Đóng**. Bộ lớn có thể chậm do quét tuần tự, chưa có chỉ mục tìm nhanh. Định nghĩa giới hạn 8191 byte, dài hơn sẽ báo rút gọn. **Trang trước/Trang sau** đọc phần kết quả tiếp theo, **Từ điển kế** tìm trong bộ tiếp theo. Thứ tự các bộ hiện theo thứ tự thư mục trên thẻ; chưa có mục ưu tiên riêng.
+Mỗi đợt tra quét tối đa 4096 bản ghi, trên thiết bị nhường lại giao diện sau khoảng 8 ms giữa các nhóm 16 bản ghi; giao diện có thể hủy bằng **Đóng**. Định nghĩa giới hạn 8191 byte, dài hơn sẽ báo rút gọn. **Trang trước/Trang sau** đọc phần kết quả tiếp theo, **Từ điển kế** tìm trong bộ tiếp theo đang bật.
+
+### Tra nhanh (từ 1.6.0)
+
+Lần tra đầu tiên với một bộ vẫn quét tuần tự như trước, đồng thời ghi lại một mốc cho mỗi 64 bản ghi (bộ rất lớn giãn mốc để giữ khoảng 4096 mốc). Mốc nằm trong PSRAM, tối đa 256 KiB mỗi bộ, giữ tối đa 2 bộ (bộ dùng lâu nhất bị bỏ trước). Khi mốc đã phủ tới từ cần tra, lần tra sau chỉ đọc đoạn chỉ mục giữa hai mốc (tối đa 64 KiB) thay vì cả tệp; trên máy tính, bộ thử 200 nghìn từ cần tối đa 3 bước thay vì khoảng 50. Mốc được lập dần qua các lần tra; lần tra một từ chưa tới thì tiếp tục quét từ mốc cuối.
+
+- `.idx` không nén: đọc đúng đoạn cần bằng cách nhảy vị trí trong tệp.
+- `.idx.gz`: lần quét đầu giữ bản đã giải nén trong PSRAM nếu tệp giải nén không quá 4 MiB (tổng mọi bộ cũng không quá 4 MiB); lớn hơn thì luôn quét tuần tự như cũ.
+- Chỉ mục phải đúng thứ tự StarDict (so ASCII không phân biệt hoa/thường, rồi so từng byte). Nếu phát hiện sai thứ tự hoặc có khóa dài trên 255 byte, bộ đó luôn dùng cách quét cũ, không trả kết quả sai.
+- Mốc bị bỏ khi rút thẻ, khi tệp `.idx` đổi kích thước hoặc thời gian sửa, và trước khi khóa máy nếu PSRAM còn dưới 1 MiB. Không ghi bộ đệm nào lên thẻ.
+- **Gợi ý khi không tìm thấy:** nếu bộ đã có mốc, màn tra hiện tối đa 5 từ liền kề vị trí của từ cần tra ("Có thể bạn muốn:"). Chạm một gợi ý để tra lại trên mọi bộ đang bật. Đây chỉ là các từ gần theo thứ tự chữ cái, không phải tìm theo khoảng cách sửa.
+
+### Quản lý từ điển
+
+Nút **Quản lý** trong màn tra mở danh sách các bộ trong `/dict` (gốc và một lớp thư mục con, tối đa 32 bộ). Mỗi bộ có công tắc **Bật/Tắt** và nút **Lên/Xuống**; **Xong** lưu và tra lại theo thứ tự mới. Thứ tự lưu trên thẻ ở `/dict/.lumen_order`: mỗi dòng một đường dẫn `.ifo` tính từ `/dict`, dòng bắt đầu bằng `-` là bộ đang tắt. Không lưu trong bộ nhớ cài đặt của máy. Bộ mới chép vào được xếp cuối theo tên và bật sẵn; dòng của bộ đã xóa bị bỏ qua. Có thể sửa tệp này trên máy tính.
 
 Firmware đọc `.idx.gz` theo luồng; `.dict.dz` dictzip có bảng RA được đọc ngẫu nhiên theo khối. Chỉ giải nén khối chứa phần định nghĩa cần xem, không tạo tệp giải nén/cache trên thẻ. Nếu `.dict.dz` là gzip thông thường không có RA, firmware đọc tuần tự từng đợt tới vị trí cần tra (có thể chậm hơn). `.idx` và `.dict` không nén vẫn dùng được. Nếu có đồng thời bản không nén và bản nén cùng tên, ưu tiên bản không nén; nên chép một bộ nhất quán để tránh dùng bản cũ.
 
@@ -56,7 +70,7 @@ Không đổi đuôi `.dict.dz` thành `.dict`. Nếu tải về là ZIP/TAR, v�
 
 Giới hạn hiện tại: index 32 bit, StarDict 2.4.2/3.0.0, trường `sametypesequence` gồm `m/h/g/x/t`; gzip một member, dictzip RA phiên bản 1. Phần sau giải nén tối đa 512 MiB cho mỗi tệp nén. Giữ nguyên giới hạn định nghĩa 8191 byte; vượt giới hạn sẽ báo rút gọn. Chưa hỗ trợ MDX/MDD, DSL, index 64 bit hoặc tài nguyên ảnh/âm thanh nhị phân. `prepare_stardict.py` vẫn có thể dùng tùy chọn trên máy tính để kiểm tra/chuyển bộ cũ, nhưng không cần cho việc tra trực tiếp.
 
-Bộ nén dùng bộ đệm vào/ra 4 KiB, bộ nhớ zlib có hạn mức 64 KiB cho mỗi luồng; dictzip giữ tối đa một khối dưới 64 KiB và bảng offset theo header (tối đa khoảng 128 KiB). Cấp phát mới ở PSRAM trên S31; không tải toàn bộ từ điển vào RAM. Mỗi bước đọc định nghĩa xử lý tối đa một khối RA hoặc 32 KiB dữ liệu gzip theo luồng. Chỉ mục thường được đọc theo khối 4 KiB thay vì gọi đọc tệp từng byte. Chỉ mục từ vẫn quét tuần tự từng đợt, nên bộ lớn có thể tra chậm; chưa có chỉ mục tìm nhanh/fuzzy.
+Bộ nén dùng bộ đệm vào/ra 4 KiB, bộ nhớ zlib có hạn mức 64 KiB cho mỗi luồng; dictzip giữ tối đa một khối dưới 64 KiB và bảng offset theo header (tối đa khoảng 128 KiB). Cấp phát mới ở PSRAM trên S31; không tải toàn bộ từ điển vào RAM. Mỗi bước đọc định nghĩa xử lý tối đa một khối RA hoặc 32 KiB dữ liệu gzip theo luồng. Chỉ mục thường được đọc theo khối 4 KiB thay vì gọi đọc tệp từng byte. Lần tra đầu tiên vẫn quét tuần tự từng đợt; các lần sau dùng mốc ở mục *Tra nhanh*. Chưa có tìm gần đúng theo khoảng cách sửa.
 
 Header/độ dài/chỉ mục/ranh giới chunk và giải nén được kiểm tra; gzip theo luồng kiểm CRC khi đi đến cuối luồng. Tra ngẫu nhiên dictzip không quét toàn bộ tệp để xác minh CRC tổng trước mỗi từ; nên dùng bộ dữ liệu có checksum từ nguồn tải để kiểm tra bản chép nếu cần.
 
@@ -99,3 +113,12 @@ Tệp được lưu vào `/dict/<tên folder>/`. Chỉ dùng một cấp thư m�
 
 
 Khi lưu snapshot, firmware kiểm tra thư mục đã tồn tại và chỉ tạo các thành phần còn thiếu; không yêu cầu bước đồng bộ KOReader chạy thành công trước. Nếu lưu lỗi, snapshot mới không được coi là đã lưu, snapshot hiện hành được giữ; log USB ghi rõ bước (mkdir/open/write/flush/fsync/close/rename), mã lỗi và đường dẫn để chẩn đoán. Không tự định dạng thẻ hoặc xóa ghi chú cũ để thử lại.
+
+## Ghi chú cả cuốn và xuất Markdown (từ 1.6.0)
+
+Trong **Các ghi chú**, chạm **Cả cuốn** để xem mọi ghi chú và đoạn tô sáng của sách. Máy đọc dần các bản lưu từng chương trong `snapshots/` (mỗi bước tối đa 16 mục thư mục hoặc 4 tệp, giao diện vẫn phản hồi), rồi xếp theo chương và vị trí. Mỗi hàng hiện `Ch.N`, đoạn trích và ghi chú; chuyển trang bằng **Trước/Sau** hoặc phím âm lượng. Tối đa 512 mục; nếu một chương có bản lưu hỏng, tiêu đề ghi "(có chương lỗi)" và các chương khác vẫn hiện.
+
+- Chạm một mục cùng chương: chọn lại đoạn đó như danh sách chương. Mục ở chương khác: mở chương đó tại đoạn ghi chú và lưu tiến độ, giống chọn dấu trang.
+- Mỗi chương dùng phiên bản nội dung đang đọc nếu là chương hiện tại; chương khác dùng phiên bản sửa gần nhất. Ghi chú của bản sách cũ (đã sửa nội dung) chỉ hiện khi chương đó không còn bản nào mới hơn.
+- **Xuất ra thẻ** ghi tệp `ghi-chu.md` cạnh dữ liệu ghi chú, ví dụ `/dpReader_note/books/VanHoc/TenSach.epub/ghi-chu.md`. Tệp có tên sách, ngày xuất (khi máy đã có giờ), rồi từng chương: đoạn trích dạng `> …` và ghi chú bên dưới. Ký tự Markdown ở đầu dòng được thêm dấu `\` để hiển thị đúng chữ. Máy ghi ra tệp tạm rồi đổi tên; ghi lỗi thì tệp cũ giữ nguyên. Tải tệp về qua Web Portal hoặc USB.
+- Không đổi cách lưu, không đổi giới hạn 32 đoạn mỗi chương, không đụng tệp trao đổi KOReader.

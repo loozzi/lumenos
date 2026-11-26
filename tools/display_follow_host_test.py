@@ -157,5 +157,5 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
  c=Path(directory)/'follow.c';binary=c.with_suffix('');c.write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(c),'-o',str(binary)],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I'+str(root/'main/ui'),str(c),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)

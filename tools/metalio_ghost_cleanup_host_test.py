@@ -53,5 +53,5 @@ text=source.read_text();body=function('main_begin',source);assert body.index('ma
 route=function('hl_update',source);assert '!s_system_binary&&whole_page' not in route;assert 'if(whole_page&&(mode&0xF)!=MODE_GC16&&ui_page_cleanup_due' in route
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.c').write_text(unit)
- subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-parameter',str(p/'test.c'),'-o',str(p/'test')],check=True)
+ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-parameter',str(p/'test.c'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)

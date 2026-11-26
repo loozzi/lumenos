@@ -412,6 +412,10 @@ static bool supported(int folder, const char *name) {
     if (!name[0] || name[0] == '.' || !strncmp(name, "._", 2)) return false;
     const char *ext = strrchr(name, '.');
     if (!ext) return false;
+#if !DPREADER_LOVE_BOOK
+    // 用户2026-11-25：卡上浏览也列出 .csv 词汇包。/ User 2026-11-25: the card browser also lists .csv vocabulary packs.
+    if (folder == 3 && !strcasecmp(ext, ".csv")) return true;
+#endif
     if (folder == 0 || folder == 3) return book_file_path_supported(name);
     if (folder == 1) return !strcasecmp(ext, ".jpg") || !strcasecmp(ext, ".jpeg") || !strcasecmp(ext, ".png");
     return !strcasecmp(ext, ".ttf") || !strcasecmp(ext, ".otf");
@@ -886,6 +890,12 @@ static void open_selected(app_ctx_t *ctx) {
         }
 #else
         if (app_book_request_open(s_selected.path)) ctx->request_app = &app_book;
+#endif
+#if !DPREADER_LOVE_BOOK
+    } else if (!strcasecmp(ext, ".csv")) {
+        extern const app_desc_t app_vocab;
+        if (app_vocab_request_open(s_selected.path)) ctx->request_app = &app_vocab;
+        else snprintf(s_message, sizeof(s_message), "Chép tệp từ vựng vào thư mục /vocab trên thẻ nhớ");
 #endif
     } else if (!strcasecmp(ext, ".jpg") || !strcasecmp(ext, ".jpeg") || !strcasecmp(ext, ".png")) {
         extern const app_desc_t app_image;

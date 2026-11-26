@@ -64,6 +64,6 @@ with tempfile.TemporaryDirectory(prefix="kiikoread-inertia-") as folder:
     c = Path(folder) / "test.c"
     binary = Path(folder) / "test"
     c.write_text(CODE)
-    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-g", "-fsanitize=address,undefined",
+    subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-g", "-fsanitize=address,undefined",
                     "-I" + str(ROOT / "tools/ui_gesture_stubs"), "-I" + str(ROOT / "main/ui"), str(c), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

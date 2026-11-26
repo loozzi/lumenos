@@ -83,5 +83,5 @@ int main(void){
 unit=unit.replace('return c->pin_bit_mask==(1ULL<<bad_pin)?-1:0;', 'return bad_pin>=0 && c->pin_bit_mask==(1ULL<<bad_pin)?-1:0;')
 with tempfile.TemporaryDirectory() as d:
     p=Path(d);(p/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',str(p/'test.c'),'-o',str(p/'test')],check=True)
     subprocess.run([str(p/'test')],check=True)

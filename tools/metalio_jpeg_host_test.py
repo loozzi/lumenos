@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory() as d:
     im=Image.new('L',(8,8));im.putdata([255 if ((x+y)%2) else 0 for y in range(8) for x in range(8)])
     im.save(d/'progressive.jpg',progressive=True,quality=100)
     (d/'test.c').write_text(unit)
-    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
+    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined',
         '-I'+str(R/'tools/metalio_jpeg_stubs'),'-I'+str(R/'main/book'),'-I'+str(a.jpeg_source),'-I'+str(a.jpeg_build),
         str(d/'test.c'),str(a.jpeg_build/'libjpeg.a'),'-o',str(d/'test')],check=True)
     subprocess.run([str(d/'test'),*[str(d/n) for n in ('padded.jpg','red.jpg','blue.jpg','gray.jpg','progressive.jpg','exif.jpg')]],check=True)

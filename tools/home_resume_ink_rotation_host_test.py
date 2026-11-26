@@ -22,6 +22,6 @@ static enum EpdRotation epd_get_rotation(void){return display_rotation;}
 int main(void){uint8_t fb[120];for(int rot=0;rot<4;rot++){display_rotation=rot;int w=(rot&1)?20:12,h=(rot&1)?12:20;for(int y=0;y<h;y++)for(int x=0;x<w;x++){memset(fb,255,sizeof(fb));epd_draw_pixel(x,y,0x30,fb);assert(home_ink_at(fb,x,y)==0x30);if(x+1<w)assert(home_ink_at(fb,x+1,y)==0xf0);}}return 0;}
 '''
 p=Path('build/home-card-audit');(p/'rotation.c').write_text(code)
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'rotation.c'),'-o',str(p/'rotation')],check=True)
+subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-fsanitize=undefined',str(p/'rotation.c'),'-o',str(p/'rotation')],check=True)
 subprocess.run([str(p/'rotation')],check=True)
 print('PASS actual S31 driver pixel writes/readback in all four rotations, both packed nibbles, white neighbours')

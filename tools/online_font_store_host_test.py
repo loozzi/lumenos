@@ -88,7 +88,7 @@ int main(int argc,char **argv){
  puts("PASS");return 0;
 }
 ''')
-    command=[os.environ.get('CC','cc'),'-std=c11','-g','-O1','-fsanitize=address,undefined',
+    command=[os.environ.get('CC','cc'),'-std=gnu11','-g','-O1','-fsanitize=address,undefined',
              '-fno-sanitize-recover=all','-Wno-deprecated-declarations','-I'+str(w),'-I'+str(ROOT/'main/font'),
              str(w/'test.c'),str(ROOT/'main/font/online_font_store.c'),'-lz','-o',str(w/'test')]
     subprocess.run(command,check=True)
