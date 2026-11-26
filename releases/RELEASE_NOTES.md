@@ -1,11 +1,12 @@
-## LumenOS 1.5.19 cho Metalio E-Ink 4 Plus (ESP32-S31)
+## LumenOS 1.6.0 cho Metalio E-Ink 4 Plus (ESP32-S31)
 
-- **Nhắc pin yếu khi tắt chân trang:** nếu công tắc **Giờ & pin ở chân trang** đang tắt, trang đọc hiện thông báo khoảng 3 giây khi pin còn 15% ("hãy sạc sớm") và 8% ("đã giảm đèn để tiết kiệm"). Mỗi mốc chỉ nhắc một lần cho mỗi lần xả pin; sạc xong thì lần sau nhắc lại.
-- **Kệ sách đỡ hao pin khi để yên:** sau 1,5 giây không thao tác và khi bìa đã tải xong, Kệ sách cũng được chờ lâu và hạ xung CPU như Trang chủ và trang đọc. Chạm và phím vẫn phản hồi ngay.
-- **Tự đo pin:** tệp log (Cài đặt → Nhật ký & Chẩn đoán → Xuất log ra thẻ nhớ) có thêm số liệu điện năng (thời gian chờ hạ xung, số lần quét màn hình, thời gian ngủ khóa, thời gian và độ sáng đèn, pin lúc khóa/mở khóa) và độ trễ (lật trang, thao tác, mở khóa, khởi động) dạng p50/p95.
-- Kiểm thử trên máy tính được gom thành một cổng kiểm tra trước phát hành; một số bài kiểm tra cũ được cập nhật theo giao diện hiện tại.
+- **Tra từ nhanh hơn:** lần tra đầu với một bộ StarDict lập mốc chỉ mục trong bộ nhớ; các lần sau chỉ đọc một đoạn nhỏ của chỉ mục thay vì cả tệp. Không tìm thấy thì gợi ý tối đa 5 từ gần nhất, chạm để tra lại.
+- **Quản lý từ điển:** nút **Quản lý** trong màn tra để bật/tắt và sắp thứ tự các bộ trong `/dict`; thứ tự lưu ở `/dict/.lumen_order` trên thẻ.
+- **Ghi chú cả cuốn:** trong **Các ghi chú**, tab **Cả cuốn** liệt kê mọi ghi chú của sách theo chương; chạm để tới đúng đoạn, kể cả ở chương khác. **Xuất ra thẻ** lưu tất cả thành tệp `ghi-chu.md` (Markdown).
+- **Học từ vựng (mới):** trang **Từ vựng** học bằng thẻ, ôn lặp lại theo 5 hộp (1/2/4/8/16 ngày), 5/10/20 từ mới mỗi ngày. Bạn tự chép tệp CSV vào thư mục `/vocab` trên thẻ (cùng tên cột với bộ TOEIC 600 phổ biến: `english,type,vietnamese,…`); firmware không kèm dữ liệu. Mở từ trang **Tệp** hoặc bong bóng của Cú Lém. Cú Lém nhắc "Từ hôm nay" trên Trang chủ, màn khóa có thể hiện từ đang học. Hướng dẫn: [docs/HOC_TU_VUNG.md](https://github.com/loozzi/lumenos/blob/main/docs/HOC_TU_VUNG.md).
+- Thêm nhiều bài kiểm thử trên máy tính và sửa các bài kiểm thử cũ.
 
-Bản này chỉ phát hành **Full 1.5.19**. Love Book giữ nguyên **1.5.18-love** và không còn được cập nhật.
+Bản này chỉ phát hành **Full 1.6.0**. Love Book giữ nguyên **1.5.18-love** và không còn được cập nhật.
 
 Máy đang chạy LumenOS 1.5.1 trở lên cập nhật qua Wi-Fi (OTA) hoặc chọn Cập nhật ứng dụng trên Web Flash, giữ cài đặt và sách. Máy dùng kênh dpReader cũ hoặc LumenOS 1.5.0 cần chuyển kênh qua USB một lần. Gói USB chính thức hỗ trợ cài sạch bố cục cũ; trên bố cục NVS256 chỉ ghi ứng dụng và vùng chọn khởi động.
 

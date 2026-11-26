@@ -1,1 +1,1 @@
-LumenOS 1.5.19: Khi tắt chân trang, trang đọc nhắc pin yếu ở 15% và 8%. Kệ sách đỡ hao pin khi để yên. Xuất log có thêm số liệu điện năng và độ trễ để tự đo pin.
+LumenOS 1.6.0: Tra từ nhanh hơn, có gợi ý và quản lý thứ tự từ điển. Ghi chú cả cuốn, xuất Markdown. Trang Từ vựng mới học bằng thẻ từ tệp CSV bạn chép vào /vocab.
