@@ -77,6 +77,7 @@ static bool read_pico_transfer_pause_for_sleep(void){return !transfer_busy;}
 static void read_pico_transfer_resume_after_sleep(void){++network_resumes;}
 static int ble_pt_suspend_for_sleep(void){return ble_failed?-1:ESP_OK;}
 static int app_sync_time_to_pmu(void){return ESP_OK;}
+static int sync_time_before_power(void){return app_sync_time_to_pmu();}
 static void app_font_begin_lock(app_lock_font_t *font){assert(!font_closed);font->reading=true;}
 static void app_font_end_lock(const app_lock_font_t *font){assert(font->reading);font_closed=0;restored++;}
 static bool book_closed;static int book_error;

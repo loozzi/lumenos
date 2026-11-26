@@ -1,1 +1,1 @@
-LumenOS 1.6.0: Tra từ nhanh hơn, có gợi ý và quản lý thứ tự từ điển. Ghi chú cả cuốn, xuất Markdown. Trang Từ vựng mới học bằng thẻ từ tệp CSV bạn chép vào /vocab.
+LumenOS 1.6.1: Sửa đồng hồ chạy chậm sau khi tắt/mở máy (đồng bộ giờ lại một lần sau khi cập nhật). Thêm lối vào Từ vựng trên thẻ Cú Lém và tiện ích Trang chủ.

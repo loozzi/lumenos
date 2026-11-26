@@ -130,6 +130,8 @@ static bool pet_vocab_showing(void) {
     return t->valid && t->show_home && s_pet_tap % 2 == 0;
 }
 static EpdRect pet_bubble_rect(void) { return (EpdRect){236, 656, 388, 136}; }
+// 用户2026-11-26：卡片左下角常驻“Học từ vựng ›”入口。/ User 2026-11-26: a permanent "Học từ vựng ›" link at the card's lower left.
+static EpdRect pet_vocab_link_rect(void) { return (EpdRect){40, 842, 188, 44}; }
 static void pet_message(char *out, size_t cap, pet_mood_t mood) {
     if (pet_vocab_showing()) {
         char line[240];
@@ -268,6 +270,7 @@ static void pet_draw_card(uint8_t *fb, uint8_t card_gray) {
     snprintf(value, sizeof(value), "Cấp %u · %s", level + 1, s_pet_level_names[level]);
     label_on(fb, 622, 626, 19, value, EPD_DRAW_ALIGN_RIGHT, 0x40, card_gray);
     pet_owl_draw(fb, 58, 686, 150, mood, (s_pet_tap % 3) == 1, fast);
+    home_bold_label(fb, 60, 866, 18, "Học từ vựng ›", EPD_DRAW_ALIGN_LEFT, card_gray);
     const EpdRect bubble = pet_bubble_rect();
     pet_bubble(fb, bubble, 728, false);
     char message[256], lines[3][128];

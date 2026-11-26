@@ -38,6 +38,7 @@ static int64_t clock_us;
 static uint64_t timer_us;
 static unsigned timer_arms;static bool fail_rearm;
 static int64_t esp_timer_get_time(void){return clock_us;}
+static unsigned clock_restores;static void system_clock_from_rtc(void){++clock_restores;}
 static unsigned fail(void){return ++operation==fail_at;}
 static bool metalio_usb_blocks_sleep(void){return usb||(usb_after&&sleeps>=usb_after);}
 static bool usb_storage_active(void){return busy;}
