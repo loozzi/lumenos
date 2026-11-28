@@ -1,1 +1,1 @@
-LumenOS 1.6.2: Mục lục hiện đủ chương con (Chương/Phần/Quyển…), thụt lề theo cấp và đánh dấu chương đang đọc. Mở sách nhanh hơn. Xem thời gian lật trang, mở sách trong Nhật ký & Chẩn đoán.
+LumenOS 1.6.3: Thu gọn/mở rộng mục lục theo cấp. Nút Quay lại vị trí trước sau khi nhảy chương, đánh dấu, ghi chú (4 bước). Hàng và nút có viền khi chạm.

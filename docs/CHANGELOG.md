@@ -1,4 +1,4 @@
-## LumenOS 1.6.3 · Bản thử cục bộ · 2026-11-28 (chỉ Full)
+## LumenOS 1.6.3 · Phát hành chính thức · 2026-11-28 (chỉ Full)
 
 - **Mục lục thu gọn được:** mục có chương con hiện **+** (đang thu gọn, kèm số mục con) hoặc **–** (đang mở) ở bên trái; chạm vào đó để thu gọn/mở rộng, chạm vào tên để tới mục. Mở mục lục thì chỉ nhánh chứa trang đang đọc được mở sẵn.
 - **Quay lại vị trí trước:** nhảy bằng Mục lục, Đánh dấu, Ghi chú (kể cả tab Cả cuốn), Nhảy trang hay đồng bộ KOSync đều ghi lại vị trí cũ, tối đa 4 bước, kể cả khi sang chương khác. Nút **‹ Quay lại vị trí trước** hiện 6 giây và hiện lại mỗi khi mở thanh công cụ; lật trang thường thì nút ẩn đi. Chỉ nhớ trong lúc sách đang mở.
