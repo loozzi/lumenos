@@ -138,6 +138,29 @@ int main(int argc,char **argv){
 }
 '''
 
+MOUNT = r"""
+#include "vocab_study.h"
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#undef mkdir
+int mkdir(const char *path, mode_t mode);
+int esp_mkdir(const char *path, mode_t mode) {
+    if (!strcmp(path, "/sdcard") || !strcmp(path, "sdcard")) { errno = EINVAL; return -1; }
+    return mkdir(path, mode);
+}
+int main(int argc, char **argv) {
+    assert(argc == 2 && !chdir(argv[1]));
+    vocab_progress_t pr = {.new_per_day = 10, .show_home = true, .show_lock = true}, back = {0};
+    assert(vocab_progress_save(&pr, "sdcard/vocab/.lumen", "TOEIC 600.csv"));
+    assert(vocab_progress_load(&back, "sdcard/vocab/.lumen", "TOEIC 600.csv") && back.sequence == 1);
+    vocab_progress_free(&back);
+    return 0;
+}
+"""
+
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory() as d:
         p = Path(d)
@@ -148,6 +171,14 @@ if __name__ == '__main__':
                         '-fno-sanitize-recover=all', '-I' + str(BOOK), str(p / 'test.c'), str(BOOK / 'vocab_pack.c'),
                         str(BOOK / 'vocab_study.c'), str(BOOK / 'vocab_today.c'), '-o', str(p / 'test')], check=True)
         subprocess.run([str(p / 'test'), str(p / 'work')], check=True)
+        # ESP-IDF：mkdir 挂载点返回 EINVAL（不是 EEXIST）。曾导致进度永远存不上。
+        # ESP-IDF: mkdir on the mount point returns EINVAL (not EEXIST); this once made progress never save.
+        (p / 'mount.c').write_text(MOUNT)
+        (p / 'sdcard').mkdir()
+        subprocess.run(['cc', '-std=gnu11', '-g', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
+                        '-fno-sanitize-recover=all', '-Dmkdir=esp_mkdir', '-I' + str(BOOK), str(p / 'mount.c'),
+                        str(BOOK / 'vocab_study.c'), '-o', str(p / 'mount')], check=True)
+        subprocess.run([str(p / 'mount'), str(p)], check=True)
     print('PASS vocabulary: TOEIC-600-style columns, quotes/CRLF/BOM, skipped rows, UTF-8 cuts, rank order, errors, '
           '4000 cap; Leitner boxes, due days, daily new cap, forget repeats; two checksummed progress slots with '
-          'fallback and stable keys; study days and clock switching; word-of-the-day summary loads once')
+          'fallback and stable keys; study days and clock switching; word-of-the-day summary loads once; saving under a mount point that rejects mkdir')

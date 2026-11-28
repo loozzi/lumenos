@@ -1,3 +1,8 @@
+## LumenOS 1.6.4 · Phát hành chính thức · 2026-11-28 (chỉ Full)
+
+- **Sửa Từ vựng không lưu tiến độ:** trên máy, mỗi lần lưu đều thất bại vì thư mục gốc thẻ nhớ báo lỗi khác với máy tính, nên vào lại là mất trạng thái học. Nay tiến độ được ghi vào `/vocab/.lumen` sau mỗi phiên. Tiến độ trước đây chưa từng được ghi nên không khôi phục được.
+- Gồm mọi tính năng của 1.6.3. Chưa thử trên thiết bị. Love Book giữ nguyên 1.5.18-love.
+
 ## LumenOS 1.6.3 · Phát hành chính thức · 2026-11-28 (chỉ Full)
 
 - **Mục lục thu gọn được:** mục có chương con hiện **+** (đang thu gọn, kèm số mục con) hoặc **–** (đang mở) ở bên trái; chạm vào đó để thu gọn/mở rộng, chạm vào tên để tới mục. Mở mục lục thì chỉ nhánh chứa trang đang đọc được mở sẵn.

@@ -248,7 +248,10 @@ static bool make_dir(const char *root) {
         if (*c && *c != '/') continue;
         char end = *c;
         *c = 0;
-        if (mkdir(path, 0775) && errno != EEXIST) return false;
+        // ESP-IDF 对挂载点本身（/sdcard）返回 EINVAL 而非 EEXIST：已是目录即可继续。
+        // ESP-IDF returns EINVAL, not EEXIST, for the mount point itself (/sdcard): an existing directory is fine.
+        struct stat st;
+        if (mkdir(path, 0775) && errno != EEXIST && (stat(path, &st) || !S_ISDIR(st.st_mode))) return false;
         *c = end;
         if (!end) break;
     }
