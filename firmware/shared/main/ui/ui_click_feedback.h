@@ -4,11 +4,12 @@
  */
 #pragma once
 #include "ui_kit.h"
-typedef enum { UI_CLICK_NAV, UI_CLICK_BACK, UI_CLICK_BACK_SMALL } ui_click_kind_t;
+typedef enum { UI_CLICK_NAV, UI_CLICK_BACK, UI_CLICK_BACK_SMALL, UI_CLICK_ROW } ui_click_kind_t;
 void ui_click_feedback_reset(void);
 /// 仅主循环当前帧可注册；后台阅读预绘制不能改控件表。/ Only the loop's current frame may register; reader prefetch cannot alter controls.
 void ui_click_feedback_begin(uint8_t *fb);
-/// 最多12控件，一个按压缓存上限4096B PSRAM；OOM仅略过装饰。/ Up to 12 controls, one press cache bounded to 4096 PSRAM bytes; OOM skips decoration only.
+/// 最多24控件；图标缓存≤4096B，行只缓存3像素边框（≤8KiB）PSRAM；OOM仅略过装饰。
+/// Up to 24 controls; icon caches ≤4096 B, rows cache only a 3 px border (≤8 KiB) in PSRAM; OOM skips decoration only.
 void ui_click_feedback_register(uint8_t *fb, EpdRect rect, ui_click_kind_t kind, ui_icon_t icon);
 /// 三种主页模式保留底栏灰底，返回实际变化边界，不按缓存方框推屏。/ All three main modes retain footer grays and return actual change bounds instead of the cache rectangle.
 bool ui_click_feedback_press(uint8_t *fb, int x, int y, EpdRect *area);
@@ -16,6 +17,15 @@ bool ui_click_feedback_press(uint8_t *fb, int x, int y, EpdRect *area);
 bool ui_click_feedback_release(uint8_t *fb, EpdRect *area);
 bool ui_click_feedback_cancel_at(int x, int y);
 bool ui_click_feedback_active(void);
+/// 用户2026-11-28（1.6.3）：行与按钮按下即描边，保持到页面重绘；页面未重绘时抬手后由主循环恢复。
+/// User 2026-11-28 (1.6.3): rows and buttons get a press outline kept until the page repaints; the loop restores it after lift otherwise.
+bool ui_click_feedback_deferred(void);
+/// 局部推屏后行坐标可能过期：只丢弃行登记。/ Area updates may stale row geometry: drop row registrations only.
+void ui_click_feedback_drop_rows(void);
+/// 页面已重画该控件：丢弃缓存，不恢复像素。/ The page repainted the control: drop the cache without restoring pixels.
+void ui_click_feedback_discard(void);
+/// 当前行描边的区域。/ Area of the active row outline.
+EpdRect ui_click_feedback_area(void);
 
 /// 只登记动作，不推屏、不等待；连续点击替换旧动作。/ Queue only, without presentation or waits; a newer click replaces it.
 void ui_click_feedback_nav_request(int tab);

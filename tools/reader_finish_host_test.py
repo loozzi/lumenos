@@ -64,6 +64,11 @@ int main(int argc,char **argv) {
 #include <stddef.h>
 #include <stdio.h>
 #define BOOK_TOC_ROWS 8
+static struct{uint8_t depth;int64_t until_ms;bool shown;}s_jump_back __attribute__((unused));
+static size_t current_toc_position(void){return 0;}
+static size_t book_navigation_count(void){return 0;}
+static void book_toc_view_open(size_t n,size_t c){(void)n;(void)c;}
+static int book_toc_page_of(size_t n,size_t c){(void)n;return (int)(c/BOOK_TOC_ROWS);}
 #define MODE_GL16 1
 #define APP_READER_TURN_FLASH 7
 #define E0470_TURN_RTL 1

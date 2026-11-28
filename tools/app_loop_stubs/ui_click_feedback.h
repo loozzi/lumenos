@@ -9,6 +9,10 @@ bool ui_click_feedback_active(void);
 bool ui_click_feedback_release(uint8_t *fb,EpdRect *rect);
 bool ui_click_feedback_press(uint8_t *fb,int x,int y,EpdRect *rect);
 bool ui_click_feedback_cancel_at(int x,int y);
+bool ui_click_feedback_deferred(void);
+void ui_click_feedback_drop_rows(void);
+void ui_click_feedback_discard(void);
+EpdRect ui_click_feedback_area(void);
 
 void ui_click_feedback_nav_request(int tab);
 bool ui_click_feedback_nav_pending(void);

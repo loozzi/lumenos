@@ -98,6 +98,7 @@ static size_t book_chapter_count(void){return 8;}
 static unsigned loads,saves;static size_t loaded_chapter,loaded_offset;
 static bool load_chapter(app_ctx_t *ctx,size_t ch,size_t off,bool last){(void)ctx;(void)last;++loads;loaded_chapter=ch;loaded_offset=off;return true;}
 static void save_progress(void){++saves;}
+static void reader_jump_back_push(app_ctx_t *ctx){(void)ctx;}
 static void render(app_ctx_t *ctx,uint8_t *fb){(void)ctx;book_notes_draw(fb,s_page,body_rect(),s_px);}
 '''
 adapter+=function('app_book_landscape_ready',root/'main/apps/app_book.c')+'\n'
