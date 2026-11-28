@@ -3507,7 +3507,10 @@ static void draw_font_picker(uint8_t* fb) {
     // 字体名称预览归还真实阅读字库后，再确认本次选择是否回退。
     // Observe the actual reader face after name previews have restored it.
     reader_font_choice_finish();
-    if (!count) reader_panel_text_vc(fb, 342, 780, 24, "Không có phông chữ nào trong thư mục phông", EPD_DRAW_ALIGN_CENTER, false);
+    if (!count) {
+        reader_panel_text_vc(fb, 342, 780, 24, "Không có phông chữ nào trong thư mục phông", EPD_DRAW_ALIGN_CENTER, false);
+        reader_panel_text_vc(fb, 342, 826, 18, "Chép tệp .ttf hoặc .otf vào thư mục fonts trên thẻ nhớ", EPD_DRAW_ALIGN_CENTER, false);
+    }
 }
 
 static EpdRect reader_font_recovery_button(int index) {
