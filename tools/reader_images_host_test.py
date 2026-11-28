@@ -150,7 +150,7 @@ static html_run_t *s_runs;
 static size_t s_run_count;
 static void book_layout_set_runs(const html_run_t *runs,size_t count){(void)runs;(void)count;}
 static size_t s_text_len,s_block_count,s_selected_toc=2,s_jump_offset,s_jump_page;
-static struct {bool valid;} s_chapter_jump_undo;
+static struct {uint8_t depth; int64_t until_ms; bool shown;} s_jump_back __attribute__((unused));
 static int s_px=10,s_view=READING;
 static char s_message[128],s_title[128],s_font_path[128];
 static int load_error,reflow_failures,reflows;

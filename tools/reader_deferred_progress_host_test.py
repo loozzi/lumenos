@@ -18,7 +18,7 @@ assert 'flush_ticket_stats();' not in function('track_ticket_stats', book)
 assert 'save_progress();' in function('before_lock', book)
 assert 'save_progress();' in function('book_on_exit', book)
 start = tick.index('    if (s_view==READING && s_text) {', tick.index('ble_pt_action_t action = book_remote_action('))
-end = tick.index('    if (s_chapter_jump_undo.valid', start)
+end = tick.index('    if (s_jump_back.until_ms', start)
 maintenance = tick[start:end]
 unit = r'''
 #include <assert.h>

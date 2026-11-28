@@ -429,11 +429,18 @@ static reader_panel_t s_reader_panel;
 static size_t s_chapter_jump_page;
 static char s_chapter_jump_digits[24];
 static bool s_chapter_jump_replace, s_chapter_jump_error;
+// 用户2026-11-28（1.6.3）：目录、书签、笔记、页码与同步跳转前记下原位置，最多4级；
+// 提示键显示6秒，打开工具栏时再次显示。只在本次打开的书内有效，不写存储。
+// User 2026-11-28 (1.6.3): TOC, bookmark, note, page and sync jumps remember up to 4 prior positions.
+// The back pill shows for 6 s and again when the tool strip opens; session-only, never stored.
+#define READER_JUMP_BACK_DEPTH 4
+#define READER_JUMP_BACK_MS 6000
 static struct {
-    bool valid;
-    size_t chapter, offset;
+    struct { size_t chapter, offset; } stack[READER_JUMP_BACK_DEPTH];
+    uint8_t depth;
+    bool shown;
     int64_t until_ms;
-} s_chapter_jump_undo;
+} s_jump_back;
 // 微调长按只更新预览，松手后统一重排和保存；离开控件即取消。
 // Held indent adjustments update the preview only; release reflows/saves once and leaving the control cancels.
 static struct {
@@ -3559,8 +3566,8 @@ static EpdRect reader_chapter_key_rect(int key) {
 }
 static EpdRect reader_chapter_undo_rect(void) { return (EpdRect){178, 224, 328, 46}; }
 static bool reader_chapter_undo_visible(void) {
-    return s_chapter_jump_undo.valid && s_text && s_view == READING &&
-        s_chapter_jump_undo.chapter == s_chapter && s_reader_panel == READER_PANEL_NONE;
+    return s_jump_back.depth && s_text && s_view == READING &&
+        ((s_jump_back.until_ms && s_reader_panel == READER_PANEL_NONE) || s_reader_panel == READER_PANEL_TOOLS);
 }
 static int reader_chapter_jump_hit(uint16_t x, uint16_t y) {
     if (s_reader_panel == READER_PANEL_STATS) {
@@ -4409,10 +4416,11 @@ static void draw_reader_outer(uint8_t *fb,size_t page) {
     if (reader_chapter_undo_visible()) {
         EpdRect notice={104,160,476,126};
         ui_draw_soft_card(fb,notice,20,false);
-        ui_text_box(fb,(EpdRect){122,174,440,36},22,"Đã chuyển tới trang chỉ định",EPD_DRAW_ALIGN_CENTER,false);
+        ui_text_box(fb,(EpdRect){122,174,440,36},22,"Đã chuyển vị trí đọc",EPD_DRAW_ALIGN_CENTER,false);
         EpdRect back=reader_chapter_undo_rect();
         ui_draw_soft_card(fb,back,20,true);
-        ui_text_box(fb,back,21,"Về trang trước đó",EPD_DRAW_ALIGN_CENTER,false);
+        ui_text_box(fb,back,21,"‹ Quay lại vị trí trước",EPD_DRAW_ALIGN_CENTER,false);
+        s_jump_back.shown=true;
     }
 #if DPREADER_BOARD_METALIO47
     if (s_viewport_depth == 0 && reader_viewport_active()) { reader_viewport_draw(fb); return; }
@@ -5363,7 +5371,7 @@ static void free_book(void) {
     }
     s_ticket_cover_started=s_ticket_cover_done=false;
 #endif
-    s_chapter_jump_undo.valid = false;
+    s_jump_back.depth = 0; s_jump_back.until_ms = 0; s_jump_back.shown = false;
     s_chapter_jump_digits[0] = 0;
     flush_ticket_stats();
     e0470_page_turn_release();
@@ -5674,7 +5682,6 @@ static bool load_chapter_at(app_ctx_t* ctx, size_t chapter, size_t offset,
     s_images = loaded.images; s_image_count = loaded.image_count;
     release_page_images();
     s_chapter = chapter;
-    s_chapter_jump_undo.valid = false;
     if (clear_toc) s_selected_toc = SIZE_MAX;
     s_page = last_page ? book_layout_page_count() - 1 :
              book_layout_page_for_offset(anchor || source_offset != SIZE_MAX ? anchor_offset : offset);
@@ -6607,6 +6614,8 @@ static app_redraw_t finished_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev
     return APP_REDRAW_NONE;
 }
 static app_redraw_t turn_page(app_ctx_t* ctx, int dir) {
+    // 正常翻页收起返回提示，位置栈保留到工具栏。/ A normal turn hides the back pill; the stack stays reachable from the tool strip.
+    s_jump_back.until_ms = 0; s_jump_back.shown = false;
 #if DPREADER_BOARD_METALIO47
     if(s_reader_resume_pending || s_reader_raster_failed)return APP_REDRAW_NONE;
     if(reader_reflow_font() && !s_text)return APP_REDRAW_PAGE;
@@ -7388,24 +7397,40 @@ static bool reader_chapter_jump_parse(size_t *page) {
     *page=value-1;
     return true;
 }
+// 跳转前记下当前位置；栈满时丢最旧的一项。/ Remember the position before a jump; a full stack drops the oldest.
+static void reader_jump_back_push(app_ctx_t *ctx) {
+    if(!s_text||!book_layout_page_count())return;
+    size_t offset=reader_page_offset(s_page);
+    if(s_jump_back.depth&&s_jump_back.stack[s_jump_back.depth-1].chapter==s_chapter&&
+       s_jump_back.stack[s_jump_back.depth-1].offset==offset){s_jump_back.until_ms=ctx->now_ms+READER_JUMP_BACK_MS;return;}
+    if(s_jump_back.depth==READER_JUMP_BACK_DEPTH){
+        memmove(s_jump_back.stack,s_jump_back.stack+1,sizeof(s_jump_back.stack[0])*(READER_JUMP_BACK_DEPTH-1));
+        --s_jump_back.depth;
+    }
+    s_jump_back.stack[s_jump_back.depth].chapter=s_chapter;
+    s_jump_back.stack[s_jump_back.depth].offset=offset;
+    ++s_jump_back.depth;
+    s_jump_back.until_ms=ctx->now_ms+READER_JUMP_BACK_MS;
+}
+// 跳转后若停在原处则撤回刚记下的位置。/ Drop the pushed entry when the jump did not move.
+static void reader_jump_back_settle(size_t chapter_before,size_t offset_before) {
+    if(s_jump_back.depth&&s_chapter==chapter_before&&reader_page_offset(s_page)==offset_before){
+        --s_jump_back.depth;
+        if(!s_jump_back.depth)s_jump_back.until_ms=0;
+    }
+}
+static app_redraw_t reader_jump_back(app_ctx_t *ctx);
 static app_redraw_t reader_chapter_jump_commit(app_ctx_t *ctx,size_t page,bool restore) {
     if(!s_text||s_view!=READING||!book_layout_page_count())return APP_REDRAW_NONE;
+    if(restore)return reader_jump_back(ctx);
     size_t offset=SIZE_MAX;
-    if(restore){
-        if(!s_chapter_jump_undo.valid||s_chapter_jump_undo.chapter!=s_chapter||ctx->now_ms>=s_chapter_jump_undo.until_ms)
-            return APP_REDRAW_NONE;
-        offset=s_chapter_jump_undo.offset;
-        page=book_layout_page_for_offset(offset);
-    }
     if(page>=book_layout_page_count())return APP_REDRAW_NONE;
     lock_draw();
     invalidate_prep();
     size_t before=reader_page_offset(s_page);
     size_t destination=offset==SIZE_MAX?book_layout_page_start_offset(page):offset;
     bool changed=page!=s_page||destination!=before;
-    s_chapter_jump_undo.valid=!restore&&changed;
-    s_chapter_jump_undo.chapter=s_chapter;s_chapter_jump_undo.offset=before;
-    s_chapter_jump_undo.until_ms=ctx->now_ms+2000;
+    if(changed)reader_jump_back_push(ctx);
     s_page=page;s_jump_page=page;s_jump_offset=offset;
     s_reader_panel=READER_PANEL_NONE;s_reader_slider=-1;
     s_reader_tap.pending=false;
@@ -7417,6 +7442,38 @@ static app_redraw_t reader_chapter_jump_commit(app_ctx_t *ctx,size_t page,bool r
     unlock_draw();
     release_page_images();prepare_inline_image();
     if(changed)save_progress();
+    s_stats_activity_ms=ctx->now_ms;ctx->user_activity=true;
+    return APP_REDRAW_PAGE;
+}
+// 回到最近一次跳转前的位置；跨章时载入该章。/ Return to the latest pre-jump position, loading its chapter when needed.
+static app_redraw_t reader_jump_back(app_ctx_t *ctx) {
+    if(!s_text||s_view!=READING||!s_jump_back.depth)return APP_REDRAW_NONE;
+    --s_jump_back.depth;
+    size_t chapter=s_jump_back.stack[s_jump_back.depth].chapter;
+    size_t offset=s_jump_back.stack[s_jump_back.depth].offset;
+    s_jump_back.until_ms=s_jump_back.depth?ctx->now_ms+READER_JUMP_BACK_MS:0;
+    s_reader_panel=READER_PANEL_NONE;s_reader_slider=-1;s_reader_tap.pending=false;
+    if(chapter!=s_chapter){
+        if(chapter>=book_chapter_count())return APP_REDRAW_PAGE;
+        save_progress();
+        if(load_chapter(ctx,chapter,offset,false))save_progress();
+        invalidate_prep();
+        s_stats_activity_ms=ctx->now_ms;ctx->user_activity=true;
+        return APP_REDRAW_PAGE;
+    }
+    size_t page=book_layout_page_for_offset(offset);
+    if(page>=book_layout_page_count())return APP_REDRAW_PAGE;
+    lock_draw();
+    invalidate_prep();
+    s_page=page;s_jump_page=page;s_jump_offset=offset;
+    s_water_turn_pending=s_reader_turn_pending=s_reader_text_frame=false;
+#if DPREADER_BOARD_METALIO47
+    s_reader_image_frame=s_reader_image_exit_pending=false;
+#endif
+    s_reader_footer_pending=s_reader_image_refresh_pending=s_reader_cleanup=false;
+    unlock_draw();
+    release_page_images();prepare_inline_image();
+    save_progress();
     s_stats_activity_ms=ctx->now_ms;ctx->user_activity=true;
     return APP_REDRAW_PAGE;
 }
@@ -7568,7 +7625,8 @@ static app_redraw_t reader_panel_action(app_ctx_t* ctx, uint16_t x, uint16_t y) 
                     int newest = (int)marks.count - 1 - position;
                     reader_bookmark_entry_t mark = marks.entries[newest];
                     if (s_bookmark_edit) s_bookmark_selected ^= UINT32_C(1) << newest;
-                    else if (mark.chapter < book_chapter_count() && load_chapter(ctx, mark.chapter, mark.byte_off, false)) {
+                    else if (mark.chapter < book_chapter_count() &&
+                             (reader_jump_back_push(ctx), load_chapter(ctx, mark.chapter, mark.byte_off, false))) {
                         s_reader_panel = READER_PANEL_NONE;
                         save_progress();
                     }
@@ -8163,8 +8221,11 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
             if (chapter >= book_chapter_count()) return APP_REDRAW_NONE;
             save_progress();
             set_reader_view(READING);
+            const size_t back_chapter = s_chapter, back_offset = reader_page_offset(s_page);
+            reader_jump_back_push(ctx);
             if (load_chapter_at(ctx, chapter, 0, false, book_navigation_anchor((size_t)target),
                                 book_navigation_source_offset((size_t)target))) {
+                reader_jump_back_settle(back_chapter, back_offset);
                 s_selected_toc = (size_t)target;
                 char entry_title[sizeof(s_title)];
                 if (book_navigation_title((size_t)target, entry_title, sizeof(entry_title)) == ESP_OK)
@@ -8996,7 +9057,7 @@ static bool reader_notes_gesture(app_ctx_t *ctx,const ui_gesture_event_t *ev,app
     // A whole-book note in another chapter: load it like a bookmark and save progress.
     uint32_t jump_chapter;size_t jump_offset;
     if(book_notes_take_jump(&jump_chapter,&jump_offset)&&jump_chapter<book_chapter_count()&&
-       load_chapter(ctx,jump_chapter,jump_offset,false)){save_progress();invalidate_prep();notes=APP_REDRAW_PAGE;}
+       (reader_jump_back_push(ctx),load_chapter(ctx,jump_chapter,jump_offset,false))){save_progress();invalidate_prep();notes=APP_REDRAW_PAGE;}
     /* PAGE cancels the active gesture in app_loop. Preserve a selection hold
      * and its drags with an already-painted AREA, including the initial menu. */
     if(notes==APP_REDRAW_PAGE&&(ev->type==UI_GESTURE_LONG_PRESS||ev->type==UI_GESTURE_MOVE)) {
@@ -9274,6 +9335,7 @@ void app_book_request_kosync(app_ctx_t *ctx) {
         esp_err_t err = kosync_sync_book_precise(s_path, &chap, &off, &pct, reader_sync_ratio(s_page), &pulled_newer, msg, sizeof(msg));
         if (err == ESP_OK) {
             if (pulled_newer) {
+                reader_jump_back_push(ctx);
                 if (chap < book_chapter_count()) {
                     load_chapter(ctx, chap, off, false);
                 } else if (book_chapter_count() > 0) {
@@ -9830,6 +9892,7 @@ static app_redraw_t on_tick(app_ctx_t* ctx) {
            remote.position_valid&&exact&&chapter<book_chapter_count()&&
            kosync_should_pull(s_path,current.chapter,current.byte_off,reader_sync_ratio(s_page),&remote,chapter,offset,exact)) {
             kosync_state_accept(s_path,chapter,offset,remote.timestamp);
+            reader_jump_back_push(ctx);
             if(load_chapter(ctx,chapter,offset,false)){save_progress();return APP_REDRAW_PAGE;}
         }
     }
@@ -9850,8 +9913,9 @@ static app_redraw_t on_tick(app_ctx_t* ctx) {
             return APP_REDRAW_NONE;
         }
     }
-    if (s_chapter_jump_undo.valid && ctx->now_ms >= s_chapter_jump_undo.until_ms) {
-        bool visible=reader_chapter_undo_visible();s_chapter_jump_undo.valid=false;
+    if (s_jump_back.until_ms && ctx->now_ms >= s_jump_back.until_ms) {
+        bool visible=reader_chapter_undo_visible()&&s_jump_back.shown;
+        s_jump_back.until_ms=0;s_jump_back.shown=false;
         invalidate_prep();
         if(visible){
             render(ctx,ctx->fb);s_area=(EpdRect){96,152,492,142};s_mode=MODE_GL16;
@@ -10027,7 +10091,7 @@ static int64_t reader_next_tick_ms(app_ctx_t *ctx) {
     if(s_view!=READING || !s_text || !s_reader_display_ready || s_presented_view!=READING ||
        s_toolbar || s_clear_confirm || s_reader_panel!=READER_PANEL_NONE || s_reader_choice.open ||
        s_requested_open[0] || s_scan_pending || s_fonts_reload_pending || s_background_prepare_pending ||
-       s_reader_tap.pending || s_chapter_jump_undo.valid || s_indent_hold.active || s_zoom_active || s_reader_clock_pending || book_notes_active() ||
+       s_reader_tap.pending || s_jump_back.until_ms || s_indent_hold.active || s_zoom_active || s_reader_clock_pending || book_notes_active() ||
        s_font_choice_pending || s_font_recovery_pending || s_font_restart_pending || s_save_failed || s_unsaved>=8 ||
        s_reader_notice[0] || app_settings_kosync_auto() ||
        reader_layout_font_changed() || app_settings_book_background_path()[0] ||

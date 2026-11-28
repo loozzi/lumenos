@@ -24,7 +24,7 @@ static char s_requested_open[8],s_reader_notice[8];
 static struct{bool open;}s_reader_choice;
 static struct{bool pending;}s_reader_tap;
 static struct{bool active;}s_indent_hold;
-static struct{bool valid;}s_chapter_jump_undo;
+static struct{int64_t until_ms;}s_jump_back;
 static size_t s_page=4,s_chapter=0,pages=20,chapters=2;
 static int64_t s_stats_activity_ms;
 static unsigned s_unsaved;
@@ -57,8 +57,9 @@ int main(void){app_ctx_t ctx={10000};
  int64_t far[]={20000};assert(app_wait_ms(10000,40,1,0,far,1)==200);
  bool *gates[]={&s_toolbar,&s_clear_confirm,&s_scan_pending,&s_fonts_reload_pending,&s_background_prepare_pending,
  &s_font_choice_pending,&s_font_recovery_pending,&s_font_restart_pending,&s_save_failed,&s_reader_choice.open,
- &s_reader_tap.pending,&s_chapter_jump_undo.valid,&s_indent_hold.active,&s_zoom_active,&s_reader_clock_pending,&notes,&auto_sync,&background,&images};
+ &s_reader_tap.pending,&s_indent_hold.active,&s_zoom_active,&s_reader_clock_pending,&notes,&auto_sync,&background,&images};
  for(unsigned i=0;i<sizeof(gates)/sizeof(*gates);i++){*gates[i]=true;assert(!reader_next_tick_ms(&ctx));*gates[i]=false;}
+ s_jump_back.until_ms=5;assert(!reader_next_tick_ms(&ctx));s_jump_back.until_ms=0;
  s_reader_display_ready=false;assert(!reader_next_tick_ms(&ctx));s_reader_display_ready=true;
  s_requested_open[0]='b';assert(!reader_next_tick_ms(&ctx));s_requested_open[0]=0;
  s_reader_notice[0]='x';assert(!reader_next_tick_ms(&ctx));s_reader_notice[0]=0;
