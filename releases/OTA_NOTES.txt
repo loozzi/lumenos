@@ -1,1 +1,1 @@
-LumenOS 1.6.1: Sửa đồng hồ chạy chậm sau khi tắt/mở máy (đồng bộ giờ lại một lần sau khi cập nhật). Thêm lối vào Từ vựng trên thẻ Cú Lém và tiện ích Trang chủ.
+LumenOS 1.6.2: Mục lục hiện đủ chương con (Chương/Phần/Quyển…), thụt lề theo cấp và đánh dấu chương đang đọc. Mở sách nhanh hơn. Xem thời gian lật trang, mở sách trong Nhật ký & Chẩn đoán.

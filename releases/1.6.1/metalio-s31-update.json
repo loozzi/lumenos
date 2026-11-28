@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "edition": "full",
+  "version": "1.6.1",
+  "project": "Kiikoread_Metalio_S31",
+  "board": "Metalio-EINK4-Plus-S31",
+  "layout": "metalio-s31-dual-5m-v1",
+  "minimum_base_version": "1.4.2",
+  "usb_only": false,
+  "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
+  "flash_page": "https://loozzi.github.io/lumenos/",
+  "previous_version": "1.6.0",
+  "notes": "LumenOS 1.6.1: Sửa đồng hồ chạy chậm sau khi tắt/mở máy (đồng bộ giờ lại một lần sau khi cập nhật). Thêm lối vào Từ vựng trên thẻ Cú Lém và tiện ích Trang chủ.",
+  "usb_parts": {
+    "bootloader.bin": {
+      "size": 22448,
+      "sha256": "203645b65b6e36e7b7ab7f68e2273e48706aa7d8975c3f39c841c4bc69d44ff5",
+      "md5": "a865d71c2d6db481384bdd719fbfc2d9"
+    },
+    "partitions.bin": {
+      "size": 3072,
+      "sha256": "5fb13c31d7bb5501fe7fbe00b34b12adfe1b304be8b3ce87f277efb613281ade",
+      "md5": "94ea2f661d23db44c71445b089ce5279"
+    },
+    "storage-empty.bin": {
+      "size": 5898240,
+      "sha256": "bf77489d6c2ee85b38f9cd7eee6f65ed90957ac775a5f98227b43eb2cec8691f",
+      "md5": "3221cf178e3041a8838b3205ba9f3c82"
+    }
+  },
+  "clean_image": {
+    "sha256": "28036ede940afe760f4181e5f178419a30d023d4af5a89893949ea526964535f",
+    "md5": "9b02241e33fd3e4de23431db247e18bf"
+  },
+  "size": 5033520,
+  "sha256": "7885606d1e3ad65d66443b208d029df4ee4006a2858d2f74ee76342084377660",
+  "md5": "dfbafc467ebb7c30969d9827c5dfb934"
+}

@@ -270,13 +270,14 @@ esp_err_t log_export_to_sd(char *out_path, size_t out_path_size, char *err_msg, 
         (unsigned long long)power.lamp_on_ms,(unsigned long long)power.lamp_level_ms,(unsigned long)power.locks,
         power.lock_soc,(unsigned)power.lock_mv,power.unlock_soc,(unsigned)power.unlock_mv,
         (unsigned)battery_guard_level(),battery_guard_remaining_minutes());
-    static const char *const latency_names[METALIO_LATENCY_COUNT]={"turn","ui","unlock","boot"};
+    static const char *const latency_names[METALIO_LATENCY_COUNT]={"turn","ui","unlock","boot","open","chapter"};
     for(unsigned k=0;k<METALIO_LATENCY_COUNT;++k) {
         const uint32_t *h=power.latency[k];
         const uint32_t p50=metalio_power_percentile(h,50),p95=metalio_power_percentile(h,95);
-        fprintf(f,"Latency %s: <50=%lu <100=%lu <200=%lu <400=%lu <800=%lu <1600=%lu slower=%lu p50<=%s%lu p95<=%s%lu\n",latency_names[k],
+        fprintf(f,"Latency %s: <50=%lu <100=%lu <200=%lu <400=%lu <800=%lu <1600=%lu slower=%lu p50<=%s%lu p95<=%s%lu last=%lu max=%lu\n",latency_names[k],
             (unsigned long)h[0],(unsigned long)h[1],(unsigned long)h[2],(unsigned long)h[3],(unsigned long)h[4],(unsigned long)h[5],(unsigned long)h[6],
-            p50==UINT32_MAX?">":"",(unsigned long)(p50==UINT32_MAX?1600:p50),p95==UINT32_MAX?">":"",(unsigned long)(p95==UINT32_MAX?1600:p95));
+            p50==UINT32_MAX?">":"",(unsigned long)(p50==UINT32_MAX?1600:p50),p95==UINT32_MAX?">":"",(unsigned long)(p95==UINT32_MAX?1600:p95),
+            (unsigned long)power.last_ms[k],(unsigned long)power.max_ms[k]);
     }
 #endif
     fprintf(f, "\n");

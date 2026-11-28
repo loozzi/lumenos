@@ -109,6 +109,7 @@ static size_t heap_caps_get_largest_free_block(int caps){(void)caps;return free_
 static size_t heap_caps_get_free_size(int caps){(void)caps;return free_block;}
 static bool metalio_cache_can_grow(size_t n){return free_block>=n+2560u*1024u;}
 static int64_t esp_timer_get_time(void){return 0;}
+static bool s_open_in_progress; enum { METALIO_LATENCY_CHAPTER = 5 }; static void metalio_power_note_latency(int kind, uint32_t ms){(void)kind;(void)ms;}
 static unsigned uxTaskGetStackHighWaterMark(void *task){(void)task;return 4096;}
 // 竖排题头：本套用例只覆盖排版侧，几何一律留零。
 // Vertical heading: this suite only covers the layout side, so the geometry stays zero.

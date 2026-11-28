@@ -33,6 +33,8 @@ size_t book_navigation_chapter(size_t position);
 esp_err_t book_navigation_title(size_t position, char *buf, size_t cap);
 const char *book_navigation_anchor(size_t position);
 size_t book_navigation_source_offset(size_t position);
+/// 目录层级 0..2；TXT 恒为 0。/ TOC depth 0..2; always 0 for TXT.
+uint8_t book_navigation_level(size_t position);
 /// 复制 UTF-8 标题，空间不足返回错误。/ Copy a UTF-8 title, failing if capacity is insufficient.
 esp_err_t book_chapter_title(size_t i, char *buf, size_t cap);
 /// 加载 NUL 结尾的 PSRAM UTF-8；调用方 free。/ Load NUL-terminated PSRAM UTF-8; caller frees it.

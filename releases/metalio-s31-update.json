@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.6.0",
-  "notes": "LumenOS 1.6.1: Sửa đồng hồ chạy chậm sau khi tắt/mở máy (đồng bộ giờ lại một lần sau khi cập nhật). Thêm lối vào Từ vựng trên thẻ Cú Lém và tiện ích Trang chủ.",
+  "previous_version": "1.6.1",
+  "notes": "LumenOS 1.6.2: Mục lục hiện đủ chương con (Chương/Phần/Quyển…), thụt lề theo cấp và đánh dấu chương đang đọc. Mở sách nhanh hơn. Xem thời gian lật trang, mở sách trong Nhật ký & Chẩn đoán.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "bf77489d6c2ee85b38f9cd7eee6f65ed90957ac775a5f98227b43eb2cec8691f",
-      "md5": "3221cf178e3041a8838b3205ba9f3c82"
+      "sha256": "b4a666be63a1673d23aee33e1a9a621df42e771887fb6ad2e43e7f589e3381f2",
+      "md5": "50184bc8995476f11eb090bffb2d06da"
     }
   },
   "clean_image": {
-    "sha256": "28036ede940afe760f4181e5f178419a30d023d4af5a89893949ea526964535f",
-    "md5": "9b02241e33fd3e4de23431db247e18bf"
+    "sha256": "ae4768972acb5fc5121386426e27dbbd1300210328b787080312bb11995893d0",
+    "md5": "11a895c88c7d7b820a40ed1acea1beb8"
   },
-  "size": 5033520,
-  "sha256": "7885606d1e3ad65d66443b208d029df4ee4006a2858d2f74ee76342084377660",
-  "md5": "dfbafc467ebb7c30969d9827c5dfb934"
+  "size": 5039152,
+  "sha256": "05646a3ac402c9c434c1f08fae37a4784b3e36b154efd832c2e98b26e8d19dad",
+  "md5": "703ab2fd79c704848e25fdfc0cf96d84"
 }

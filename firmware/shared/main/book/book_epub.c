@@ -39,7 +39,9 @@
 // turned back into pointers, so every older cache has to lapse.
 // 14：无名页不再缓存「第 N 节」占位标题，旧缓存会把这些名字带回来。
 // 14: unnamed pages no longer cache an invented label, so caches holding one must lapse.
-#define EPUB_CACHE_VERSION 15u
+// 16：目录条目带层级与来源，正文找到的越南语章名并入目录。
+// 16: TOC entries carry level and origin; Vietnamese body headings merge into the TOC.
+#define EPUB_CACHE_VERSION 16u
 #define EPUB_META_CACHE_VERSION 1u
 #define EPUB_CSS_MAX (256u * 1024u)
 #define EPUB_CSS_FILE_MAX (128u * 1024u)
@@ -85,9 +87,14 @@ typedef struct {
     bool heading_checked; ///< 缺目录标题时已检查正文 / Body checked for a missing navigation label
     bool toc_visible; ///< 目录选择结果，打开目录时计算 / Visibility calculated when opening the TOC
 } chapter_t;
+// 目录条目来源：只有正式目录（及旧版正文替代目录）参与分页判断。
+// TOC entry origin: only authored entries (and the legacy body replacement) drive page breaks.
+enum { NAV_AUTHORED = 0, NAV_SPINE = 1, NAV_BODY = 2 };
 typedef struct {
     uint16_t chapter;
     bool valid, visible;
+    uint8_t level;  ///< 目录层级，0 为顶层 / TOC depth, 0 is top level
+    uint8_t origin; ///< NAV_AUTHORED/NAV_SPINE/NAV_BODY
     uint32_t source_offset; ///< XHTML 起始标签偏移；没有时为 UINT32_MAX / Source tag offset or UINT32_MAX
     const char* title;
     const char* anchor;
@@ -821,7 +828,7 @@ static esp_err_t navigation_parse(book_epub_t *book, const char *path, bool ncx)
     memset(previously_titled, 0, EPUB_CHAPTER_MAX / 8);
     for (size_t i = 0; i < book->count; ++i) if (book->chapters[i].titled) previously_titled[i / 8] |= (unsigned char)(1u << (i % 8));
     size_t original_count = book->authored_count;
-    size_t count = 0, toc_depth = 0; bool fallback_used = false;
+    size_t count = 0, toc_depth = 0, ol_level = 0; bool fallback_used = false;
     xml_t xml; xml_reader(&xml, text, len); token_t t;
     while (xml_next(&xml, &t)) {
         if (!ncx && t.kind == XML_OPEN && local_name(t.name, "nav")) {
@@ -830,7 +837,11 @@ static esp_err_t navigation_parse(book_epub_t *book, const char *path, bool ncx)
                 if (!explicit_toc) fallback_used = true;
             }
         }
-        if (!ncx && t.kind == XML_CLOSE && t.depth == toc_depth) toc_depth = 0;
+        if (!ncx && t.kind == XML_CLOSE && t.depth == toc_depth) { toc_depth = 0; ol_level = 0; }
+        if (!ncx && toc_depth && (t.kind == XML_OPEN || t.kind == XML_CLOSE) && local_name(t.name, "ol")) {
+            if (t.kind == XML_OPEN && !t.empty) ++ol_level;
+            else if (t.kind == XML_CLOSE && ol_level) --ol_level;
+        }
         bool node_open = t.kind == XML_OPEN && (ncx ? local_name(t.name, "navPoint") : toc_depth && local_name(t.name, "a"));
         if (node_open) {
             if (count == EPUB_XML_DEPTH || book->authored_count == EPUB_NAV_MAX) { xml.failed = true; break; }
@@ -839,6 +850,10 @@ static esp_err_t navigation_parse(book_epub_t *book, const char *path, bool ncx)
             node->slot = book->authored_count++;
             memset(&book->navigation[node->slot], 0, sizeof(*book->navigation));
             book->navigation[node->slot].source_offset = UINT32_MAX;
+            {
+                size_t level = ncx ? count - 1 : (ol_level ? ol_level - 1 : 0);
+                book->navigation[node->slot].level = (uint8_t)(level > 255 ? 255 : level);
+            }
             if (!ncx) { node->label_depth = t.depth; if (!attribute(t, "href", node->href, sizeof(node->href))) { xml.failed = true; break; } }
             if (t.empty) --count;
             continue;
@@ -1176,6 +1191,85 @@ static bool explicit_chapter_title(const char *title, bool heading_tag) {
            !strncmp(p, "、", 3) || *p == '-';
 }
 
+// 越南语/英语章名：关键字 + 阿拉伯数字、罗马数字或越南语数词；只供目录与章名使用，
+// 不参与分页。kind 0 表示部/卷，1 表示章。
+// Vietnamese/English headings: keyword plus Arabic, Roman or Vietnamese number words. Used
+// for the TOC and chapter labels only, never for page breaks. kind 0 is a part, 1 a chapter.
+static size_t vi_word(const char *p, const char *const *words, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        size_t len = strlen(words[i]);
+        if (!strncasecmp(p, words[i], len)) return len;
+    }
+    return 0;
+}
+
+static bool vi_boundary(const char *p) {
+    return !*p || *p == ' ' || *p == '\t' || *p == ':' || *p == '.' || *p == '-' ||
+           *p == ',' || *p == ')' || !strncmp(p, "\xe2\x80\x93", 3) || !strncmp(p, "\xe2\x80\x94", 3) ||
+           !strncmp(p, "：", 3);
+}
+
+// 罗马数字后必须是分隔，否则留给数词（如“Một”）。/ A Roman numeral must end at a boundary, else fall to number words.
+static bool vi_roman(const char **p) {
+    const char *q = *p; unsigned digits = 0;
+    while (*q && strchr("IVXLCDM", *q) && digits < 9) { ++q; ++digits; }
+    if (!digits || !vi_boundary(q)) return false;
+    *p = q;
+    return true;
+}
+
+static bool vi_chapter_title(const char *title, bool heading_tag, uint8_t *kind) {
+    static const char *const parts[] = {"phần", "PHẦN", "quyển", "QUYỂN", "tập", "TẬP",
+                                        "phan", "quyen", "tap", "part", "book"};
+    static const char *const chapters[] = {"chương", "CHƯƠNG", "hồi", "HỒI", "chuong",
+                                           "hoi", "chapter"};
+    static const char *const numbers[] = {"một", "hai", "ba", "bốn", "tư", "năm", "lăm", "sáu",
+        "bảy", "tám", "chín", "mười", "mươi", "mốt", "trăm", "linh", "lẻ", "nghìn", "thứ",
+        "nhất", "nhì", "MỘT", "HAI", "BA", "BỐN", "NĂM", "SÁU", "BẢY", "TÁM", "CHÍN", "MƯỜI",
+        "THỨ", "NHẤT"};
+    const char *p = title;
+    while (*p == ' ' || *p == '\t') ++p;
+    size_t n = vi_word(p, chapters, sizeof(chapters) / sizeof(chapters[0]));
+    uint8_t k = 1;
+    if (!n) { n = vi_word(p, parts, sizeof(parts) / sizeof(parts[0])); k = 0; }
+    if (!n) return false;
+    p += n;
+    bool spaced = *p == ' ' || *p == '\t';
+    while (*p == ' ' || *p == '\t') ++p;
+    const char *number = p;
+    if (*p >= '0' && *p <= '9') {
+        unsigned digits = 0;
+        while (*p >= '0' && *p <= '9' && digits < 6) { ++p; ++digits; }
+        if (*p >= '0' && *p <= '9') return false;
+    } else if (spaced && vi_roman(&p)) {
+        // 罗马数字已消费。/ Roman numeral consumed.
+    } else if (spaced) {
+        unsigned words = 0;
+        for (;;) {
+            size_t w = vi_word(p, numbers, sizeof(numbers) / sizeof(numbers[0]));
+            if (!w || !vi_boundary(p + w)) break;
+            p += w; ++words;
+            const char *q = p;
+            while (*q == ' ') ++q;
+            if (!vi_word(q, numbers, sizeof(numbers) / sizeof(numbers[0]))) break;
+            p = q;
+        }
+        if (!words) return false;
+    } else return false;
+    if (p == number || !vi_boundary(p)) return false;
+    size_t length = strlen(title);
+    if (length >= EPUB_TITLE_CAP) return false;
+    // 普通段落须像独立题头：仅编号，或编号后紧跟分隔符，或整体很短。
+    // A plain paragraph must look like a standalone heading: number only, a separator, or short.
+    if (!heading_tag) {
+        while (*p == ' ' || *p == '\t') ++p;
+        bool separator = *p && *p != ' ' && vi_boundary(p);
+        if (*p && !separator && length > 64) return false;
+    }
+    if (kind) *kind = k;
+    return true;
+}
+
 static bool pagination_numbered_title(const char *title, bool heading_tag) {
     if (explicit_chapter_title(title, heading_tag)) return true;
     const char *p = title;
@@ -1206,8 +1300,8 @@ static bool authored_body_title(const book_epub_t *book, size_t chapter, const c
                                 size_t first, size_t last) {
     for (size_t i = first; i < last; ++i) {
         const nav_entry_t *entry = &book->navigation[i];
-        if (entry->valid && entry->chapter == chapter && !front_matter_title(entry->title) &&
-            !strcmp(entry->title, title)) return true;
+        if (entry->valid && entry->origin == NAV_AUTHORED && entry->chapter == chapter &&
+            !front_matter_title(entry->title) && !strcmp(entry->title, title)) return true;
     }
     return false;
 }
@@ -1238,7 +1332,8 @@ static void chapter_breaks_prepare(book_epub_t *book, size_t chapter, html_text_
     if (front_matter_path(path)) return;
     size_t first = book->authored_count, last = 0;
     for (size_t i = 0; i < book->authored_count; ++i) {
-        if (!book->navigation[i].valid || book->navigation[i].chapter != chapter) continue;
+        if (!book->navigation[i].valid || book->navigation[i].origin != NAV_AUTHORED ||
+            book->navigation[i].chapter != chapter) continue;
         if (first == book->authored_count) first = i;
         last = i + 1;
     }
@@ -1286,7 +1381,7 @@ static bool auxiliary_xml(token_t t) {
 }
 
 static bool body_heading_add(body_headings_t *found, size_t chapter, size_t source_offset,
-                             const char *title) {
+                             const char *title, uint8_t kind, uint8_t origin) {
     if (found->count == EPUB_NAV_MAX) return false;
     if (found->count) {
         const nav_entry_t *last = &found->items[found->count - 1];
@@ -1308,6 +1403,8 @@ static bool body_heading_add(body_headings_t *found, size_t chapter, size_t sour
     entry->source_offset = (uint32_t)source_offset;
     entry->anchor = "";
     entry->valid = true;
+    entry->level = kind;
+    entry->origin = origin;
     entry->title = text_blocks_intern(&found->text_blocks, &found->text_last,
                                       title, strlen(title));
     if (entry->title == NULL) { --found->count; return false; }
@@ -1328,6 +1425,7 @@ static bool body_headings_scan(book_epub_t *book, body_headings_t *found) {
         size_t skipped = 0, candidate = 0, source_offset = 0;
         bool strong = false, label_ok = true, auxiliary_section = false, pending_strong = false;
         bool plain_text = false;
+        uint8_t pending_kind = 1, pending_origin = NAV_AUTHORED;
         size_t pending_offset = 0, link_depth = 0;
         char pending_title[EPUB_TITLE_CAP] = "";
         char title[EPUB_TITLE_CAP] = "";
@@ -1366,6 +1464,11 @@ static bool body_headings_scan(book_epub_t *book, body_headings_t *found) {
                     pending_title[0] = 0;
                 }
                 bool numbered = label_ok && explicit_chapter_title(title, strong);
+                uint8_t kind = 1, origin = NAV_AUTHORED;
+                if (!numbered && label_ok && vi_chapter_title(title, strong, &kind)) {
+                    numbered = true;
+                    origin = NAV_BODY;
+                }
                 // 编号列表本身不够：等到随后出现正文才收录，连续编号目录项不会互相作证。
                 // Wait for following prose; consecutive numbered TOC labels cannot validate each other.
                 if (numbered) {
@@ -1374,10 +1477,13 @@ static bool body_headings_scan(book_epub_t *book, body_headings_t *found) {
                         strcpy(pending_title, title);
                         pending_offset = source_offset;
                         pending_strong = strong;
+                        pending_kind = kind;
+                        pending_origin = origin;
                     }
                 } else if (!strong && plain_text && !front_matter_title(title) && pending_title[0]) {
                     if (!auxiliary_section || pending_strong) {
-                        if (!body_heading_add(found, chapter, pending_offset, pending_title)) {
+                        if (!body_heading_add(found, chapter, pending_offset, pending_title,
+                                              pending_kind, pending_origin)) {
                             free(html); return false;
                         }
                         auxiliary_section = false;
@@ -1395,6 +1501,129 @@ static bool body_headings_scan(book_epub_t *book, body_headings_t *found) {
     return true;
 }
 
+static bool nav_title_equal(const char *a, const char *b) {
+    while (*a == ' ') ++a;
+    while (*b == ' ') ++b;
+    size_t na = strlen(a), nb = strlen(b);
+    while (na && a[na - 1] == ' ') --na;
+    while (nb && b[nb - 1] == ' ') --nb;
+    return na == nb && !strncasecmp(a, b, na);
+}
+
+static uint32_t nav_position(const nav_entry_t *entry) {
+    return entry->source_offset == UINT32_MAX ? 0 : entry->source_offset;
+}
+
+static bool nav_before(const nav_entry_t *a, const nav_entry_t *b) {
+    return a->chapter != b->chapter ? a->chapter < b->chapter : nav_position(a) < nav_position(b);
+}
+
+// 正文章名比目录细时并入目录：按（spine 序号，源位置）排序，同位置目录项在前；
+// 子项比前一个目录项深一级，部/章混排时章再深一级。不改分页。
+// Merge body headings when they are finer than the TOC: sort by (spine index, source
+// position) with TOC entries first on ties; children sit one level below the preceding TOC
+// entry, chapters one more under parts. Page breaks are unaffected.
+static void navigation_merge_body(book_epub_t *book, const nav_entry_t *found, size_t n) {
+    if (!n || !book->count) return;
+    uint16_t *body = psram(book->count * sizeof(*body));
+    uint16_t *toc = psram(book->count * sizeof(*toc));
+    nav_entry_t *out = NULL;
+    if (!body || !toc) goto done;
+    memset(body, 0, book->count * sizeof(*body));
+    memset(toc, 0, book->count * sizeof(*toc));
+    for (size_t i = 0; i < n; ++i) if (found[i].chapter < book->count) ++body[found[i].chapter];
+    for (size_t i = 0; i < book->authored_count; ++i) {
+        const nav_entry_t *e = &book->navigation[i];
+        if (e->valid && e->chapter < book->count && !front_matter_title(e->title)) ++toc[e->chapter];
+    }
+    bool insert = false;
+    for (size_t c = 0; c < book->count; ++c) if (body[c] > toc[c]) insert = true;
+    if (!insert) goto done;
+    bool built = book->authored_count == 0;
+    size_t cap = book->authored_count + n + (built ? book->count : 0);
+    if (cap > EPUB_NAV_MAX) goto done;
+    out = psram(cap * sizeof(*out));
+    if (!out) goto done;
+    size_t m = 0;
+    if (built) {
+        // 无正式目录：没有章名的 spine 文件保留一行，书前文件照旧隐藏。
+        // No authored TOC: spine files without headings keep a row; front matter stays hidden.
+        for (size_t c = 0; c < book->count; ++c) {
+            if (body[c]) continue;
+            const chapter_t *ch = &book->chapters[c];
+            if ((ch->titled && front_matter_title(ch->title)) ||
+                (!ch->titled && front_matter_path(zip_entry_name(book->zip, ch->zip_index)))) continue;
+            out[m] = (nav_entry_t){.chapter = (uint16_t)c, .valid = true, .source_offset = UINT32_MAX,
+                                   .origin = NAV_SPINE,
+                                   .title = ch->titled ? ch->title : text_intern_cap(book, "", 1),
+                                   .anchor = text_intern_cap(book, "", 1)};
+            if (!out[m].title || !out[m].anchor) goto done;
+            ++m;
+        }
+    } else {
+        // 目录项稳定插入排序；正式目录通常已按阅读顺序。/ Stable insertion sort; authored TOCs are usually in order.
+        for (size_t i = 0; i < book->authored_count; ++i) {
+            nav_entry_t e = book->navigation[i];
+            size_t j = m;
+            while (j && nav_before(&e, &out[j - 1])) { out[j] = out[j - 1]; --j; }
+            out[j] = e; ++m;
+        }
+    }
+    size_t toc_count = m;
+    nav_entry_t *extra = psram(n * sizeof(*extra));
+    if (!extra) goto done;
+    size_t x = 0;
+    for (size_t i = 0; i < n; ++i) {
+        const nav_entry_t *f = &found[i];
+        if (f->chapter >= book->count || body[f->chapter] <= toc[f->chapter]) continue;
+        bool duplicate = false;
+        for (size_t j = 0; j < toc_count && !duplicate; ++j) {
+            nav_entry_t *e = &out[j];
+            if (e->chapter != f->chapter || !nav_title_equal(e->title, f->title)) continue;
+            duplicate = true;
+            if (e->source_offset == UINT32_MAX && (!e->anchor || !e->anchor[0])) e->source_offset = f->source_offset;
+        }
+        if (duplicate) continue;
+        extra[x] = *f;
+        extra[x].origin = NAV_BODY;
+        extra[x].title = text_intern_cap(book, f->title, EPUB_TITLE_CAP);
+        extra[x].anchor = text_intern_cap(book, "", 1);
+        if (!extra[x].title || !extra[x].anchor) { free(extra); goto done; }
+        chapter_t *ch = &book->chapters[f->chapter];
+        if (!ch->titled) { ch->title = extra[x].title; ch->titled = true; ch->heading_checked = true; }
+        ++x;
+    }
+    // 两条有序序列归并。/ Merge the two sorted runs.
+    nav_entry_t *merged = psram((toc_count + x) * sizeof(*merged));
+    if (!merged) { free(extra); goto done; }
+    size_t a = 0, b = 0, w = 0;
+    while (a < toc_count || b < x)
+        merged[w++] = b >= x || (a < toc_count && !nav_before(&extra[b], &out[a])) ? out[a++] : extra[b++];
+    free(extra);
+    free(out);
+    out = merged;
+    bool has_part = false, has_chapter = false;
+    for (size_t i = 0; i < w; ++i) if (out[i].origin == NAV_BODY) {
+        if (out[i].level == 0) has_part = true; else has_chapter = true;
+    }
+    bool mixed = has_part && has_chapter;
+    int parent = -1;
+    for (size_t i = 0; i < w; ++i) {
+        nav_entry_t *e = &out[i];
+        if (e->origin == NAV_AUTHORED) { parent = e->level > 2 ? 2 : e->level; continue; }
+        if (e->origin != NAV_BODY) { e->level = 0; continue; }
+        int level = parent + 1 + (mixed ? e->level : 0);
+        e->level = (uint8_t)(level > 2 ? 2 : level);
+    }
+    free(book->navigation);
+    book->navigation = out;
+    book->navigation_capacity = w;
+    book->authored_count = w;
+    out = NULL;
+done:
+    free(out); free(body); free(toc);
+}
+
 static void body_headings_prepare(book_epub_t *book) {
     if (book->body_scanned) return;
     // 大书已有正式目录时不在第一次绘制阅读页前解压数千章；当前章节仍按需加载。
@@ -1405,6 +1634,21 @@ static void body_headings_prepare(book_epub_t *book) {
         free(found.items);
         text_blocks_free(&found.text_blocks, &found.text_last);
         return;
+    }
+    // 旧规则只看汉字/英文编号章名；越南语等新章名另存，稍后只并入目录。
+    // Legacy rules see only the classic headings; the new ones are kept aside for TOC merging.
+    size_t all_count = found.count;
+    nav_entry_t *all = all_count ? psram(all_count * sizeof(*all)) : NULL;
+    if (all) memcpy(all, found.items, all_count * sizeof(*all));
+    else all_count = 0;
+    {
+        size_t classic = 0;
+        for (size_t i = 0; i < found.count; ++i)
+            if (found.items[i].origin == NAV_AUTHORED) {
+                found.items[i].level = 0;
+                found.items[classic++] = found.items[i];
+            }
+        found.count = classic;
     }
     for (size_t i = 0; i < found.count; ++i) {
         nav_entry_t *entry = &found.items[i];
@@ -1463,6 +1707,8 @@ static void body_headings_prepare(book_epub_t *book) {
             }
         }
     }
+    navigation_merge_body(book, all, all_count);
+    free(all);
     free(found.items);
     text_blocks_free(&found.text_blocks, &found.text_last);
     book->body_scanned = true;
@@ -1548,10 +1794,17 @@ esp_err_t book_epub_navigation_title(book_epub_t *book, size_t position, char *b
         if (err == ESP_OK && !buf[0]) snprintf(buf, cap, "第 %u 节", (unsigned)chapter + 1);
         return err;
     }
+    if (!entry->title[0] && entry->origin == NAV_SPINE)
+        return book_epub_chapter_title(book, entry->chapter, buf, cap);
     size_t n = strlen(entry->title);
     if (n >= cap) return ESP_ERR_INVALID_SIZE;
     memcpy(buf, entry->title, n + 1);
     return ESP_OK;
+}
+
+uint8_t book_epub_navigation_level(book_epub_t *book, size_t position) {
+    nav_entry_t *entry = navigation_entry(book, position);
+    return entry ? (entry->level > 2 ? 2 : entry->level) : 0;
 }
 
 const char *book_epub_navigation_anchor(book_epub_t *book, size_t position) {

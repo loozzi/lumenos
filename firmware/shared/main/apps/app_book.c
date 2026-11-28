@@ -169,6 +169,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#if DPREADER_BOARD_METALIO47
+#include "metalio_power_stats.h"
+#endif
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/time.h>
@@ -591,6 +594,8 @@ static int64_t s_image_zoom_draw_ms;
 static bool s_image_zoom_bw;
 static bool s_image_pan_active;
 static uint16_t s_image_pan_x, s_image_pan_y;
+// 开书时 PSRAM 不少于此值就保留字形缓存。/ Keep glyph caches on open while PSRAM stays above this.
+#define READER_OPEN_KEEP_GLYPHS_PSRAM (8u * 1024u * 1024u)
 static size_t s_selected_toc = SIZE_MAX;
 static bool s_toc_jump_open, s_toc_jump_drag;
 static int s_toc_jump_percent;
@@ -4615,6 +4620,26 @@ static size_t current_toc_position(void) {
         if (chapter > s_chapter) break;
         if (selected == SIZE_MAX || chapter > best_chapter) { selected = i; best_chapter = chapter; }
     }
+    // 同一 spine 文件有多个目录项时，按题头文字在已载入正文中的位置找到当前页所在的那一项。
+    // Several entries in one spine file: locate each heading's text in the loaded body and pick
+    // the last one that starts before the end of the current page.
+    if (selected == SIZE_MAX || best_chapter != s_chapter || !s_text || !s_blocks) return selected;
+    size_t end = s_page + 1 < book_layout_page_count() ? reader_page_offset(s_page + 1) : s_text_len;
+    size_t block = 0;
+    for (size_t i = selected; i < count && book_navigation_chapter(i) == s_chapter; ++i) {
+        char title[160];
+        if (book_navigation_title(i, title, sizeof(title)) != ESP_OK) continue;
+        size_t n = strlen(title);
+        while (n && title[n - 1] == ' ') --n;
+        if (!n) continue;
+        for (size_t k = block; k < s_block_count && s_blocks[k].offset < end; ++k) {
+            const char *text = s_text + s_blocks[k].offset;
+            size_t len = s_blocks[k].len;
+            while (len && (*text == ' ' || *text == '\t')) { ++text; --len; }
+            while (len && (text[len - 1] == ' ' || text[len - 1] == '\t')) --len;
+            if (len == n && !strncasecmp(text, title, n)) { selected = i; block = k + 1; break; }
+        }
+    }
     return selected;
 }
 static void render(app_ctx_t* ctx, uint8_t* fb) {
@@ -5582,9 +5607,15 @@ static void prepare_inline_image(void) {
 static esp_err_t reader_footnote_load(const char *href, char **utf8, size_t *len) {
     return book_chapter_note(s_chapter, href, utf8, len);
 }
+static bool s_open_in_progress; ///< 开书过程中不计入换章 / Book opening is not a chapter change
 static bool load_chapter_at(app_ctx_t* ctx, size_t chapter, size_t offset,
                             bool last_page, const char *anchor, size_t source_offset) {
     bool clear_toc = chapter != s_chapter || (!anchor && source_offset == SIZE_MAX);
+#if DPREADER_BOARD_METALIO47
+    // 换章计时：只量载入、解压、解析与排版，不含绘制和扫描。/ Chapter-change timing: load, inflate, parse and layout only.
+    const bool chapter_changed = chapter != s_chapter;
+    const int64_t chapter_started = esp_timer_get_time();
+#endif
     html_text_t loaded = {0};
     size_t anchor_offset = 0;
     esp_err_t err = book_chapter_load_blocks_target(chapter, anchor, source_offset,
@@ -5664,6 +5695,10 @@ static bool load_chapter_at(app_ctx_t* ctx, size_t chapter, size_t offset,
              (unsigned)uxTaskGetStackHighWaterMark(NULL),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#if DPREADER_BOARD_METALIO47
+    if (chapter_changed && s_view == READING && !s_open_in_progress)
+        metalio_power_note_latency(METALIO_LATENCY_CHAPTER, (uint32_t)((esp_timer_get_time() - chapter_started) / 1000));
+#endif
     return true;
 }
 static bool load_chapter(app_ctx_t* ctx, size_t chapter, size_t offset, bool last_page) {
@@ -5749,7 +5784,11 @@ static bool open_book_impl(app_ctx_t* ctx, const char* path) {
     // faces need exactly this PSRAM, and the system face's cache is the easiest part to
     // reclaim. The faces stay loaded and re-cache on demand.
     size_t psram_before = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    size_t reclaimed = ttf_font_cache_clear_all();
+    // PSRAM 充裕时保留系统字体的字形缓存，首页不必重新栅格化；书内字体单个上限 4MiB，
+    // 加 2.5MiB 余量后 8MiB 仍够装载，否则照旧全部归还。
+    // With ample PSRAM keep the system face's glyph cache so the first page need not re-raster;
+    // an embedded face is capped at 4 MiB, so 8 MiB still fits it plus the 2.5 MiB reserve.
+    size_t reclaimed = psram_before >= READER_OPEN_KEEP_GLYPHS_PSRAM ? 0 : ttf_font_cache_clear_all();
     size_t psram_after = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     ESP_LOGI(TAG, "open start wifi=%d internal=%u/%u psram=%u/%u cache=%uK freed=%uK",
              network.network_ready,
@@ -5870,8 +5909,10 @@ static void book_busy_notice(app_ctx_t *ctx, const char *label) {
     ui_draw_control_frame(ctx->fb, box, 16, UI_GRAY_BLACK);
     ui_text_fixed_vc(ctx->fb, box.x + box.width / 2, box.y + box.height / 2,
                      26, label, EPD_DRAW_ALIGN_CENTER, false);
+    // 提示框只有黑白内容，用 DU 快刷而不是整套灰阶，开书前少等一次完整扫描。
+    // The notice is black and white, so DU replaces the full gray scan and opening waits less.
     guard_draw_result(ctx->hl,
-        update_display_area_diff_with(ctx->hl, &E0470_WAVEFORM, MODE_GL16, box));
+        update_display_area_diff_with(ctx->hl, &E0470_FOLLOW_WAVEFORM, MODE_DU, box));
 }
 
 static bool open_book(app_ctx_t *ctx, const char *path) {
@@ -5890,9 +5931,14 @@ static bool open_book(app_ctx_t *ctx, const char *path) {
         copy_text(s_message, sizeof(s_message), "Lưu trạng thái mở sách thất bại, hãy thử lại");
         return false;
     }
+    s_open_in_progress = true;
     bool ok = open_book_impl(ctx, path);
+    s_open_in_progress = false;
     pico_boot_book_end(ok);
     ESP_LOGI(TAG,"open local finished ok=%u elapsed_ms=%lld",(unsigned)ok,(long long)((esp_timer_get_time()-open_started)/1000));
+#if DPREADER_BOARD_METALIO47
+    if (ok) metalio_power_note_latency(METALIO_LATENCY_OPEN, (uint32_t)((esp_timer_get_time() - open_started) / 1000));
+#endif
     return ok;
 }
 static bool open_requested_book(app_ctx_t* ctx) {

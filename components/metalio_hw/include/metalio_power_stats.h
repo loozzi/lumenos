@@ -21,6 +21,8 @@ typedef enum {
     METALIO_LATENCY_UI,       ///< 其他页面输入到显示完成 / Other pages: input to presented frame
     METALIO_LATENCY_UNLOCK,   ///< 解锁唤醒到首帧 / Unlock wake to first frame
     METALIO_LATENCY_BOOT,     ///< 开机到界面就绪 / Boot to UI ready
+    METALIO_LATENCY_OPEN,     ///< 开书总耗时 / Whole book open
+    METALIO_LATENCY_CHAPTER,  ///< 换章载入与排版 / Chapter load and layout on a chapter change
     METALIO_LATENCY_COUNT,
 } metalio_latency_kind_t;
 
@@ -49,6 +51,8 @@ typedef struct {
     int16_t lock_soc, unlock_soc; ///< 最近一次锁屏/解锁电量，-1未知 / Last lock/unlock SOC, -1 unknown
     uint16_t lock_mv, unlock_mv;
     uint32_t latency[METALIO_LATENCY_COUNT][METALIO_LATENCY_BUCKETS];
+    uint32_t last_ms[METALIO_LATENCY_COUNT]; ///< 最近一次耗时 / Most recent sample
+    uint32_t max_ms[METALIO_LATENCY_COUNT];  ///< 最慢一次 / Slowest sample
 } metalio_power_stats_t;
 
 void metalio_power_note_wait(bool idle_allowed, uint32_t elapsed_ms);

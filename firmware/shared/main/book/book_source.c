@@ -72,6 +72,9 @@ const char *book_navigation_anchor(size_t position) {
 size_t book_navigation_source_offset(size_t position) {
     return s_epub ? book_epub_navigation_source_offset(s_epub, position) : SIZE_MAX;
 }
+uint8_t book_navigation_level(size_t position) {
+    return s_epub ? book_epub_navigation_level(s_epub, position) : 0;
+}
 esp_err_t book_chapter_title(size_t i, char *buf, size_t cap) {
     if (s_epub) return book_epub_chapter_title(s_epub, i, buf, cap);
     if (!buf || !cap || i >= s_book.count) return ESP_ERR_INVALID_ARG;
