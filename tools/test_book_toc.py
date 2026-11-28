@@ -114,7 +114,8 @@ esp_err_t book_navigation_title(size_t position,char *out,size_t cap){
     return ESP_OK;
 }
 size_t book_navigation_chapter(size_t position){return position+nav_shift;}
-uint8_t book_navigation_level(size_t position){(void)position;return 0;}
+static const uint8_t *levels;
+uint8_t book_navigation_level(size_t position){return levels?levels[position]:0;}
 int main(void){
     assert(book_toc_pages(0)==1 && book_toc_pages(7)==1 && book_toc_pages(8)==2);
     assert(book_toc_hit(58,110,0,8)==BOOK_TOC_BACK);
@@ -147,7 +148,32 @@ int main(void){
     assert(jump_summary==1);
     nav_shift=1;seen_count=0;book_toc_render(&fb,"目录",4,1,0,"");
     assert(seen_count==4&&seen_sources[0]==1&&seen_sources[3]==4);
-    puts("book_toc: pages, taps, overflow, single-line titles, stable title font path and selected-row backgrounds passed");
+    nav_shift=0;
+    // 3 phần × 5 chương: mở ở chương 7 (phần 2) → phần 1, 3 thu gọn. / 3 parts × 5 chapters, opened at entry 7.
+    static const uint8_t tree[18]={0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1};
+    levels=tree;
+    assert(book_toc_visible_count(18)==18);           // chưa mở: hiện tất cả / unopened: all rows
+    book_toc_view_open(18,8);
+    assert(book_toc_visible_count(18)==8);            // P1, P2+5, P3
+    assert(book_toc_page_of(18,8)==0 && book_toc_pages(18)==2);
+    assert(book_toc_hit(50,TOC_ROW_TOP+10,0,18)==BOOK_TOC_TOGGLE(0));
+    assert(book_toc_hit(300,TOC_ROW_TOP+10,0,18)==0);
+    assert(book_toc_hit(300,TOC_ROW_TOP+TOC_ROW_STEP+10,0,18)==6);   // row 1 = Phần 2
+    assert(book_toc_hit(300,TOC_ROW_TOP+2*TOC_ROW_STEP+10,0,18)==7); // row 2 = chương con đầu
+    assert(book_toc_hit(50,TOC_ROW_TOP+2*TOC_ROW_STEP+10,0,18)==7);  // lá: không có vùng gập
+    book_toc_toggle(18,0);
+    assert(book_toc_visible_count(18)==13 && book_toc_page_of(18,8)==1);
+    book_toc_toggle(18,7);                            // lá: bỏ qua / leaf ignored
+    assert(book_toc_visible_count(18)==13);
+    book_toc_toggle(18,6); book_toc_toggle(18,0);
+    assert(book_toc_visible_count(18)==3 && book_toc_page_of(18,9)==0);
+    assert(BOOK_TOC_IS_TOGGLE(BOOK_TOC_TOGGLE(17)) && BOOK_TOC_TOGGLE_ENTRY(BOOK_TOC_TOGGLE(17))==17);
+    title_fits=title_draws=0; book_toc_render(&fb,"Sách",18,SIZE_MAX,0,"");
+    assert(title_draws==4);                           // tiêu đề sách + 3 phần / book title + 3 parts
+    book_toc_render_jump(&fb,18,100);
+    book_toc_view_open(17,0); assert(book_toc_visible_count(18)==18); // số mục khác: hiện hết
+    levels=NULL;
+    puts("book_toc: pages, taps, overflow, single-line titles, stable title font path, selected-row backgrounds and collapse passed");
     return 0;
 }
 '''

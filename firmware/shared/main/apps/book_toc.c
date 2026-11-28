@@ -13,12 +13,117 @@
 #include "book_source.h"
 #include "ui_kit.h"
 #include "ui_nav.h"
+#if defined(ESP_PLATFORM)
+#include "esp_attr.h"
+#define TOC_STATE_RAM EXT_RAM_BSS_ATTR
+#else
+#define TOC_STATE_RAM
+#endif
 
 enum { TOC_LEFT = 36, TOC_RIGHT = 648, TOC_ROW_TOP = 252,
        TOC_ROW_STEP = 108, TOC_ROW_HEIGHT = 94 };
 
+/* ---- 折叠 / Collapse ---- */
+// 位图按目录项记录“已折叠”；s_total 不符时视为全部展开。
+// One collapsed bit per entry; a mismatched s_total means everything is expanded.
+#define TOC_MAX_ENTRIES 8192
+static TOC_STATE_RAM uint8_t s_collapsed[TOC_MAX_ENTRIES / 8];
+static size_t s_total;
+
+static bool toc_active(size_t chapters) { return chapters && chapters == s_total; }
+static bool is_collapsed(size_t i) { return i < TOC_MAX_ENTRIES && (s_collapsed[i >> 3] >> (i & 7)) & 1; }
+static void set_collapsed(size_t i, bool on) {
+    if (i >= TOC_MAX_ENTRIES) return;
+    if (on) s_collapsed[i >> 3] |= (uint8_t)(1u << (i & 7));
+    else s_collapsed[i >> 3] &= (uint8_t)~(1u << (i & 7));
+}
+static bool has_children(size_t chapters, size_t i) {
+    return i + 1 < chapters && book_navigation_level(i + 1) > book_navigation_level(i);
+}
+static size_t child_count(size_t chapters, size_t i) {
+    uint8_t level = book_navigation_level(i);
+    size_t n = 0;
+    while (i + 1 + n < chapters && book_navigation_level(i + 1 + n) > level) ++n;
+    return n;
+}
+
+// 顺序遍历：visit 返回 false 时停止；返回值为可见行数。
+// Walk visible rows in order; stop when visit returns false; returns the rows walked.
+typedef bool (*toc_visit_t)(size_t row, size_t entry, void *arg);
+static size_t toc_walk(size_t chapters, toc_visit_t visit, void *arg) {
+    if (!toc_active(chapters)) {
+        for (size_t i = 0; i < chapters; ++i) if (visit && !visit(i, i, arg)) return i + 1;
+        return chapters;
+    }
+    size_t row = 0;
+    bool hiding = false;
+    uint8_t hide_level = 0;
+    for (size_t i = 0; i < chapters; ++i) {
+        uint8_t level = book_navigation_level(i);
+        if (hiding && level > hide_level) continue;
+        hiding = false;
+        if (visit && !visit(row, i, arg)) return row + 1;
+        ++row;
+        if (is_collapsed(i) && has_children(chapters, i)) { hiding = true; hide_level = level; }
+    }
+    return row;
+}
+
+void book_toc_view_open(size_t chapters, size_t current) {
+    memset(s_collapsed, 0, sizeof(s_collapsed));
+    s_total = chapters > TOC_MAX_ENTRIES ? 0 : chapters;
+    if (!s_total) return;
+    for (size_t i = 0; i < chapters; ++i) if (has_children(chapters, i)) set_collapsed(i, true);
+    if (current >= chapters) return;
+    // 展开当前项的全部上级。/ Expand every ancestor of the current entry.
+    uint8_t level = book_navigation_level(current);
+    for (size_t i = current; i-- > 0 && level;) {
+        uint8_t l = book_navigation_level(i);
+        if (l < level) { set_collapsed(i, false); level = l; }
+    }
+}
+
+void book_toc_toggle(size_t chapters, size_t entry) {
+    if (!toc_active(chapters) || !has_children(chapters, entry)) return;
+    set_collapsed(entry, !is_collapsed(entry));
+}
+
+size_t book_toc_visible_count(size_t chapters) { return toc_walk(chapters, NULL, NULL); }
+
+typedef struct { size_t entry, row, best; } toc_find_t;
+static bool find_visit(size_t row, size_t entry, void *arg) {
+    toc_find_t *f = arg;
+    if (entry > f->entry) return false;
+    f->best = row;
+    return true;
+}
+static size_t row_of(size_t chapters, size_t entry) {
+    toc_find_t f = {entry, 0, 0};
+    toc_walk(chapters, find_visit, &f);
+    return f.best;
+}
+int book_toc_page_of(size_t chapters, size_t entry) {
+    if (!chapters || entry == SIZE_MAX) return 0;
+    return (int)(row_of(chapters, entry) / BOOK_TOC_ROWS);
+}
+
+typedef struct { size_t first, count; size_t out[BOOK_TOC_ROWS]; } toc_page_t;
+static bool page_visit(size_t row, size_t entry, void *arg) {
+    toc_page_t *p = arg;
+    if (row < p->first) return true;
+    p->out[p->count++] = entry;
+    return p->count < BOOK_TOC_ROWS;
+}
+static size_t page_entries(size_t chapters, int page, size_t out[BOOK_TOC_ROWS]) {
+    toc_page_t p = {.first = (size_t)(page < 0 ? 0 : page) * BOOK_TOC_ROWS};
+    toc_walk(chapters, page_visit, &p);
+    memcpy(out, p.out, sizeof(p.out));
+    return p.count;
+}
+
 int book_toc_pages(size_t chapters) {
-    return chapters ? (int)(1 + (chapters - 1) / BOOK_TOC_ROWS) : 1;
+    size_t rows = book_toc_visible_count(chapters);
+    return rows ? (int)(1 + (rows - 1) / BOOK_TOC_ROWS) : 1;
 }
 
 EpdRect book_toc_row_rect(int row) {
@@ -85,10 +190,16 @@ int book_toc_hit(uint16_t x, uint16_t y, int page, size_t chapters) {
         if (x >= 548 && x < 648) return BOOK_TOC_SKIP_NEXT;
     }
     if (x >= 36 && x < 648 && y >= 1100 && y < 1174) return BOOK_TOC_JUMP;
-    for (int row = 0; row < BOOK_TOC_ROWS; ++row) {
-        size_t index = (size_t)page * BOOK_TOC_ROWS + row;
-        if (index >= chapters) break;
-        if (ui_rect_hit(book_toc_row_rect(row), x, y)) return (int)index;
+    size_t entries[BOOK_TOC_ROWS];
+    size_t shown = page_entries(chapters, page, entries);
+    for (size_t row = 0; row < shown; ++row) {
+        EpdRect r = book_toc_row_rect((int)row);
+        if (!ui_rect_hit(r, x, y)) continue;
+        size_t index = entries[row];
+        if (toc_active(chapters) && has_children(chapters, index) &&
+            x < r.x + 79 + 28 * (int)book_navigation_level(index))
+            return BOOK_TOC_TOGGLE(index);
+        return (int)index;
     }
     return -1;
 }
@@ -149,16 +260,25 @@ void book_toc_render(uint8_t *fb, const char *book_title, size_t chapters,
     } else if (!chapters) {
         ui_text_box(fb,(EpdRect){72,408,540,72},25,"Sách này không có mục lục",EPD_DRAW_ALIGN_CENTER,false);
     } else {
-        for (int row = 0; row < BOOK_TOC_ROWS; ++row) {
-            size_t index = (size_t)page * BOOK_TOC_ROWS + row;
-            if (index >= chapters) break;
+        size_t entries[BOOK_TOC_ROWS];
+        size_t shown = page_entries(chapters, page, entries);
+        for (size_t row = 0; row < shown; ++row) {
+            size_t index = entries[row];
             size_t source_index = book_navigation_chapter(index);
             if (source_index == SIZE_MAX) break;
-            EpdRect r = book_toc_row_rect(row);
+            EpdRect r = book_toc_row_rect((int)row);
             bool selected = index == current;
             toc_border(fb, r, 20, selected);
-            char number[16]; snprintf(number, sizeof(number), "%02u", (unsigned)index + 1);
-            ui_text_box(fb,(EpdRect){r.x+14,r.y+11,58,72},21,number,EPD_DRAW_ALIGN_LEFT,false);
+            int indent = 28 * (int)book_navigation_level(index);
+            bool parent = toc_active(chapters) && has_children(chapters, index);
+            bool folded = parent && is_collapsed(index);
+            if (parent) {
+                // 折叠显示“+”，展开显示“–”。/ "+" when folded, "–" when expanded.
+                ui_text_box(fb,(EpdRect){r.x+14+indent,r.y+11,58,72},30,folded?"+":"–",EPD_DRAW_ALIGN_LEFT,false);
+            } else {
+                char number[16]; snprintf(number, sizeof(number), "%02u", (unsigned)index + 1);
+                ui_text_box(fb,(EpdRect){r.x+14,r.y+11,58,72},21,number,EPD_DRAW_ALIGN_LEFT,false);
+            }
             char raw[160] = "", label[160];
             if (book_navigation_title(index, raw, sizeof(raw)) != ESP_OK || !raw[0])
                 snprintf(raw, sizeof(raw), "Mục %u", (unsigned)index + 1);
@@ -169,11 +289,14 @@ void book_toc_render(uint8_t *fb, const char *book_title, size_t chapters,
             one_line(label, sizeof(label), raw);
             if (!label[0]) snprintf(label, sizeof(label), "Mục %u", (unsigned)index + 1);
             // 子目录每级缩进 28px，标题宽度相应收窄。/ Each TOC level indents 28 px and narrows the title.
-            int indent = 28 * (int)book_navigation_level(index);
-            toc_title(fb, (EpdRect){r.x+79+indent,r.y+9,(selected?420:495)-indent,76}, 30, label,
+            toc_title(fb, (EpdRect){r.x+79+indent,r.y+9,(selected||folded?420:495)-indent,76}, 30, label,
                        ui_soft_card_color(selected));
             if (selected)
                 ui_text_box(fb,(EpdRect){r.x+r.width-93,r.y+11,71,72},24,"Hiện tại",EPD_DRAW_ALIGN_RIGHT,false);
+            else if (folded) {
+                char more[24]; snprintf(more, sizeof(more), "%u mục", (unsigned)child_count(chapters, index));
+                ui_text_box(fb,(EpdRect){r.x+r.width-93,r.y+11,71,72},24,more,EPD_DRAW_ALIGN_RIGHT,false);
+            }
         }
     }
     const int pages = book_toc_pages(chapters);
@@ -215,9 +338,10 @@ void book_toc_render_jump(uint8_t *fb, size_t chapters, int percent) {
     ui_text_box(fb,(EpdRect){99,747,486,30},23,"Vị trí đích",EPD_DRAW_ALIGN_LEFT,false);
     int pages = book_toc_pages(chapters);
     int target = book_toc_page_from_percent(percent, pages);
-    size_t first = (size_t)target * BOOK_TOC_ROWS + 1;
-    size_t last = first + BOOK_TOC_ROWS - 1;
-    if (last > chapters) last = chapters;
+    size_t entries[BOOK_TOC_ROWS];
+    size_t shown = page_entries(chapters, target, entries);
+    size_t first = shown ? entries[0] + 1 : 0;
+    size_t last = shown ? entries[shown - 1] + 1 : 0;
     char summary[160];
     if (chapters)
         snprintf(summary, sizeof(summary), "Khoảng tr. %d / %d · Mục %u–%u",

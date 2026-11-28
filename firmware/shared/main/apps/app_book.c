@@ -6627,7 +6627,7 @@ static app_redraw_t turn_page(app_ctx_t* ctx, int dir) {
     else if (dir < 0 && s_chapter) changed = load_chapter(ctx, s_chapter - 1, 0, true);
     else if (dir > 0 && book_layout_page_count() && book_chapter_count()) return finished_open(ctx);
     else return reader_turn_chrome(ctx) ? APP_REDRAW_PAGE : APP_REDRAW_NONE;
-    if (!changed) { set_reader_view(s_text ? TOC : SHELF); ctx->leaf = s_text ? s_chapter / BOOK_TOC_ROWS : 0; return APP_REDRAW_PAGE; }
+    if (!changed) { set_reader_view(s_text ? TOC : SHELF); ctx->leaf = 0; if (s_text) { size_t toc = current_toc_position(); book_toc_view_open(book_navigation_count(), toc); ctx->leaf = book_toc_page_of(book_navigation_count(), toc); } return APP_REDRAW_PAGE; }
     skip_hidden_image_pages(ctx, dir);
     if (!s_text) { s_view = SHELF; return APP_REDRAW_PAGE; }
     // 先选择目标页，再关闭工具栏，保留正文排版与目标位置。
@@ -7506,7 +7506,8 @@ static app_redraw_t reader_panel_action(app_ctx_t* ctx, uint16_t x, uint16_t y) 
                 s_toc_jump_open = s_toc_jump_drag = false;
                 s_reader_panel = READER_PANEL_NONE;
                 size_t toc = current_toc_position();
-                ctx->leaf = toc == SIZE_MAX ? 0 : (int)(toc / BOOK_TOC_ROWS);
+                book_toc_view_open(book_navigation_count(), toc);
+                ctx->leaf = book_toc_page_of(book_navigation_count(), toc);
             } else if (i == 1) {
                 (void)bookmark_toggle();
             } else if (i == 2) {
@@ -8146,6 +8147,12 @@ static app_redraw_t action_at(app_ctx_t* ctx, uint16_t x, uint16_t y) {
         if (target == BOOK_TOC_JUMP && book_navigation_count()) {
             s_toc_jump_open = true;
             s_toc_jump_percent = (ctx->leaf + 1) * 100 / leaves();
+            return APP_REDRAW_PAGE;
+        }
+        if (BOOK_TOC_IS_TOGGLE(target) && !s_message[0]) {
+            size_t entry = BOOK_TOC_TOGGLE_ENTRY(target);
+            book_toc_toggle(book_navigation_count(), entry);
+            ctx->leaf = book_toc_page_of(book_navigation_count(), entry);
             return APP_REDRAW_PAGE;
         }
         if (target >= 0 && !s_message[0]) {
