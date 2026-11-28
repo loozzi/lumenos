@@ -56,6 +56,8 @@ void metalio_power_note_latency(metalio_latency_kind_t kind, uint32_t elapsed_ms
     unsigned bucket = 0;
     while (bucket < METALIO_LATENCY_BUCKETS - 1 && elapsed_ms >= metalio_latency_bounds_ms[bucket]) ++bucket;
     ++s_stats.latency[kind][bucket];
+    s_stats.last_ms[kind] = elapsed_ms;
+    if (elapsed_ms > s_stats.max_ms[kind]) s_stats.max_ms[kind] = elapsed_ms;
 }
 
 void metalio_power_mark_unlock(int64_t now_us) { s_unlock_mark_us = now_us ? now_us : 1; }

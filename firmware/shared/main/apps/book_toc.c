@@ -168,7 +168,9 @@ void book_toc_render(uint8_t *fb, const char *book_title, size_t chapters,
                 snprintf(raw, sizeof(raw), "Mục %u", (unsigned)index + 1);
             one_line(label, sizeof(label), raw);
             if (!label[0]) snprintf(label, sizeof(label), "Mục %u", (unsigned)index + 1);
-            toc_title(fb, (EpdRect){r.x+79,r.y+9,selected?420:495,76}, 30, label,
+            // 子目录每级缩进 28px，标题宽度相应收窄。/ Each TOC level indents 28 px and narrows the title.
+            int indent = 28 * (int)book_navigation_level(index);
+            toc_title(fb, (EpdRect){r.x+79+indent,r.y+9,(selected?420:495)-indent,76}, 30, label,
                        ui_soft_card_color(selected));
             if (selected)
                 ui_text_box(fb,(EpdRect){r.x+r.width-93,r.y+11,71,72},24,"Hiện tại",EPD_DRAW_ALIGN_RIGHT,false);

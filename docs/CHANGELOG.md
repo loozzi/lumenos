@@ -1,3 +1,10 @@
+## LumenOS 1.6.2 · Phát hành chính thức · 2026-11-28 (chỉ Full)
+
+- **Mục lục EPUB hiện đủ chương con:** nhận tiêu đề "Chương/Phần/Quyển/Hồi/Tập/Chapter/Part" trong thân sách (có hoặc không dấu; số Ả Rập, La Mã hay số đếm tiếng Việt). Khi mục lục gốc thiếu hoặc chỉ có cấp trên, các chương tìm được được trộn vào, sắp theo (tệp spine, vị trí trong tệp), bỏ mục trùng tên cùng tệp; chương con nằm dưới mục gần nhất phía trước, Phần/Quyển và Chương lẫn nhau thì Chương thụt thêm một cấp (tối đa 3 cấp). NCX/NAV lồng nhau giữ cấp. Mở mục lục đánh dấu đúng mục chứa trang hiện tại. Chỉ dùng cho mục lục và tên chương: ngắt trang và vị trí đọc không đổi. Sách > 256 tệp spine có mục lục riêng vẫn chỉ dùng mục lục gốc. Chỉ mục sách được dựng lại một lần sau khi cập nhật.
+- **Mở sách:** hộp "Đang mở sách…" làm mới bằng DU thay GL16; cache glyph chỉ bị xóa khi PSRAM trống dưới 8 MiB.
+- **Đo tốc độ trên máy:** Nhật ký & Chẩn đoán hiện p50/p95, lần cuối và chậm nhất cho lật trang, qua chương, mở sách, thao tác, khởi động; log xuất có thêm `open`, `chapter`, `last`, `max`.
+- Chưa đo trên thiết bị nên không công bố mức nhanh hơn cụ thể. Love Book giữ nguyên 1.5.18-love.
+
 ## LumenOS 1.6.1 · Phát hành chính thức · 2026-11-26 (chỉ Full)
 
 - **Sửa đồng hồ chạy chậm sau khi tắt/mở máy:** trước mỗi lần tắt máy, khởi động lại hay vào chế độ nạp, firmware từng ghi giờ của chip ESP vào đồng hồ RTC. Khi khóa ngủ nhiều giờ, giờ của ESP trôi theo dao động nội nên RTC bị ghi đè bằng giờ sai. Nay RTC còn giờ hợp lệ thì không ghi đè; chỉ ghi khi đồng bộ mạng, đặt giờ tay hoặc đặt giờ qua Web Portal (ghi ngay). Sau khi thức dậy từ khóa, máy lấy lại giờ từ RTC. Giờ đã lệch cần đồng bộ lại một lần (Wi-Fi hoặc Cài đặt).

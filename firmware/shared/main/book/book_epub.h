@@ -34,6 +34,8 @@ size_t book_epub_navigation_chapter(book_epub_t *book, size_t position);
 esp_err_t book_epub_navigation_title(book_epub_t *book, size_t position, char *buf, size_t cap);
 const char *book_epub_navigation_anchor(book_epub_t *book, size_t position);
 size_t book_epub_navigation_source_offset(book_epub_t *book, size_t position);
+/// 目录层级 0..2，0 为顶层。/ TOC depth 0..2, 0 is top level.
+uint8_t book_epub_navigation_level(book_epub_t *book, size_t position);
 /// 复制 UTF-8 标题，容量不足报错而不截断。/ Copy a UTF-8 title; report insufficient capacity instead of truncating.
 esp_err_t book_epub_chapter_title(book_epub_t *book, size_t index, char *buf, size_t cap);
 /// 加载 UTF-8 与标题/段落块；调用方 html_text_free。/ Load UTF-8 and heading/paragraph blocks; caller uses html_text_free.

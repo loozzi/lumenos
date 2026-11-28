@@ -22,6 +22,8 @@ typedef int esp_err_t;
 #define ESP_OK 0
 esp_err_t book_navigation_title(size_t position, char *out, size_t cap);
 size_t book_navigation_chapter(size_t position);
+#include <stdint.h>
+uint8_t book_navigation_level(size_t position);
 """,
     "ui_kit.h": """#pragma once
 #include <stdbool.h>
@@ -112,6 +114,7 @@ esp_err_t book_navigation_title(size_t position,char *out,size_t cap){
     return ESP_OK;
 }
 size_t book_navigation_chapter(size_t position){return position+nav_shift;}
+uint8_t book_navigation_level(size_t position){(void)position;return 0;}
 int main(void){
     assert(book_toc_pages(0)==1 && book_toc_pages(7)==1 && book_toc_pages(8)==2);
     assert(book_toc_hit(58,110,0,8)==BOOK_TOC_BACK);

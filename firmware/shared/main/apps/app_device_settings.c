@@ -65,6 +65,10 @@
 #include "book_lock_bookmark.h"
 #include "boot_state.h"
 #include "log_export.h"
+#if DPREADER_BOARD_METALIO47
+#include "metalio_power_stats.h"
+#include "esp_timer.h"
+#endif
 #include "read_pico_sd.h"
 #include "read_pico_crashlog.h"
 #include "ble_page_turner.h"
@@ -1333,6 +1337,41 @@ static bool s_avatar_ready, s_avatar_pending;
 #endif
 static char s_main_wifi[33];
 static bool s_main_wifi_saved;
+// 用户2026-11-28：无法导出日志时在屏上看延迟；p50/p95 为直方图上界，另列最近一次与最慢一次。
+// User 2026-11-28: show latency on screen when logs cannot be exported; p50/p95 are histogram
+// upper bounds, plus the latest and slowest samples.
+static size_t settings_perf_summary(char *out, size_t cap) {
+#if DPREADER_BOARD_METALIO47
+    static const struct { metalio_latency_kind_t kind; const char *label; } rows[] = {
+        {METALIO_LATENCY_TURN, "Lật trang"}, {METALIO_LATENCY_CHAPTER, "Qua chương"},
+        {METALIO_LATENCY_OPEN, "Mở sách"}, {METALIO_LATENCY_UI, "Thao tác"},
+        {METALIO_LATENCY_BOOT, "Khởi động"},
+    };
+    metalio_power_stats_t stats = metalio_power_stats(esp_timer_get_time());
+    size_t used = 0;
+    out[0] = 0;
+    for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]) && used < cap; ++i) {
+        const uint32_t *h = stats.latency[rows[i].kind];
+        uint32_t samples = 0;
+        for (unsigned b = 0; b < METALIO_LATENCY_BUCKETS; ++b) samples += h[b];
+        if (!samples) continue;
+        uint32_t p50 = metalio_power_percentile(h, 50), p95 = metalio_power_percentile(h, 95);
+        char a[16], b[16];
+        if (p50 == UINT32_MAX) snprintf(a, sizeof(a), ">1600"); else snprintf(a, sizeof(a), "≤%lu", (unsigned long)p50);
+        if (p95 == UINT32_MAX) snprintf(b, sizeof(b), ">1600"); else snprintf(b, sizeof(b), "≤%lu", (unsigned long)p95);
+        int n = snprintf(out + used, cap - used, "%s %s/%s ms, cuối %lu, max %lu (%lu)\n",
+                         rows[i].label, a, b, (unsigned long)stats.last_ms[rows[i].kind],
+                         (unsigned long)stats.max_ms[rows[i].kind], (unsigned long)samples);
+        if (n < 0 || (size_t)n >= cap - used) { out[used] = 0; break; }
+        used += (size_t)n;
+    }
+    return used;
+#else
+    (void)cap; out[0] = 0;
+    return 0;
+#endif
+}
+
 static void settings_log_preview(uint8_t *fb,const char *text) {
     int px=19,physical=ui_text_effective_px(px),height=physical+8;
     if(height<32)height=32;
@@ -2263,8 +2302,9 @@ static void render_content(app_ctx_t *ctx, uint8_t *fb) {
         ui_text_caption(fb,(EpdRect){56,518,572,54},20,ble_line,EPD_DRAW_ALIGN_LEFT,false);
         EpdRect log_box = {36, 620, 612, 230};
         settings_card(fb, log_box, 18, 0xf0, 0x50);
-        char preview[512] = {0};
-        log_export_get_recent(preview, sizeof(preview));
+        char preview[768] = {0};
+        size_t used = settings_perf_summary(preview, sizeof(preview));
+        log_export_get_recent(preview + used, sizeof(preview) - used);
         if (!preview[0]) {
             snprintf(preview, sizeof(preview), "Nhật ký hệ thống trống hoặc chưa có bản ghi mới.\nBấm nút bên dưới để xuất toàn bộ log ra thẻ nhớ.");
         }
