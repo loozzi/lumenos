@@ -258,6 +258,10 @@ bool ui_click_feedback_active(void) {return click_active;}
 bool ui_click_feedback_press(uint8_t *fb,int x,int y,EpdRect *r) {(void)fb;if(!click_enabled||y!=1141)return false;(void)x;*r=(EpdRect){60,1120,50,48};click_active=true;++click_presses;return true;}
 bool ui_click_feedback_release(uint8_t *fb,EpdRect *r) {(void)fb;if(!click_active)return false;click_active=false;++click_restores;*r=(EpdRect){60,1120,50,48};return true;}
 bool ui_click_feedback_cancel_at(int x,int y) {return x>120||y!=1141;}
+bool ui_click_feedback_deferred(void) {return false;}
+void ui_click_feedback_drop_rows(void) {}
+void ui_click_feedback_discard(void) {}
+EpdRect ui_click_feedback_area(void) {return (EpdRect){0};}
 int cst836u_read(void* h, cst836u_touch_t* t) {
     (void)h;
     sample_t s = samples[step];

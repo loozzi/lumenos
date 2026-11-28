@@ -80,7 +80,7 @@ static void reader_zoom_reset(void){s_image_zoom=READER_IMAGE_ZOOM_MIN;s_image_z
 static void continuous_du_reset(void){}
 static bool reader_single_image_page(void){return false;}
 static void draw_zoomed_image(uint8_t *fb,EpdRect r,int z,int x,int y,bool bw){(void)fb;(void)r;(void)z;(void)x;(void)y;(void)bw;assert(!"unexpected zoom route");}
-static struct{bool valid;}s_chapter_jump_undo;
+static struct{uint8_t depth;int64_t until_ms;bool shown;}s_jump_back __attribute__((unused));
 static bool hidden,locked;
 static int alloc_fail_after=-1,read_failure=-1,decode_failure=-1;
 static unsigned reads,decodes,pixels,notices,invalidations;

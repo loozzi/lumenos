@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "edition": "full",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "project": "Kiikoread_Metalio_S31",
   "board": "Metalio-EINK4-Plus-S31",
   "layout": "metalio-s31-dual-5m-v1",
@@ -9,8 +9,8 @@
   "usb_only": false,
   "url": "https://raw.githubusercontent.com/loozzi/lumenos/main/releases/dpReader_metalio47_firmware.bin",
   "flash_page": "https://loozzi.github.io/lumenos/",
-  "previous_version": "1.6.1",
-  "notes": "LumenOS 1.6.2: Mục lục hiện đủ chương con (Chương/Phần/Quyển…), thụt lề theo cấp và đánh dấu chương đang đọc. Mở sách nhanh hơn. Xem thời gian lật trang, mở sách trong Nhật ký & Chẩn đoán.",
+  "previous_version": "1.6.2",
+  "notes": "LumenOS 1.6.3: Thu gọn/mở rộng mục lục theo cấp. Nút Quay lại vị trí trước sau khi nhảy chương, đánh dấu, ghi chú (4 bước). Hàng và nút có viền khi chạm.",
   "usb_parts": {
     "bootloader.bin": {
       "size": 22448,
@@ -24,15 +24,15 @@
     },
     "storage-empty.bin": {
       "size": 5898240,
-      "sha256": "b4a666be63a1673d23aee33e1a9a621df42e771887fb6ad2e43e7f589e3381f2",
-      "md5": "50184bc8995476f11eb090bffb2d06da"
+      "sha256": "6bf9ade583ad395d1867e20545f1d99c54b6e03c7ec07cb362d0c198a3c9e4f3",
+      "md5": "09b5cdadf6025dd31ee8dcffee7e4867"
     }
   },
   "clean_image": {
-    "sha256": "ae4768972acb5fc5121386426e27dbbd1300210328b787080312bb11995893d0",
-    "md5": "11a895c88c7d7b820a40ed1acea1beb8"
+    "sha256": "14adf9327a73e12dd01feb4e25a377f5f797e07d216c1f877ed2b90e5f48f911",
+    "md5": "12ebd249464a1610ace44bd04ecaf27a"
   },
-  "size": 5039152,
-  "sha256": "05646a3ac402c9c434c1f08fae37a4784b3e36b154efd832c2e98b26e8d19dad",
-  "md5": "703ab2fd79c704848e25fdfc0cf96d84"
+  "size": 5043168,
+  "sha256": "504a72cea3705d89414027a1d83dd4f0d28873edb1975d5cf8b3aa5847f5a2ea",
+  "md5": "3cf6a429cf8177f54e6d31a3c5ce90a1"
 }

@@ -92,6 +92,9 @@ static char s_reader_notice[96];static int64_t s_reader_notice_until;
 static bool book_notes_open_list(size_t page){(void)page;return true;}
 static void pause_reader_prep(void){}
 static void reader_show_sync_notice(app_ctx_t *ctx){(void)ctx;}
+static size_t book_chapter_count(void){return 10;}
+static unsigned chapter_loads;
+static bool load_chapter(app_ctx_t *ctx,size_t chapter,size_t offset,bool last){(void)ctx;(void)last;++chapter_loads;s_chapter=chapter;s_page=offset/span;return true;}
 static void reader_prepare_network(void){}
 static int64_t esp_timer_get_time(void){return 0;}
 static double reader_sync_ratio(size_t page){return percent(page)/100.0;}
@@ -102,7 +105,8 @@ unit += '\n#define READER_STATS_TOP 506\n#define READER_JUMP_TOP 518\n'
 for name in ('reader_page_offset', 'reader_stats_control_rect', 'reader_chapter_key_rect',
              'reader_chapter_undo_rect', 'reader_chapter_undo_visible', 'reader_chapter_jump_hit',
              'draw_reader_stats', 'draw_reader_chapter_jump', 'reader_chapter_jump_begin',
-             'reader_chapter_jump_parse', 'reader_chapter_jump_commit', 'reader_chapter_jump_action',
+             'reader_chapter_jump_parse', 'reader_jump_back_push', 'reader_jump_back_settle',
+             'reader_jump_back', 'reader_chapter_jump_commit', 'reader_chapter_jump_action',
              'reader_chapter_jump_gesture'):
     unit += function(name, BOOK) + '\n'
 unit+=r'''
@@ -127,7 +131,7 @@ unit += r'''
 static void reset(void){
  s_text="body";s_view=READING;s_page=6;s_chapter=3;span=100;chapter_length=3200;
  s_jump_offset=SIZE_MAX;s_reader_panel=READER_PANEL_NONE;s_reader_slider=2;
- s_chapter_jump_undo.valid=false;s_chapter_jump_digits[0]=0;
+ s_jump_back.depth=0;s_jump_back.until_ms=0;s_chapter_jump_digits[0]=0;chapter_loads=0;
  saves=invalidations=releases=images=flushes=0;s_reader_tap.pending=true;
  s_water_turn_pending=s_reader_turn_pending=s_reader_text_frame=true;
  s_reader_footer_pending=s_reader_image_refresh_pending=s_reader_cleanup=true;
@@ -163,10 +167,10 @@ int main(void){
  assert(tap(&ctx,33)==APP_REDRAW_PAGE&&s_page==17&&saves==1&&releases==1&&images==1);
  assert(s_reader_panel==READER_PANEL_NONE&&s_reader_slider==-1&&!s_reader_tap.pending);
  assert(!s_water_turn_pending&&!s_reader_turn_pending&&!s_reader_text_frame&&!s_reader_footer_pending&&!s_reader_image_refresh_pending&&!s_reader_cleanup);
- assert(reader_chapter_undo_visible()&&s_chapter_jump_undo.offset==600&&ctx.user_activity);
+ assert(reader_chapter_undo_visible()&&s_jump_back.depth==1&&s_jump_back.stack[0].offset==600&&s_jump_back.until_ms==7000&&ctx.user_activity);
  span=150; // 字号变化后，原600字节锚点应落到第5页。/ Reflow maps the saved anchor to page5.
  assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_PAGE&&s_page==4&&s_jump_offset==600);
- assert(!s_chapter_jump_undo.valid&&saves==2);
+ assert(!s_jump_back.depth&&!s_jump_back.until_ms&&saves==2);
  reset();reader_chapter_jump_begin();tap(&ctx,3);
  const char *bad[]={"","0","33","-1","1x","18446744073709551616000","99999999999999999999999"};
  for(unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);++i){
@@ -182,17 +186,26 @@ int main(void){
  s_chapter_jump_page=0;assert(tap(&ctx,2)==APP_REDRAW_NONE&&s_chapter_jump_page==0);
  s_chapter_jump_page=31;assert(tap(&ctx,4)==APP_REDRAW_NONE&&s_chapter_jump_page==31);
  assert(tap(&ctx,5)==APP_REDRAW_PAGE&&s_page==31);
- ctx.now_ms=3000;assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_NONE&&s_page==31);
- ctx.now_ms=1000;s_chapter++;assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_NONE);
- s_chapter--;s_text=NULL;assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_NONE);
+ // Lịch sử không hết hạn theo thời gian; chỉ nút nhắc hết hạn. / History never expires; only the pill does.
+ ctx.now_ms=30000;assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_PAGE&&s_page==6&&!s_jump_back.depth);
+ assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_NONE);
+ // Quay lại chương khác. / Back across chapters.
+ reset();reader_jump_back_push(&ctx);s_chapter=5;s_page=2;
+ assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_PAGE&&chapter_loads==1&&s_chapter==3&&s_page==6);
+ // Tối đa 4 mức, bỏ mức cũ nhất; vị trí trùng không đẩy thêm. / Depth 4, oldest dropped, duplicates ignored.
+ reset();for(int i=0;i<6;++i){s_page=(size_t)i;reader_jump_back_push(&ctx);reader_jump_back_push(&ctx);}
+ assert(s_jump_back.depth==4&&s_jump_back.stack[0].offset==200&&s_jump_back.stack[3].offset==500);
+ s_page=9;reader_jump_back_settle(3,900);assert(s_jump_back.depth==3);
+ reader_jump_back_settle(3,0);assert(s_jump_back.depth==3);
+ ctx.now_ms=1000;s_text=NULL;assert(reader_chapter_jump_commit(&ctx,0,true)==APP_REDRAW_NONE);
  reset();span=0;s_page=0;reader_chapter_jump_begin();draw_reader_stats(&fb);assert(tap(&ctx,5)==APP_REDRAW_NONE&&!saves);
  reset();reader_chapter_jump_begin();s_chapter_jump_page=31;chapter_length=300;
  tap(&ctx,5);assert(s_page==2); // 边界以确认时的布局为准。/ Confirm against the live layout.
  reset();chapter_length=100;s_page=0;reader_chapter_jump_begin();draw_reader_stats(&fb);
  assert(tap(&ctx,2)==APP_REDRAW_NONE&&tap(&ctx,4)==APP_REDRAW_NONE);
- tap(&ctx,5);assert(s_page==0);reader_chapter_jump_begin();tap(&ctx,5);assert(!s_chapter_jump_undo.valid);
+ tap(&ctx,5);assert(s_page==0);reader_chapter_jump_begin();tap(&ctx,5);assert(!s_jump_back.depth);
  reset();s_jump_page=6;s_jump_offset=650;reader_chapter_jump_begin();
- tap(&ctx,5);assert(saves==1&&s_chapter_jump_undo.valid&&s_chapter_jump_undo.offset==650);
+ tap(&ctx,5);assert(saves==1&&s_jump_back.depth==1&&s_jump_back.stack[0].offset==650);
  reader_chapter_jump_commit(&ctx,0,true);assert(s_jump_offset==650&&saves==2);
  reset();reader_chapter_jump_begin();tap(&ctx,6);assert(s_reader_panel==READER_PANEL_BOOKMARKS&&!saves);
  reader_chapter_jump_begin();tap(&ctx,7);assert(s_reader_panel==READER_PANEL_STATS_RECENT&&flushes==1);
@@ -210,14 +223,18 @@ int main(void){
   s_reader_panel=panel;
   for(unsigned y=0;y<1216;y+=7)for(unsigned x=0;x<684;x+=7){int hit=reader_chapter_jump_hit(x,y);assert(hit>=-1&&hit<=33);}
  }
- puts("PASS: actual gray stats/bookmark UI, valid/empty/load-failed lists, edit/confirmation bounds at100-200%;chapter controls,keypad, overflow, draft/confirm, zero/one/many pages, reflow undo, stale media/chapter/time and gesture cancellation");
+ puts("PASS: actual gray stats/bookmark UI, valid/empty/load-failed lists, edit/confirmation bounds at100-200%;chapter controls,keypad, overflow, draft/confirm, zero/one/many pages, reflow undo, 4-level cross-chapter history and gesture cancellation");
 }
 '''
 # 清理与过期路径必须取消锚点并清掉完整提示区域。/ Cleanup and expiry must invalidate anchors and erase all toast pixels.
-assert 's_chapter_jump_undo.valid = false;' in function('free_book', BOOK)
-assert 's_chapter_jump_undo.valid = false;' in function('load_chapter_at', BOOK)
+assert 's_jump_back.depth = 0;' in function('free_book', BOOK)
+assert 's_jump_back' not in function('load_chapter_at', BOOK)  # lịch sử giữ qua chương / history survives chapters
+assert 's_jump_back.until_ms = 0;' in function('turn_page', BOOK)
+for jump in ('reader_jump_back_push(ctx), load_chapter(ctx, mark.chapter', 'reader_jump_back_push(ctx),load_chapter(ctx,jump_chapter',
+             'reader_jump_back_settle(back_chapter, back_offset);'):
+    assert jump in source, jump
 tick = function('on_tick', BOOK)
-assert 'ctx->now_ms >= s_chapter_jump_undo.until_ms' in tick and '(EpdRect){96,152,492,142}' in tick
+assert 'ctx->now_ms >= s_jump_back.until_ms' in tick and '(EpdRect){96,152,492,142}' in tick
 assert 'reader_chapter_jump_gesture(ctx,ev,&jump_handled)' in function('gesture_event', BOOK)
 with tempfile.TemporaryDirectory(prefix='chapter-jump-') as d:
     code, binary = Path(d)/'test.c', Path(d)/'test'

@@ -796,8 +796,10 @@ uint8_t ui_soft_card_color(bool selected) {
     return floating_material_ink(selected ? 0xbb : 0xdd);
 }
 
+void (*ui_soft_card_hook)(uint8_t *framebuffer, EpdRect rect, int radius);
 void ui_draw_soft_card(uint8_t *fb, EpdRect rect, int radius, bool selected) {
     ui_fill_round_rect(fb, rect, radius, ui_soft_card_color(selected));
+    if (ui_soft_card_hook) ui_soft_card_hook(fb, rect, radius);
 }
 
 void ui_draw_floating_capsule(uint8_t *fb, EpdRect rect, int radius, bool selected) {

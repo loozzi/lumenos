@@ -238,6 +238,9 @@ void ui_draw_floating_capsule(uint8_t *framebuffer, EpdRect rect, int radius, bo
 /// Flat page cards share contrast-stable gray tones with the selected navigation tile.
 uint8_t ui_soft_card_color(bool selected);
 void ui_draw_soft_card(uint8_t *framebuffer, EpdRect rect, int radius, bool selected);
+/// 卡片绘制钩子：主循环用它登记可按压的行与按钮；为 NULL 时不登记。
+/// Card paint hook: the loop uses it to register pressable rows and buttons; NULL registers nothing.
+extern void (*ui_soft_card_hook)(uint8_t *framebuffer, EpdRect rect, int radius);
 EpdRect ui_inset_rect(EpdRect r, int d);
 /// 合并刷新区域；空矩形视为无区域，结果裁到逻辑屏幕内。
 /// Union refresh regions; empty rectangles contribute nothing, and the result is clipped to the logical screen.

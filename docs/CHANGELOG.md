@@ -1,3 +1,11 @@
+## LumenOS 1.6.3 · Phát hành chính thức · 2026-11-28 (chỉ Full)
+
+- **Mục lục thu gọn được:** mục có chương con hiện **+** (đang thu gọn, kèm số mục con) hoặc **–** (đang mở) ở bên trái; chạm vào đó để thu gọn/mở rộng, chạm vào tên để tới mục. Mở mục lục thì chỉ nhánh chứa trang đang đọc được mở sẵn.
+- **Quay lại vị trí trước:** nhảy bằng Mục lục, Đánh dấu, Ghi chú (kể cả tab Cả cuốn), Nhảy trang hay đồng bộ KOSync đều ghi lại vị trí cũ, tối đa 4 bước, kể cả khi sang chương khác. Nút **‹ Quay lại vị trí trước** hiện 6 giây và hiện lại mỗi khi mở thanh công cụ; lật trang thường thì nút ẩn đi. Chỉ nhớ trong lúc sách đang mở.
+- **Phản hồi khi chạm:** hàng và nút trong Cài đặt, Tệp, Mục lục, danh sách chọn và các bảng của trang đọc có viền đậm ngay khi chạm, giữ tới khi màn hình mới hiện ra. Trang sách khi đọc không đổi.
+- Sửa mô tả kiểu **Lưới tối giản** (9 cuốn, tên sách và tiến độ). Bảng phông chữ trống có hướng dẫn chép tệp .ttf/.otf vào thư mục fonts.
+- Chưa thử trên thiết bị. Love Book giữ nguyên 1.5.18-love.
+
 ## LumenOS 1.6.2 · Phát hành chính thức · 2026-11-28 (chỉ Full)
 
 - **Mục lục EPUB hiện đủ chương con:** nhận tiêu đề "Chương/Phần/Quyển/Hồi/Tập/Chapter/Part" trong thân sách (có hoặc không dấu; số Ả Rập, La Mã hay số đếm tiếng Việt). Khi mục lục gốc thiếu hoặc chỉ có cấp trên, các chương tìm được được trộn vào, sắp theo (tệp spine, vị trí trong tệp), bỏ mục trùng tên cùng tệp; chương con nằm dưới mục gần nhất phía trước, Phần/Quyển và Chương lẫn nhau thì Chương thụt thêm một cấp (tối đa 3 cấp). NCX/NAV lồng nhau giữ cấp. Mở mục lục đánh dấu đúng mục chứa trang hiện tại. Chỉ dùng cho mục lục và tên chương: ngắt trang và vị trí đọc không đổi. Sách > 256 tệp spine có mục lục riêng vẫn chỉ dùng mục lục gốc. Chỉ mục sách được dựng lại một lần sau khi cập nhật.

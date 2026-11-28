@@ -23,6 +23,14 @@ typedef struct {int64_t now_ms;int leaf;} app_ctx_t;
 typedef enum {APP_REDRAW_NONE,APP_REDRAW_AREA,APP_REDRAW_PAGE} app_redraw_t;
 enum {READING,TOC,SHELF,READER_PANEL_NONE,READER_PANEL_TOOLS};
 #define BOOK_TOC_ROWS 7
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+static struct{uint8_t depth;int64_t until_ms;bool shown;}s_jump_back __attribute__((unused));
+static size_t current_toc_position(void){return 0;}
+static size_t book_navigation_count(void){return 0;}
+static void book_toc_view_open(size_t n,size_t c){(void)n;(void)c;}
+static int book_toc_page_of(size_t n,size_t c){(void)n;return (int)(c/BOOK_TOC_ROWS);}
 #define MODE_GL16 1
 #define E0470_TURN_RTL 1
 #define E0470_TURN_LTR -1

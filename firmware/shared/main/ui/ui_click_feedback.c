@@ -15,18 +15,33 @@
 #include "ui_nav_layout.h"
 #include "ui_nav.h"
 typedef struct { EpdRect area; ui_click_kind_t kind; ui_icon_t icon; } click_control_t;
-static click_control_t s_controls[12], s_active;
+#define CLICK_MAX 24
+#define ROW_EDGE 3
+static click_control_t s_controls[CLICK_MAX], s_active;
+// 行只缓存边框像素；图标控件缓存整块。两处遍历顺序一致。
+// Rows cache only border pixels; icon controls cache the whole box. Both walks share one order.
+static bool cached(int x, int y) {
+    EpdRect r = s_active.area;
+    return s_active.kind != UI_CLICK_ROW || x < ROW_EDGE || y < ROW_EDGE ||
+           x >= r.width - ROW_EDGE || y >= r.height - ROW_EDGE;
+}
+static size_t cache_size(EpdRect r, ui_click_kind_t kind) {
+    if (kind != UI_CLICK_ROW) return (size_t)r.width * r.height;
+    return (size_t)r.width * r.height - (size_t)(r.width - 2 * ROW_EDGE) * (r.height - 2 * ROW_EDGE);
+}
 static unsigned s_count;
 static uint8_t *s_pixels;
 static uint8_t *s_frame;
 static int s_x, s_y;
 static EpdRect changed_area(uint8_t *fb);
+static void row_hook(uint8_t *fb, EpdRect rect, int radius);
 static struct { int tab, phase; int64_t due; EpdRect dirty; bool accent; } s_nav = {.tab=-1};
 static void restore_pixels(uint8_t *fb) {
     if (!s_pixels || fb != s_frame) return;
     EpdRect r=s_active.area;
+    size_t i=0;
     for(int y=0;y<r.height;++y)for(int x=0;x<r.width;++x)
-        epd_draw_pixel(r.x+x,r.y+y,s_pixels[y*r.width+x],fb);
+        if(cached(x,y))epd_draw_pixel(r.x+x,r.y+y,s_pixels[i++],fb);
 }
 static EpdRect nav_union(EpdRect a,EpdRect b) {
     if(a.width<=0)return b;
@@ -38,6 +53,14 @@ static EpdRect nav_union(EpdRect a,EpdRect b) {
 }
 bool ui_click_feedback_nav_pending(void) { return s_nav.tab>=0; }
 bool ui_click_feedback_active(void) { return s_pixels != NULL; }
+bool ui_click_feedback_deferred(void) { return s_pixels && s_active.kind == UI_CLICK_ROW; }
+void ui_click_feedback_discard(void) { heap_caps_free(s_pixels); s_pixels = NULL; }
+EpdRect ui_click_feedback_area(void) { return s_pixels ? s_active.area : (EpdRect){0}; }
+void ui_click_feedback_drop_rows(void) {
+    unsigned kept = 0;
+    for (unsigned i = 0; i < s_count; ++i) if (s_controls[i].kind != UI_CLICK_ROW) s_controls[kept++] = s_controls[i];
+    s_count = kept;
+}
 void ui_click_feedback_reset(void) {
     heap_caps_free(s_pixels); s_pixels = NULL; s_count = 0; s_frame = NULL;
     s_nav.tab=-1;s_nav.phase=0;s_nav.due=0;s_nav.dirty=(EpdRect){0};
@@ -54,17 +77,25 @@ void ui_click_feedback_begin(uint8_t *fb) {
     }
 #endif
     heap_caps_free(s_pixels);s_pixels=NULL;s_count=0;s_frame=fb;
+    ui_soft_card_hook=row_hook;
     if(ui_click_feedback_nav_pending()){s_nav.phase=0;s_nav.due=0;}
 }
 void ui_click_feedback_register(uint8_t *fb, EpdRect rect, ui_click_kind_t kind, ui_icon_t icon) {
     if (fb != s_frame || !fb) return;
+    const int limit = kind == UI_CLICK_ROW ? 4096 : 64;
     if (rect.x < 0 || rect.y < 0 || rect.width <= 0 || rect.height <= 0 ||
-        rect.width > 64 || rect.height > 64 || rect.x + rect.width > epd_rotated_display_width() ||
+        rect.width > limit || rect.height > limit || rect.x + rect.width > epd_rotated_display_width() ||
         rect.y + rect.height > epd_rotated_display_height()) return;
     for (unsigned i = 0; i < s_count; ++i) if (!memcmp(&s_controls[i].area, &rect, sizeof(rect))) {
         s_controls[i] = (click_control_t){rect, kind, icon}; return;
     }
-    if (s_count < 12) s_controls[s_count++] = (click_control_t){rect, kind, icon};
+    if (s_count < CLICK_MAX) s_controls[s_count++] = (click_control_t){rect, kind, icon};
+}
+static void row_hook(uint8_t *fb, EpdRect rect, int radius) {
+    (void)radius;
+    // 只登记像行或按钮的卡片：不太小，也不是整块面板。/ Only row- or button-like cards: not tiny, not whole panels.
+    if (rect.width < 80 || rect.height < 40 || rect.height > 160) return;
+    ui_click_feedback_register(fb, rect, UI_CLICK_ROW, (ui_icon_t)0);
 }
 static uint8_t read_pixel(uint8_t *fb, int x, int y) {
     int px = x, py = y;
@@ -81,8 +112,10 @@ static uint8_t read_pixel(uint8_t *fb, int x, int y) {
 static EpdRect changed_area(uint8_t *fb) {
     EpdRect r = s_active.area;
     int left = r.width, top = r.height, right = -1, bottom = -1;
+    size_t i = 0;
     for (int y = 0; y < r.height; ++y) for (int x = 0; x < r.width; ++x) {
-        if (read_pixel(fb, r.x + x, r.y + y) == s_pixels[y * r.width + x]) continue;
+        if (!cached(x, y)) continue;
+        if (read_pixel(fb, r.x + x, r.y + y) == s_pixels[i++]) continue;
         if (x < left) left = x;
         if (y < top) top = y;
         if (x > right) right = x;
@@ -111,20 +144,30 @@ bool ui_click_feedback_cancel_at(int x, int y) {
 }
 bool ui_click_feedback_press(uint8_t *fb, int x, int y, EpdRect *area) {
     if (s_pixels || ui_click_feedback_nav_pending()) return false;
-    for (unsigned i = 0; i < s_count; ++i) {
+    // 后登记的（更靠上层的）控件优先。/ Later (upper) registrations win.
+    for (unsigned n = s_count; n-- > 0;) {
+        const unsigned i = n;
         EpdRect r = s_controls[i].area;
         bool hit = s_controls[i].kind == UI_CLICK_NAV
             ? y >= UI_NAV_TOUCH_TOP && y < UI_LOCK_HEIGHT && x >= 0 && x < UI_LOCK_WIDTH &&
               ui_nav_hit(x,UI_NAV_TOUCH_TOP) == ui_nav_hit(r.x+r.width/2,UI_NAV_TOUCH_TOP)
             : x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height;
         if (!hit) continue;
-        s_pixels = heap_caps_malloc((size_t)r.width * r.height, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        s_pixels = heap_caps_malloc(cache_size(r, s_controls[i].kind), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (!s_pixels) return false;
         s_active = s_controls[i]; s_x = x; s_y = y; *area = r;
+        size_t k = 0;
         for (int yy = 0; yy < r.height; ++yy) for (int xx = 0; xx < r.width; ++xx)
-            s_pixels[yy * r.width + xx] = read_pixel(fb, r.x + xx, r.y + yy);
+            if (cached(xx, yy)) s_pixels[k++] = read_pixel(fb, r.x + xx, r.y + yy);
         int cx = r.x + r.width / 2, cy = r.y + r.height / 2;
-        if (s_active.kind == UI_CLICK_BACK || s_active.kind == UI_CLICK_BACK_SMALL) {
+        if (s_active.kind == UI_CLICK_ROW) {
+            // 卡片内侧3像素描边，深底用白色。/ A 3 px inner outline, white on dark cards.
+            const uint8_t ink = read_pixel(fb, cx, r.y + ROW_EDGE + 1) < 0x80 ? UI_GRAY_WHITE : UI_GRAY_BLACK;
+            const int radius = r.height < 40 ? r.height / 2 : 20;
+            for (int e = 0; e < ROW_EDGE; ++e)
+                ui_draw_round_rect(fb, (EpdRect){r.x + e, r.y + e, r.width - 2 * e, r.height - 2 * e},
+                                   radius > e ? radius - e : 0, ink);
+        } else if (s_active.kind == UI_CLICK_BACK || s_active.kind == UI_CLICK_BACK_SMALL) {
             epd_fill_rect(r, s_pixels[0], fb);
             bool small=s_active.kind==UI_CLICK_BACK_SMALL;
             const bool arrow=s_active.icon==UI_ICON_ARROW_LEFT;

@@ -612,7 +612,8 @@ static void app_present_impl(app_ctx_t* ctx, const app_desc_t* app, app_redraw_t
         LATENCY_PRESENT_DONE();return;
     }
 #endif
-    if (redraw == APP_REDRAW_PAGE && ui_click_feedback_active() && !ui_click_feedback_nav_pending()) {
+    if (redraw == APP_REDRAW_PAGE && ui_click_feedback_active() && !ui_click_feedback_nav_pending() &&
+        !ui_click_feedback_deferred()) {
         // 切页固定底栏之前先复位真实按压像素，避免把放大的图标当作长期基准。
         // Restore physical pressed pixels before freezing navigation, so an enlarged icon never becomes its baseline.
         EpdRect area;
@@ -657,6 +658,7 @@ static void app_present_impl(app_ctx_t* ctx, const app_desc_t* app, app_redraw_t
         case APP_REDRAW_AREA: {
             // 回调已经画好了 fb，这里只负责把它那一块推上屏。
             // The callback already painted fb; push that rectangle only.
+            ui_click_feedback_drop_rows();
             EpdRect area = app->area_hint != NULL
                 ? app->area_hint(ctx)
                 : ui_content_refresh_area();
@@ -794,6 +796,25 @@ static app_redraw_t dispatch_page_gesture(app_ctx_t *ctx,const app_desc_t *app,c
             return APP_REDRAW_DONE;
         }
     }
+    return redraw;
+}
+// 行描边包装：见 ui_click_feedback_deferred。/ Row-outline wrapper around page dispatch.
+static app_redraw_t dispatch_row_gesture(app_ctx_t *ctx,const app_desc_t *app,const ui_gesture_event_t *event) {
+    // 行描边：提交类事件前先从 fb 撤掉描边，页面在干净的帧上处理；页面未整页重画时只推该行。
+    // 按下/移动中页面若自己重画了该控件，则丢弃缓存、不回写旧像素。
+    // Row outline: committing events first remove it from fb so the page acts on a clean frame; without a page
+    // repaint only that row is pushed. If a press/move repaint covers the control, drop the cache without restoring.
+    EpdRect row_area={0};
+    const bool row_commit=ui_click_feedback_deferred()&&event->type!=UI_GESTURE_PRESS&&event->type!=UI_GESTURE_MOVE;
+    if(row_commit)(void)ui_click_feedback_release(ctx->fb,&row_area);
+    app_redraw_t redraw=dispatch_page_gesture(ctx,app,event);
+    if(ui_click_feedback_deferred()&&redraw==APP_REDRAW_AREA&&app->area_hint) {
+        EpdRect a=app->area_hint(ctx),r=ui_click_feedback_area();
+        if(a.x<r.x+r.width&&r.x<a.x+a.width&&a.y<r.y+r.height&&r.y<a.y+a.height)ui_click_feedback_discard();
+    }
+    if(row_commit&&row_area.width>0&&redraw!=APP_REDRAW_PAGE&&redraw!=APP_REDRAW_FULL&&redraw!=APP_REDRAW_DONE&&
+       !ctx->request_app&&!ctx->request_return&&!ctx->request_menu)
+        click_present(ctx,app,row_area);
     return redraw;
 }
 
@@ -1749,7 +1770,10 @@ void app_loop_run(const app_loop_config_t* config) {
             menu_pressed = UI_MENU_HIT_NONE;
         }
         EpdRect click_area;
-        if (ui_click_feedback_active() && (err != ESP_OK || touch.count > 1 ||
+        // 行描边在抬手时保留，交给手势提交处理。/ Keep a row outline on lift; the gesture commit handles it.
+        const bool row_lift = ui_click_feedback_deferred() && err == ESP_OK && !touch.touched &&
+            !quick_input_owned && !power_input_owned && !menu_open;
+        if (ui_click_feedback_active() && !row_lift && (err != ESP_OK || touch.count > 1 ||
             quick_input_owned || power_input_owned || menu_open ||
             (!ui_click_feedback_nav_pending() && (released || touch.count != 1 ||
             ui_click_feedback_cancel_at(touch.x, touch.y))))) {
@@ -1785,6 +1809,7 @@ void app_loop_run(const app_loop_config_t* config) {
         if (err == ESP_OK && pressed && touch.count == 1 && !nav_press_owned && !power_input_owned &&
             !quick_input_owned && !menu_open && !usb_storage_active() &&
             !(current==&app_dashboard&&main_page_ready(&ctx,current)) &&
+            !(current==&app_book&&app_book_reader_body_visible()) &&
             ui_click_feedback_press(ctx.fb, touch.x, touch.y, &click_area))
             click_present(&ctx, current, click_area);
         if (!power_input_owned && !quick_input_owned && !nav_press_owned && pressed && err == ESP_OK) {
@@ -1877,11 +1902,14 @@ void app_loop_run(const app_loop_config_t* config) {
             ui_gesture_event_t event;
             if (ui_gesture_feed(&gesture, &ctx, &event)) {
                 app_redraw_t redraw =
-                    dispatch_page_gesture(&ctx,current,&event);
+                    dispatch_row_gesture(&ctx,current,&event);
                 present_page(&ctx, current, &gesture, redraw);
                 if (redraw != APP_REDRAW_NONE) ctx.consumed = true;
             }
         }
+        // 抬手后仍留着的行描边（没有手势提交）在此恢复。/ Restore a row outline still present after lift with no committing gesture.
+        if (ui_click_feedback_deferred() && err == ESP_OK && !touch.touched && !gesture.active &&
+            ui_click_feedback_release(ctx.fb, &click_area)) click_present(&ctx, current, click_area);
 
         ctx.now_ms = esp_timer_get_time() / 1000;
 #if DPREADER_BOARD_METALIO47
